@@ -1,0 +1,32 @@
+﻿<Properties>
+  <MonoDevelop.Ide.Workbench ActiveDocument="BWEnvConfig.cs">
+    <Files>
+      <File FileName="BWAPIRequest_Standalone.cs" Line="1" Column="1" />
+      <File FileName="BWEnvConfig.cs" Line="8" Column="6" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="Assembly-CSharp" expanded="True">
+            <Node name="Assembly-CSharp" expanded="True">
+              <Node name="References" expanded="True" />
+              <Node name="Exdilin" expanded="True">
+                <Node name="Accessor" expanded="True" />
+                <Node name="Lua" expanded="True" />
+                <Node name="UI" expanded="True" />
+              </Node>
+              <Node name="ModExdilin" expanded="True" />
+              <Node name="BWEnvConfig.cs" selected="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>
