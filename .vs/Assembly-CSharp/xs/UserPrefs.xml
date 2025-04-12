@@ -1,8 +1,9 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workbench ActiveDocument="BWEnvConfig.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="BWUserModel.cs">
     <Files>
-      <File FileName="BWAPIRequest_Standalone.cs" Line="1" Column="1" />
-      <File FileName="BWEnvConfig.cs" Line="8" Column="6" />
+      <File FileName="ModExdilin/ExdilinMod.cs" Line="18" Column="1" />
+      <File FileName="BWUserModelsDataManager.cs" Line="158" Column="83" />
+      <File FileName="BWUserModel.cs" Line="117" Column="22" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
@@ -16,7 +17,7 @@
                 <Node name="UI" expanded="True" />
               </Node>
               <Node name="ModExdilin" expanded="True" />
-              <Node name="BWEnvConfig.cs" selected="True" />
+              <Node name="BWUserModel.cs" selected="True" />
             </Node>
           </Node>
         </State>

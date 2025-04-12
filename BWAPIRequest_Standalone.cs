@@ -200,6 +200,7 @@ public class BWAPIRequest_Standalone : BWAPIRequestBase
         if (request.downloadHandler != null && !string.IsNullOrEmpty(request.downloadHandler.text))
         {
 			bool err = false;
+			BWLog.Info("Got " + request.downloadHandler.text);
 			try {
 				responseJson = JSONDecoder.Decode(request.downloadHandler.text);
 			} catch (ParseError e) {
@@ -296,12 +297,16 @@ public class BWAPIRequest_Standalone : BWAPIRequestBase
     // Token: 0x060001F6 RID: 502 RVA: 0x0000ABE0 File Offset: 0x00008FE0
     private void AddHeaderAuthToken()
     {
-        string value = BWAPIRequest_Standalone.currentUserAuthToken();
-        if (!string.IsNullOrEmpty(value))
+        string authToken = BWAPIRequest_Standalone.currentUserAuthToken();
+
+        if (!string.IsNullOrEmpty(authToken))
         {
-            this.headers["BW-Auth-Token"] = value;
-        }
-    }
+            this.headers["BW-Auth-Token"] = authToken;
+			BWLog.Info("It is an authenticated request.");
+        } else {
+			BWLog.Info("It is an unauthenticated request.");
+		}
+	}
 
     // Token: 0x060001F7 RID: 503 RVA: 0x0000AC10 File Offset: 0x00009010
     private void AddHeaderClientType()
