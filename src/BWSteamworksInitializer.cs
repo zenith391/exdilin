@@ -1,62 +1,80 @@
-﻿using System;
+using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using Exdilin;
+using ModExdilin;
 using SimpleJSON;
 using Steamworks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-using Exdilin;
-
-// Token: 0x020003BE RID: 958
-using System.Reflection.Emit;
 public class BWSteamworksInitializer : MonoBehaviour
 {
-
-	// added by Exdilin
-	public enum LoginMethod {
+	public enum LoginMethod
+	{
 		Steam,
 		AuthToken
-	};
-	public static LoginMethod Method;
-	// end of added by Exdilin
+	}
 
-	// Token: 0x060029BA RID: 10682 RVA: 0x00132150 File Offset: 0x00130550
+	public static LoginMethod Method;
+
+	public Text[] statusText;
+
+	public Text[] versionText;
+
+	public Animator launchScreenAnimator;
+
+	private int apiRequestErrorCode;
+
+	private string apiRequestErrorMsg = string.Empty;
+
+	private bool apiRequestInProgress;
+
+	private bool apiRequestConnectionRefused;
+
+	private int steamworksErrorCode;
+
+	private bool steamworksRequestInProgress;
+
+	protected Callback<GetAuthSessionTicketResponse_t> _GetAuthSessionTicketResponse;
+
+	private string _HexEncodedTicket;
+
+	private HAuthTicket _HAuthTicket;
+
 	private void SetVersionInfoWithMessage(string message)
 	{
 		string text = BWEnvConfig.BLOCKSWORLD_VERSION;
 		if (BWEnvConfig.BLOCKSWORLD_ENVIRONMENT != "production")
 		{
-			text = text + " (with Exdilin " + ModExdilin.ExdilinMod.VersionStatic.ToString() + ")";
+			text = text + " (with Exdilin " + ExdilinMod.VersionStatic.ToString() + ")";
 		}
 		if (!string.IsNullOrEmpty(message))
 		{
 			text = text + " (" + message + ")";
 		}
-		if (this.versionText != null)
+		if (versionText != null)
 		{
-			for (int i = 0; i < this.versionText.Length; i++)
+			for (int i = 0; i < versionText.Length; i++)
 			{
-				this.versionText[i].text = text;
+				versionText[i].text = text;
 			}
 		}
 	}
 
-	// Token: 0x060029BB RID: 10683 RVA: 0x001321D8 File Offset: 0x001305D8
 	public void UpdateText(string newText)
 	{
-		if (this.statusText != null)
+		if (statusText != null)
 		{
-			for (int i = 0; i < this.statusText.Length; i++)
+			for (int i = 0; i < statusText.Length; i++)
 			{
-				this.statusText[i].text = newText;
+				statusText[i].text = newText;
 			}
 		}
 	}
 
-	// Token: 0x060029BC RID: 10684 RVA: 0x00132218 File Offset: 0x00130618
 	private void Awake()
 	{
 		string versionInfoWithMessage = string.Empty;
@@ -64,556 +82,473 @@ public class BWSteamworksInitializer : MonoBehaviour
 		{
 			versionInfoWithMessage = "with debug console";
 		}
-		this.SetVersionInfoWithMessage(versionInfoWithMessage);
-		this.UpdateText("Loading...");
-		this._GetAuthSessionTicketResponse = Callback<GetAuthSessionTicketResponse_t>.Create(new Callback<GetAuthSessionTicketResponse_t>.DispatchDelegate(this.OnGetAuthSessionTicketResponse));
-		this._HAuthTicket = HAuthTicket.Invalid;
+		SetVersionInfoWithMessage(versionInfoWithMessage);
+		UpdateText("Loading...");
+		_GetAuthSessionTicketResponse = Callback<GetAuthSessionTicketResponse_t>.Create(OnGetAuthSessionTicketResponse);
+		_HAuthTicket = HAuthTicket.Invalid;
 	}
 
-	// Token: 0x060029BD RID: 10685 RVA: 0x0013228D File Offset: 0x0013068D
 	private void OnGetAuthSessionTicketResponse(GetAuthSessionTicketResponse_t pCallback)
 	{
-		this.steamworksErrorCode = (int)pCallback.m_eResult;
-		this.steamworksRequestInProgress = false;
+		steamworksErrorCode = (int)pCallback.m_eResult;
+		steamworksRequestInProgress = false;
 	}
 
-	// Token: 0x060029BE RID: 10686 RVA: 0x001322A3 File Offset: 0x001306A3
 	private void Stop()
 	{
-		Debug.Log("Stopping...");
-		if (this._HAuthTicket != HAuthTicket.Invalid)
+		UnityEngine.Debug.Log("Stopping...");
+		if (_HAuthTicket != HAuthTicket.Invalid)
 		{
-			SteamUser.CancelAuthTicket(this._HAuthTicket);
-			this._HAuthTicket = HAuthTicket.Invalid;
+			SteamUser.CancelAuthTicket(_HAuthTicket);
+			_HAuthTicket = HAuthTicket.Invalid;
 		}
 	}
 
-	// Token: 0x060029BF RID: 10687 RVA: 0x001322DA File Offset: 0x001306DA
 	private void LaunchGame()
 	{
-		this.UpdateText("Starting Blocksworld...");
+		UpdateText("Starting Blocksworld...");
 		SceneManager.LoadScene("BlocksworldMain", LoadSceneMode.Additive);
-		base.StartCoroutine(this.FadeOutLaunchScreen());
+		StartCoroutine(FadeOutLaunchScreen());
 	}
 
-	// Token: 0x060029C0 RID: 10688 RVA: 0x00132300 File Offset: 0x00130700
 	private IEnumerator FadeOutLaunchScreen()
 	{
 		while (BWStandalone.Instance == null || !BWStandalone.Instance.menuLoaded)
 		{
 			yield return null;
 		}
-		if (this.launchScreenAnimator != null)
+		if (launchScreenAnimator != null)
 		{
-			this.launchScreenAnimator.SetTrigger("Hide");
+			launchScreenAnimator.SetTrigger("Hide");
 		}
-		yield break;
 	}
 
-	// ADDED BY EXDILIN
-	// get auth token from an external source (file)
-	public string GetExternalAuthToken() {
-		string basePath = Application.dataPath + "/..";
-		string path = basePath + "/auth_token.txt";
-		if (File.Exists(path)) {
-			string text = File.ReadAllText(path);
+	public string GetExternalAuthToken()
+	{
+		string text = Application.dataPath + "/..";
+		string path = text + "/auth_token.txt";
+		if (File.Exists(path))
+		{
+			string result = File.ReadAllText(path);
 			File.Delete(path);
-			return text;
-		} else {
-			return null;
+			return result;
 		}
+		return null;
 	}
 
-	// Token: 0x060029C1 RID: 10689 RVA: 0x0013231C File Offset: 0x0013071C
 	private IEnumerator Start()
 	{
 		yield return null;
-		// all auth token login related part is added by Exdilin
 		string extToken = GetExternalAuthToken();
-		bool useSteam = extToken == null;
-		Method = useSteam ? LoginMethod.Steam : LoginMethod.AuthToken;
-
+		bool flag = extToken == null;
+		Method = ((!flag) ? LoginMethod.AuthToken : LoginMethod.Steam);
 		string nickname = "";
 		if (BWEnvConfig.Flags["DEMO_USER"])
 		{
-			this.UpdateText("Be our guest!");
+			UpdateText("Be our guest!");
 			yield return new WaitForSeconds(1f);
 			BWUser.SetupDemoCurrentUser();
 		}
-		else if (useSteam)
+		else if (flag)
 		{
-			while (!SteamManager.Initialized) {
-				this.UpdateText("Launch Steam and try again...");
+			while (!SteamManager.Initialized)
+			{
+				UpdateText("Launch Steam and try again...");
 				yield return new WaitForSeconds(5f);
 			}
 			CSteamID steamIDPlayer = SteamUser.GetSteamID();
-			CSteamID steamIDOwner = SteamApps.GetAppOwner();
-			if (!steamIDPlayer.IsValid() || !steamIDOwner.IsValid()) {
-				this.UpdateText("Invalid Steam ID");
+			CSteamID appOwner = SteamApps.GetAppOwner();
+			if (!steamIDPlayer.IsValid() || !appOwner.IsValid())
+			{
+				UpdateText("Invalid Steam ID");
 				yield break;
 			}
-			if (steamIDOwner != steamIDPlayer) {
-				for (; ; )
+			if (appOwner != steamIDPlayer)
+			{
+				while (true)
 				{
-					this.UpdateText("Blocksworld account owner not logged in!");
+					UpdateText("Blocksworld account owner not logged in!");
 					yield return new WaitForSeconds(5f);
 				}
 			}
 			string personaName = SteamFriends.GetPersonaName();
-			this.UpdateText("Welcome " + personaName + "!");
+			UpdateText("Welcome " + personaName + "!");
 			yield return new WaitForSeconds(1f);
-			this.UpdateText("Starting session...");
+			UpdateText("Starting session...");
 			yield return null;
-			this.steamworksRequestInProgress = true;
+			steamworksRequestInProgress = true;
 			byte[] ticket = new byte[1024];
 			uint pcbTicket = 0u;
-			this._HAuthTicket = SteamUser.GetAuthSessionTicket(ticket, 1024, out pcbTicket);
-			while (this.steamworksRequestInProgress)
+			_HAuthTicket = SteamUser.GetAuthSessionTicket(ticket, 1024, out pcbTicket);
+			while (steamworksRequestInProgress)
 			{
 				yield return new WaitForSeconds(0.2f);
 			}
-			if (this.steamworksErrorCode != 1 || pcbTicket <= 0u)
+			if (steamworksErrorCode != 1 || pcbTicket == 0)
 			{
-				this.UpdateText("Unable to start session.  Please try again later.");
+				UpdateText("Unable to start session.  Please try again later.");
 				yield break;
 			}
-			byte[] truncatedTicket = new byte[pcbTicket];
-			Array.Copy(ticket, 0L, truncatedTicket, 0L, (long)((ulong)pcbTicket));
-			this._HexEncodedTicket = BitConverter.ToString(truncatedTicket).Replace("-", string.Empty);
-            BWLog.Info("Generated Steam ticket: " + this._HexEncodedTicket);
-            yield return null;
-            nickname = SteamFriends.GetPlayerNickname(steamIDPlayer);
+			byte[] array = new byte[pcbTicket];
+			Array.Copy(ticket, 0L, array, 0L, pcbTicket);
+			_HexEncodedTicket = BitConverter.ToString(array).Replace("-", string.Empty);
+			BWLog.Info("Generated Steam ticket: " + _HexEncodedTicket);
+			yield return null;
+			nickname = SteamFriends.GetPlayerNickname(steamIDPlayer);
 			if (string.IsNullOrEmpty(nickname))
 			{
 				nickname = personaName;
 			}
-			this.UpdateText("Logging in as " + nickname + "...");
+			UpdateText("Logging in as " + nickname + "...");
 			yield return null;
-			this.RequestCurrentUser(steamIDPlayer);
-			while (this.apiRequestInProgress)
+			RequestCurrentUser(steamIDPlayer);
+			while (apiRequestInProgress)
 			{
 				yield return new WaitForSeconds(0.5f);
 			}
-			if (this.apiRequestErrorCode == 404)
+			if (apiRequestErrorCode == 404)
 			{
-				this.UpdateText("Creating Blocksworld account for " + nickname);
-				this.RequestCreateUser(steamIDPlayer, personaName, nickname);
+				UpdateText("Creating Blocksworld account for " + nickname);
+				RequestCreateUser(steamIDPlayer, personaName, nickname);
 				yield return null;
 			}
 			else
 			{
-				if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0)
+				if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
 				{
-					this.UpdateText("Unable to login.  Please try again later.");
-					this.SetVersionInfoWithMessage(string.Concat(new object[]
-					{
-						"error ",
-						this.apiRequestErrorCode,
-						" ",
-						this.apiRequestErrorMsg
-					}));
+					UpdateText("Unable to login.  Please try again later.");
+					SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
 					yield break;
 				}
-				this.UpdateText("Logged in!");
+				UpdateText("Logged in!");
 				yield return null;
-				if (BWUser.currentUser.username != nickname) {
-					this.RequestUpdateUsername(nickname);
-					while (this.apiRequestInProgress) {
+				if (BWUser.currentUser.username != nickname)
+				{
+					RequestUpdateUsername(nickname);
+					while (apiRequestInProgress)
+					{
 						yield return new WaitForSeconds(0.5f);
 					}
-					if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0) {
-						this.UpdateText("Unable to change Blocksworld username!");
-						yield return new WaitForSeconds(2.0f);
+					if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
+					{
+						UpdateText("Unable to change Blocksworld username!");
+						yield return new WaitForSeconds(2f);
 					}
-					this.UpdateText("Changed username!");
+					UpdateText("Changed username!");
 					yield return null;
 				}
 			}
-			while (this.apiRequestInProgress)
+			while (apiRequestInProgress)
 			{
-                yield return new WaitForSeconds(0.5f);
-			}
-			if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0)
-			{
-				this.UpdateText("Unable to connect to server.  Please try again later.");
-				this.SetVersionInfoWithMessage(string.Concat(new object[]
-				{
-					"error ",
-					this.apiRequestErrorCode,
-					" ",
-					this.apiRequestErrorMsg
-				}));
-				yield break;
-			}
-		} else { // when not using steam
-			this.UpdateText("Starting launcher session...");
-			yield return null;
-			nickname = "todo";
-			this.UpdateText("Logging in with token " + extToken + "...");
-			yield return null;
-			this.RequestCurrentUserAuth(extToken);
-			while (this.apiRequestInProgress) {
 				yield return new WaitForSeconds(0.5f);
 			}
-			if (this.apiRequestErrorCode == 404) {
-				this.UpdateText("Invalid authentication token. Try to restart the launcher.");
+			if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
+			{
+				UpdateText("Unable to connect to server.  Please try again later.");
+				SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
 				yield break;
-			} else {
-				if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0) {
-					this.UpdateText("Unable to login. Please try again later.");
-					this.SetVersionInfoWithMessage(string.Concat(new object[]
-					{
-						"error ",
-						this.apiRequestErrorCode,
-						" ",
-						this.apiRequestErrorMsg
-					}));
-					yield break;
-				}
-				this.UpdateText("Logged in!");
-				yield return null;
 			}
 		}
-		this.UpdateText("Downloading " + nickname + "'s worlds...");
-		yield return null;
-		this.RequestCurrentUserWorlds();
-		while (this.apiRequestInProgress) {
-			yield return new WaitForSeconds(0.5f);
-		}
-		if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0) {
-			this.UpdateText("Unable to download worlds.  Please try again later.");
-			this.SetVersionInfoWithMessage(string.Concat(new object[]
-			{
-					"error ",
-					this.apiRequestErrorCode,
-					" ",
-					this.apiRequestErrorMsg
-			}));
-			yield break;
-		}
-		this.UpdateText("Fetching remote configuration...");
-		yield return null;
-		this.RequestAppRemoteConfiguration();
-		while (this.apiRequestInProgress)
+		else
 		{
-			yield return new WaitForSeconds(0.5f);
-		}
-		if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0)
-		{
-			this.UpdateText("Unable to fetch remote configuration.  Please try again later.");
-			this.SetVersionInfoWithMessage(string.Concat(new object[]
+			UpdateText("Starting launcher session...");
+			yield return null;
+			nickname = "todo";
+			UpdateText("Logging in with token " + extToken + "...");
+			yield return null;
+			RequestCurrentUserAuth(extToken);
+			while (apiRequestInProgress)
 			{
-				"error ",
-				this.apiRequestErrorCode,
-				" ",
-				this.apiRequestErrorMsg
-			}));
-			yield break;
+				yield return new WaitForSeconds(0.5f);
+			}
+			if (apiRequestErrorCode == 404)
+			{
+				UpdateText("Invalid authentication token. Try to restart the launcher.");
+				yield break;
+			}
+			if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
+			{
+				UpdateText("Unable to login. Please try again later.");
+				SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
+				yield break;
+			}
+			UpdateText("Logged in!");
+			yield return null;
 		}
-		this.UpdateText("Downloading categories...");
+		UpdateText("Downloading " + nickname + "'s worlds...");
 		yield return null;
-		this.RequestContentCategories();
-		while (this.apiRequestInProgress)
+		RequestCurrentUserWorlds();
+		while (apiRequestInProgress)
 		{
 			yield return new WaitForSeconds(0.5f);
 		}
-		if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0)
+		if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
 		{
-			this.UpdateText("Unable to download categories.  Please try again later.");
-			this.SetVersionInfoWithMessage(string.Concat(new object[]
-			{
-				"error ",
-				this.apiRequestErrorCode,
-				" ",
-				this.apiRequestErrorMsg
-			}));
+			UpdateText("Unable to download worlds.  Please try again later.");
+			SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
 			yield break;
 		}
-		this.UpdateText("Downloading block data...");
+		UpdateText("Fetching remote configuration...");
 		yield return null;
-		this.RequestBlockPricing();
-		while (this.apiRequestInProgress)
+		RequestAppRemoteConfiguration();
+		while (apiRequestInProgress)
 		{
 			yield return new WaitForSeconds(0.5f);
 		}
-		if (this.apiRequestConnectionRefused || this.apiRequestErrorCode != 0)
+		if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
 		{
-			this.UpdateText("Unable to download block data.  Please try again later.");
-			this.SetVersionInfoWithMessage(string.Concat(new object[]
-			{
-				"error ",
-				this.apiRequestErrorCode,
-				" ",
-				this.apiRequestErrorMsg
-			}));
+			UpdateText("Unable to fetch remote configuration.  Please try again later.");
+			SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
 			yield break;
 		}
-        this.UpdateText("Loading mods..");
-        yield return ModLoader.LoadModsCoroutine(delegate(string id, string stage)
+		UpdateText("Downloading categories...");
+		yield return null;
+		RequestContentCategories();
+		while (apiRequestInProgress)
 		{
-			if (stage == "load") {
+			yield return new WaitForSeconds(0.5f);
+		}
+		if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
+		{
+			UpdateText("Unable to download categories.  Please try again later.");
+			SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
+			yield break;
+		}
+		UpdateText("Downloading block data...");
+		yield return null;
+		RequestBlockPricing();
+		while (apiRequestInProgress)
+		{
+			yield return new WaitForSeconds(0.5f);
+		}
+		if (apiRequestConnectionRefused || apiRequestErrorCode != 0)
+		{
+			UpdateText("Unable to download block data.  Please try again later.");
+			SetVersionInfoWithMessage("error " + apiRequestErrorCode + " " + apiRequestErrorMsg);
+			yield break;
+		}
+		UpdateText("Loading mods..");
+		yield return ModLoader.LoadModsCoroutine(delegate(string id, string stage)
+		{
+			if (stage == "load")
+			{
 				UpdateText("Loading mods.. (" + id + ")");
-			} else if (stage == "preinit") {
+			}
+			else if (stage == "preinit")
+			{
 				UpdateText("Pre-initing mods.. (" + id + ")");
 			}
 		});
-
-		BWAPIRequestBase request = BW.API.CreateRequest("GET", "/api/v2/exdilin/configuration?version=" + ModExdilin.ExdilinMod.VersionStatic.ToString());
-		request.onSuccess = delegate (JObject resp)
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v2/exdilin/configuration?version=" + ExdilinMod.VersionStatic.ToString());
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
-			Exdilin.Version ver = ModExdilin.ExdilinMod.VersionStatic;
-			int verId = (ver.Major << 16) | (ver.Minor << 8) | ver.Patch;
-			Debug.Log("Latest version ID: " + resp["latest_version_id"].IntValue + ", current version ID: " + verId);
-			if (resp["latest_version_id"].IntValue > verId) {
-				ModLoader.OverlaysAvailable += delegate (object sender, EventArgs e)
+			Exdilin.Version versionStatic = ExdilinMod.VersionStatic;
+			int num = (versionStatic.Major << 16) | (versionStatic.Minor << 8) | versionStatic.Patch;
+			UnityEngine.Debug.Log("Latest version ID: " + resp["latest_version_id"].IntValue + ", current version ID: " + num);
+			if (resp["latest_version_id"].IntValue > num)
+			{
+				ModLoader.OverlaysAvailable += delegate
 				{
-					BWStandalone.Overlays.ShowConfirmationDialog("Update", "Update Exdilin to " + resp["latest_version"].StringValue + " ?", delegate ()
+					BWStandalone.Overlays.ShowConfirmationDialog("Update", "Update Exdilin to " + resp["latest_version"].StringValue + " ?", delegate
 					{
-						System.Diagnostics.Process.Start("https://bwsecondary.ddns.net/mods/0");
+						Process.Start("https://bwsecondary.ddns.net/mods/0");
 					}, "Update!", "No");
 				};
 			}
 		};
-		request.onFailure = delegate (BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate
 		{
-
 		};
-		// failure intentionally isn't handled
-		request.SendOwnerCoroutine(this);
-		this.LaunchGame();
+		bWAPIRequestBase.SendOwnerCoroutine(this);
+		LaunchGame();
 		yield return null;
-		yield break;
 	}
 
-	// Token: 0x060029C2 RID: 10690 RVA: 0x00132337 File Offset: 0x00130737
 	private void ResetAPIRequestVariables()
 	{
-		this.apiRequestErrorCode = 0;
-		this.apiRequestErrorMsg = string.Empty;
-		this.apiRequestInProgress = true;
-		this.apiRequestConnectionRefused = false;
+		apiRequestErrorCode = 0;
+		apiRequestErrorMsg = string.Empty;
+		apiRequestInProgress = true;
+		apiRequestConnectionRefused = false;
 	}
 
-    // Token: 0x060029C3 RID: 10691 RVA: 0x0013235C File Offset: 0x0013075C
-    private void RequestCurrentUser(CSteamID steamIDPlayer)
+	private void RequestCurrentUser(CSteamID steamIDPlayer)
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("GET", "/api/v1/steam_current_user");
-		bwapirequestBase.AddParam("steam_id", steamIDPlayer.m_SteamID.ToString());
-		bwapirequestBase.AddParam("steam_auth_ticket", this._HexEncodedTicket);
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v1/steam_current_user");
+		bWAPIRequestBase.AddParam("steam_id", steamIDPlayer.m_SteamID.ToString());
+		bWAPIRequestBase.AddParam("steam_auth_ticket", _HexEncodedTicket);
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWUser.LoadCurrentUser(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWUser.currentUser = null;
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-        bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// by exdilin
-	private void RequestCurrentUserAuth(string authToken) {
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("POST", "/api/v2/account/login/auth_token");
-		bwapirequestBase.AddParam("auth_token", authToken);
-		bwapirequestBase.onSuccess = delegate (JObject resp)
+	private void RequestCurrentUserAuth(string authToken)
+	{
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("POST", "/api/v2/account/login/auth_token");
+		bWAPIRequestBase.AddParam("auth_token", authToken);
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWUser.LoadCurrentUser(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate (BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWUser.currentUser = null;
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C4 RID: 10692 RVA: 0x001323E0 File Offset: 0x001307E0
 	private void RequestCreateUser(CSteamID steamIDPlayer, string personaName, string nickname)
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("POST", "/api/v1/steam_users");
-		bwapirequestBase.AddParam("steam_id", steamIDPlayer.m_SteamID.ToString());
-		bwapirequestBase.AddParam("steam_auth_ticket", this._HexEncodedTicket);
-		bwapirequestBase.AddParam("steam_persona", personaName);
-		bwapirequestBase.AddParam("steam_nickname", nickname);
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("POST", "/api/v1/steam_users");
+		bWAPIRequestBase.AddParam("steam_id", steamIDPlayer.m_SteamID.ToString());
+		bWAPIRequestBase.AddParam("steam_auth_ticket", _HexEncodedTicket);
+		bWAPIRequestBase.AddParam("steam_persona", personaName);
+		bWAPIRequestBase.AddParam("steam_nickname", nickname);
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWUser.LoadCurrentUser(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWUser.currentUser = null;
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C5 RID: 10693 RVA: 0x0013247C File Offset: 0x0013087C
 	private void RequestUpdateUsername(string nickname)
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("POST", "/api/v1/steam_current_user/username");
-		bwapirequestBase.AddParam("steam_nickname", nickname);
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("POST", "/api/v1/steam_current_user/username");
+		bWAPIRequestBase.AddParam("steam_nickname", nickname);
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWUser.UpdateCurrentUser(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWUser.currentUser = null;
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C6 RID: 10694 RVA: 0x001324DC File Offset: 0x001308DC
 	private void RequestAppRemoteConfiguration()
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("GET", "/api/v1/steam-app-remote-configuration");
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v1/steam-app-remote-configuration");
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWAppConfiguration.LoadRemoteConfiguration(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C7 RID: 10695 RVA: 0x00132530 File Offset: 0x00130930
 	private void RequestContentCategories()
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("GET", "/api/v1/content-categories-no-ip");
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v1/content-categories-no-ip");
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWCategory.LoadContentCategories(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C8 RID: 10696 RVA: 0x00132584 File Offset: 0x00130984
 	private void RequestBlockPricing()
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("GET", "/api/v1/block_items/pricing");
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v1/block_items/pricing");
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWBlockItemPricing.LoadBlockPrices(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
 
-	// Token: 0x060029C9 RID: 10697 RVA: 0x001325D8 File Offset: 0x001309D8
 	private void RequestCurrentUserWorlds()
 	{
-		this.ResetAPIRequestVariables();
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("GET", "/api/v1/current_user/worlds");
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		ResetAPIRequestVariables();
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("GET", "/api/v1/current_user/worlds");
+		bWAPIRequestBase.onSuccess = delegate(JObject resp)
 		{
 			BWUser.UpdateCurrentUser(resp);
-			this.apiRequestErrorCode = 0;
-			this.apiRequestInProgress = false;
+			apiRequestErrorCode = 0;
+			apiRequestInProgress = false;
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate(BWAPIRequestError error)
 		{
 			BWLog.Info(error.ToString());
-			this.apiRequestErrorCode = error.httpStatusCode;
-			this.apiRequestErrorMsg = error.message;
-			this.apiRequestInProgress = false;
-			this.apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
+			apiRequestErrorCode = error.httpStatusCode;
+			apiRequestErrorMsg = error.message;
+			apiRequestInProgress = false;
+			apiRequestConnectionRefused = error.message.StartsWith("Failed to connect");
 		};
-		bwapirequestBase.SendOwnerCoroutine(this);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
-
-	// Token: 0x040023FA RID: 9210
-	public Text[] statusText;
-
-	// Token: 0x040023FB RID: 9211
-	public Text[] versionText;
-
-	// Token: 0x040023FC RID: 9212
-	public Animator launchScreenAnimator;
-
-	// Token: 0x040023FD RID: 9213
-	private int apiRequestErrorCode;
-
-	// Token: 0x040023FE RID: 9214
-	private string apiRequestErrorMsg = string.Empty;
-
-	// Token: 0x040023FF RID: 9215
-	private bool apiRequestInProgress;
-
-	// Token: 0x04002400 RID: 9216
-	private bool apiRequestConnectionRefused;
-
-	// Token: 0x04002401 RID: 9217
-	private int steamworksErrorCode;
-
-	// Token: 0x04002402 RID: 9218
-	private bool steamworksRequestInProgress;
-
-	// Token: 0x04002403 RID: 9219
-	protected Callback<GetAuthSessionTicketResponse_t> _GetAuthSessionTicketResponse;
-
-	// Token: 0x04002404 RID: 9220
-	private string _HexEncodedTicket;
-
-	// Token: 0x04002405 RID: 9221
-	private HAuthTicket _HAuthTicket;
 }

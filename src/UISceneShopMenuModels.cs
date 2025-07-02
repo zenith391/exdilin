@@ -1,45 +1,43 @@
-﻿using System;
 using UnityEngine;
 
-// Token: 0x02000448 RID: 1096
 public class UISceneShopMenuModels : UISceneBase
 {
-	// Token: 0x06002EDD RID: 11997 RVA: 0x0014CF00 File Offset: 0x0014B300
+	public RectTransform shoppingCartIcon;
+
+	public UITabGroup tabGroup;
+
 	public override void SceneDidLoad(UISceneInfo sceneInfo)
 	{
 		base.SceneDidLoad(sceneInfo);
-		if (this.uiController != null)
+		if (uiController != null)
 		{
-			this.uiController.menuBar.SelectMenuButton(MenuBarButtonEnum.Shop);
+			uiController.menuBar.SelectMenuButton(MenuBarButtonEnum.Shop);
 		}
-		if (this.tabGroup != null)
+		if (tabGroup != null)
 		{
-			this.tabGroup.SelectTabWithTag("Models");
+			tabGroup.SelectTabWithTag("Models");
 		}
 	}
 
-	// Token: 0x06002EDE RID: 11998 RVA: 0x0014CF57 File Offset: 0x0014B357
 	public override void OnReturnToScene()
 	{
 		base.OnReturnToScene();
-		this.uiController.menuBar.SelectMenuButton(MenuBarButtonEnum.Shop);
-		if (this.tabGroup != null)
+		uiController.menuBar.SelectMenuButton(MenuBarButtonEnum.Shop);
+		if (tabGroup != null)
 		{
-			this.tabGroup.SelectTabWithTag("Models");
+			tabGroup.SelectTabWithTag("Models");
 		}
 	}
 
-	// Token: 0x06002EDF RID: 11999 RVA: 0x0014CF91 File Offset: 0x0014B391
 	public override Vector3 GetShoppingCartPosition()
 	{
-		if (this.shoppingCartIcon != null)
+		if (shoppingCartIcon != null)
 		{
-			return this.shoppingCartIcon.position;
+			return shoppingCartIcon.position;
 		}
 		return base.GetShoppingCartPosition();
 	}
 
-	// Token: 0x06002EE0 RID: 12000 RVA: 0x0014CFB8 File Offset: 0x0014B3B8
 	public override void HandleMenuInputEvents()
 	{
 		if (MappedInput.InputDown(MappableInput.MENU_CANCEL))
@@ -59,10 +57,4 @@ public class UISceneShopMenuModels : UISceneBase
 			MainUIController.Instance.LoadUIScene("CurrentUserProfile");
 		}
 	}
-
-	// Token: 0x0400273F RID: 10047
-	public RectTransform shoppingCartIcon;
-
-	// Token: 0x04002740 RID: 10048
-	public UITabGroup tabGroup;
 }

@@ -1,10 +1,8 @@
-﻿using System;
+using System;
 using UnityEngine;
 
-// Token: 0x02000190 RID: 400
 public static class HudMeshUtils
 {
-	// Token: 0x0600168A RID: 5770 RVA: 0x000A0B74 File Offset: 0x0009EF74
 	public static Mesh GetMesh(GameObject go)
 	{
 		MeshFilter component = go.GetComponent<MeshFilter>();
@@ -15,7 +13,6 @@ public static class HudMeshUtils
 		return component.sharedMesh;
 	}
 
-	// Token: 0x0600168B RID: 5771 RVA: 0x000A0B9C File Offset: 0x0009EF9C
 	public static GameObject CreateQuad()
 	{
 		GameObject gameObject = new GameObject("Quad");
@@ -23,47 +20,37 @@ public static class HudMeshUtils
 		MeshUtils.AddBWDefaultMeshRenderer(gameObject);
 		MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
 		Mesh mesh = new Mesh();
-		Vector3[] vertices = new Vector3[4];
-		Vector2[] uv = new Vector2[4];
-		int[] triangles = new int[6];
-		vertices = new Vector3[]
+		Vector3[] array = new Vector3[4];
+		Vector2[] array2 = new Vector2[4];
+		int[] array3 = new int[6];
+		array = new Vector3[4]
 		{
 			new Vector3(0f, 0f, 0f),
 			new Vector3(1f, 0f, 0f),
 			new Vector3(0f, 1f, 0f),
 			new Vector3(1f, 1f, 0f)
 		};
-		uv = new Vector2[]
+		array2 = new Vector2[4]
 		{
 			new Vector2(0f, 1f),
 			new Vector2(1f, 1f),
 			new Vector2(0f, 0f),
 			new Vector2(1f, 0f)
 		};
-		triangles = new int[]
-		{
-			0,
-			2,
-			1,
-			1,
-			2,
-			3
-		};
-		mesh.vertices = vertices;
-		mesh.triangles = triangles;
-		mesh.uv = uv;
+		array3 = new int[6] { 0, 2, 1, 1, 2, 3 };
+		mesh.vertices = array;
+		mesh.triangles = array3;
+		mesh.uv = array2;
 		meshFilter.sharedMesh = mesh;
 		mesh.RecalculateBounds();
 		return gameObject;
 	}
 
-	// Token: 0x0600168C RID: 5772 RVA: 0x000A0D22 File Offset: 0x0009F122
 	public static GameObject CreateMeshObject(string name, Texture2D texture)
 	{
-		return HudMeshUtils.CreateMeshObject(name, texture, Vector2.one);
+		return CreateMeshObject(name, texture, Vector2.one);
 	}
 
-	// Token: 0x0600168D RID: 5773 RVA: 0x000A0D30 File Offset: 0x0009F130
 	public static GameObject CreateMeshObject(string name, Texture2D texture, Vector2 uvMax)
 	{
 		GameObject gameObject = new GameObject(name);
@@ -75,22 +62,14 @@ public static class HudMeshUtils
 		int num2 = 4;
 		int num3 = 6;
 		Vector3[] array = new Vector3[num];
-		Vector2[] uv = new Vector2[num2];
-		int[] triangles = new int[num3];
+		Vector2[] array2 = new Vector2[num2];
+		int[] array3 = new int[num3];
 		for (int i = 0; i < num; i++)
 		{
 			array[i] = Vector3.zero;
 		}
-		triangles = new int[]
-		{
-			0,
-			1,
-			2,
-			1,
-			3,
-			2
-		};
-		uv = new Vector2[]
+		array3 = new int[6] { 0, 1, 2, 1, 3, 2 };
+		array2 = new Vector2[4]
 		{
 			new Vector2(0f, uvMax.y),
 			new Vector2(uvMax.x, uvMax.y),
@@ -98,8 +77,8 @@ public static class HudMeshUtils
 			new Vector2(uvMax.x, 0f)
 		};
 		mesh.vertices = array;
-		mesh.triangles = triangles;
-		mesh.uv = uv;
+		mesh.triangles = array3;
+		mesh.uv = array2;
 		meshFilter.sharedMesh = mesh;
 		mesh.RecalculateBounds();
 		meshRenderer.sharedMaterial = HudMeshOnGUI.templateMaterial;
@@ -107,22 +86,21 @@ public static class HudMeshUtils
 		return gameObject;
 	}
 
-	// Token: 0x0600168E RID: 5774 RVA: 0x000A0E88 File Offset: 0x0009F288
 	public static GameObject CreateNineSidedMeshObject(string name, Texture2D texture, RectOffset border, Vector2 uvMax)
 	{
 		GameObject gameObject = new GameObject(name);
 		gameObject.layer = LayerMask.NameToLayer("GUI");
 		MeshRenderer meshRenderer = MeshUtils.AddBWDefaultMeshRenderer(gameObject);
 		MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
-		float num = (float)texture.width;
-		float num2 = (float)texture.height;
+		float num = texture.width;
+		float num2 = texture.height;
 		float x = (float)border.left / num;
 		float x2 = uvMax.x - (float)border.right / num;
 		float y = (float)border.bottom / num2;
 		float y2 = uvMax.y - (float)border.top / num2;
 		Mesh mesh = new Mesh();
 		mesh.vertices = new Vector3[16];
-		mesh.uv = new Vector2[]
+		mesh.uv = new Vector2[16]
 		{
 			new Vector2(0f, uvMax.y),
 			new Vector2(x, uvMax.y),
@@ -141,62 +119,14 @@ public static class HudMeshUtils
 			new Vector2(x2, 0f),
 			new Vector2(uvMax.x, 0f)
 		};
-		mesh.triangles = new int[]
+		mesh.triangles = new int[54]
 		{
-			0,
-			1,
-			4,
-			4,
-			1,
-			5,
-			1,
-			2,
-			5,
-			5,
-			2,
-			6,
-			2,
-			3,
-			6,
-			6,
-			3,
-			7,
-			4,
-			5,
-			8,
-			8,
-			5,
-			9,
-			5,
-			6,
-			9,
-			9,
-			6,
-			10,
-			6,
-			7,
-			10,
-			10,
-			7,
-			11,
-			8,
-			9,
-			12,
-			12,
-			9,
-			13,
-			9,
-			10,
-			13,
-			13,
-			10,
-			14,
-			10,
-			11,
-			14,
-			14,
-			11,
-			15
+			0, 1, 4, 4, 1, 5, 1, 2, 5, 5,
+			2, 6, 2, 3, 6, 6, 3, 7, 4, 5,
+			8, 8, 5, 9, 5, 6, 9, 9, 6, 10,
+			6, 7, 10, 10, 7, 11, 8, 9, 12, 12,
+			9, 13, 9, 10, 13, 13, 10, 14, 10, 11,
+			14, 14, 11, 15
 		};
 		meshFilter.sharedMesh = mesh;
 		mesh.RecalculateBounds();
@@ -205,7 +135,6 @@ public static class HudMeshUtils
 		return gameObject;
 	}
 
-	// Token: 0x0600168F RID: 5775 RVA: 0x000A1108 File Offset: 0x0009F508
 	public static void UpdateVertPositionsNineSided(Mesh mesh, Rect r, RectOffset border, float depth, bool invertY = true)
 	{
 		r = new Rect(Mathf.Floor(r.x), Mathf.Floor(r.y), Mathf.Floor(r.width), Mathf.Floor(r.height));
@@ -230,27 +159,26 @@ public static class HudMeshUtils
 		vertices[1] = vector + num * Vector3.right;
 		vertices[2] = vector + (r.width - num2) * Vector3.right;
 		vertices[3] = vector + r.width * Vector3.right;
-		Vector3 b = num3 * Vector3.up;
-		vertices[4] = vertices[0] + b;
-		vertices[5] = vertices[1] + b;
-		vertices[6] = vertices[2] + b;
-		vertices[7] = vertices[3] + b;
-		b = (r.height - num4) * Vector3.up;
-		vertices[8] = vertices[0] + b;
-		vertices[9] = vertices[1] + b;
-		vertices[10] = vertices[2] + b;
-		vertices[11] = vertices[3] + b;
-		b = r.height * Vector3.up;
-		vertices[12] = vertices[0] + b;
-		vertices[13] = vertices[1] + b;
-		vertices[14] = vertices[2] + b;
-		vertices[15] = vertices[3] + b;
-		HudMeshUtils.ToGUICameraSpace(vertices, invertY);
+		Vector3 vector2 = num3 * Vector3.up;
+		vertices[4] = vertices[0] + vector2;
+		vertices[5] = vertices[1] + vector2;
+		vertices[6] = vertices[2] + vector2;
+		vertices[7] = vertices[3] + vector2;
+		vector2 = (r.height - num4) * Vector3.up;
+		vertices[8] = vertices[0] + vector2;
+		vertices[9] = vertices[1] + vector2;
+		vertices[10] = vertices[2] + vector2;
+		vertices[11] = vertices[3] + vector2;
+		vector2 = r.height * Vector3.up;
+		vertices[12] = vertices[0] + vector2;
+		vertices[13] = vertices[1] + vector2;
+		vertices[14] = vertices[2] + vector2;
+		vertices[15] = vertices[3] + vector2;
+		ToGUICameraSpace(vertices, invertY);
 		mesh.vertices = vertices;
 		mesh.RecalculateBounds();
 	}
 
-	// Token: 0x06001690 RID: 5776 RVA: 0x000A1448 File Offset: 0x0009F848
 	public static void UpdateVertPositions(Mesh mesh, Rect r, float depth, bool invertY = true)
 	{
 		r = new Rect(Mathf.Floor(r.x), Mathf.Floor(r.y), Mathf.Floor(r.width), Mathf.Floor(r.height));
@@ -259,12 +187,11 @@ public static class HudMeshUtils
 		vertices[1] = new Vector3(r.xMax, r.y, depth);
 		vertices[2] = new Vector3(r.x, r.yMax, depth);
 		vertices[3] = new Vector3(r.xMax, r.yMax, depth);
-		HudMeshUtils.ToGUICameraSpace(vertices, invertY);
+		ToGUICameraSpace(vertices, invertY);
 		mesh.vertices = vertices;
 		mesh.RecalculateBounds();
 	}
 
-	// Token: 0x06001691 RID: 5777 RVA: 0x000A1528 File Offset: 0x0009F928
 	public static Vector3 ToGUICameraSpace(Vector3 point, bool invertY)
 	{
 		Vector3 result = Blocksworld.guiCamera.ScreenToWorldPoint(point);
@@ -275,22 +202,19 @@ public static class HudMeshUtils
 		return result;
 	}
 
-	// Token: 0x06001692 RID: 5778 RVA: 0x000A156A File Offset: 0x0009F96A
 	public static Rect NormalizedRect(Rect r)
 	{
 		return new Rect(r.x * NormalizedScreen.scale, r.y * NormalizedScreen.scale, r.width * NormalizedScreen.scale, r.height * NormalizedScreen.scale);
 	}
 
-	// Token: 0x06001693 RID: 5779 RVA: 0x000A15A8 File Offset: 0x0009F9A8
 	private static void ToGUICameraSpace(Vector3[] points, bool invertY)
 	{
 		for (int i = 0; i < points.Length; i++)
 		{
-			points[i] = HudMeshUtils.ToGUICameraSpace(points[i], invertY);
+			points[i] = ToGUICameraSpace(points[i], invertY);
 		}
 	}
 
-	// Token: 0x06001694 RID: 5780 RVA: 0x000A15E8 File Offset: 0x0009F9E8
 	public static float GetTextWidth(string text, HudMeshStyle style)
 	{
 		Font font = style.font;
@@ -299,7 +223,7 @@ public static class HudMeshUtils
 		bool flag = false;
 		foreach (char c in text)
 		{
-			CharacterInfo characterInfo;
+			CharacterInfo info;
 			if (!flag && c == '<')
 			{
 				flag = true;
@@ -311,9 +235,9 @@ public static class HudMeshUtils
 					flag = false;
 				}
 			}
-			else if (font.GetCharacterInfo(c, out characterInfo))
+			else if (font.GetCharacterInfo(c, out info))
 			{
-				num += (float)characterInfo.advance;
+				num += (float)info.advance;
 			}
 		}
 		if (style.fontSize != 0)
@@ -323,18 +247,16 @@ public static class HudMeshUtils
 		return num;
 	}
 
-	// Token: 0x06001695 RID: 5781 RVA: 0x000A168F File Offset: 0x0009FA8F
 	public static Vector2 CalcSize(HudMeshStyle style, string text)
 	{
-		return new Vector2(HudMeshUtils.GetTextWidth(text, style), (float)style.font.lineHeight);
+		return new Vector2(GetTextWidth(text, style), style.font.lineHeight);
 	}
 
-	// Token: 0x06001696 RID: 5782 RVA: 0x000A16AC File Offset: 0x0009FAAC
 	public static float CalcHeight(HudMeshStyle style, string text, float width)
 	{
 		Font font = style.font;
 		font.RequestCharactersInTexture(text);
-		float num = (style.fontSize != 0) ? ((float)style.fontSize / (float)font.fontSize) : 1f;
+		float num = ((style.fontSize != 0) ? ((float)style.fontSize / (float)font.fontSize) : 1f);
 		float num2 = width / num;
 		float num3 = 0f;
 		int num4 = 1;
@@ -342,7 +264,7 @@ public static class HudMeshUtils
 		for (int i = 0; i < text.Length; i++)
 		{
 			char c = text[i];
-			CharacterInfo characterInfo;
+			CharacterInfo info;
 			if (c.ToString() == Environment.NewLine)
 			{
 				num3 = 0f;
@@ -362,12 +284,12 @@ public static class HudMeshUtils
 					flag = false;
 				}
 			}
-			else if (font.GetCharacterInfo(text[i], out characterInfo))
+			else if (font.GetCharacterInfo(text[i], out info))
 			{
-				num3 += (float)characterInfo.advance;
+				num3 += (float)info.advance;
 				if (num3 > num2)
 				{
-					num3 = (float)characterInfo.advance;
+					num3 = info.advance;
 					num4++;
 				}
 			}

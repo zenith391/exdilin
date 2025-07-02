@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using Blocks;
+using Exdilin;
 using UnityEngine;
 
-// Token: 0x02000275 RID: 629
 public static class ResourceLoader
 {
-	// Token: 0x06001D36 RID: 7478 RVA: 0x000CE278 File Offset: 0x000CC678
+	public static HashSet<string> loadedTextures = new HashSet<string>();
+
 	public static void LoadPaintsFromResources(string baseDir)
 	{
-		foreach (Material material in Resources.LoadAll(baseDir, typeof(Material)))
+		UnityEngine.Object[] array = Resources.LoadAll(baseDir, typeof(Material));
+		for (int i = 0; i < array.Length; i++)
 		{
+			Material material = (Material)array[i];
 			string text = material.name;
 			if (text.StartsWith("Paint "))
 			{
@@ -19,88 +21,48 @@ public static class ResourceLoader
 			}
 			Materials.SetShinyness(material);
 			Materials.materials[text] = material;
-			Blocksworld.publicProvidedGafs.Add(new GAF("Block.PaintTo", new object[]
-			{
-				text
-			}));
+			Blocksworld.publicProvidedGafs.Add(new GAF("Block.PaintTo", text));
 		}
 	}
 
-	// Token: 0x06001D37 RID: 7479 RVA: 0x000CE30C File Offset: 0x000CC70C
 	public static void LoadTexturesFromResources(string baseDir)
 	{
-		IEnumerator enumerator = Enum.GetValues(typeof(ShaderType)).GetEnumerator();
-		try
+		foreach (object value in Enum.GetValues(typeof(ShaderType)))
 		{
-			while (enumerator.MoveNext())
+			ShaderType shaderType = (ShaderType)value;
+			string name = Enum.GetName(typeof(ShaderType), shaderType);
+			foreach (object value2 in Enum.GetValues(typeof(Mapping)))
 			{
-				object obj = enumerator.Current;
-				ShaderType shaderType = (ShaderType)obj;
-				string name = Enum.GetName(typeof(ShaderType), shaderType);
-				IEnumerator enumerator2 = Enum.GetValues(typeof(Mapping)).GetEnumerator();
-				try
+				Mapping mapping = (Mapping)value2;
+				string name2 = Enum.GetName(typeof(Mapping), mapping);
+				string path = baseDir + "/" + name + "/" + name2;
+				UnityEngine.Object[] array = Resources.LoadAll(path, typeof(Texture2D));
+				for (int i = 0; i < array.Length; i++)
 				{
-					while (enumerator2.MoveNext())
-					{
-						object obj2 = enumerator2.Current;
-						Mapping mapping = (Mapping)obj2;
-						string name2 = Enum.GetName(typeof(Mapping), mapping);
-						string path = string.Concat(new string[]
-						{
-							baseDir,
-							"/",
-							name,
-							"/",
-							name2
-						});
-						foreach (Texture2D texture in Resources.LoadAll(path, typeof(Texture2D)))
-						{
-							ResourceLoader.AddTexture(texture, mapping, shaderType);
-						}
-					}
+					Texture2D texture = (Texture2D)array[i];
+					AddTexture(texture, mapping, shaderType);
 				}
-				finally
-				{
-					IDisposable disposable;
-					if ((disposable = (enumerator2 as IDisposable)) != null)
-					{
-						disposable.Dispose();
-					}
-				}
-			}
-		}
-		finally
-		{
-			IDisposable disposable2;
-			if ((disposable2 = (enumerator as IDisposable)) != null)
-			{
-				disposable2.Dispose();
 			}
 		}
 	}
 
-	// Token: 0x06001D38 RID: 7480 RVA: 0x000CE484 File Offset: 0x000CC884
 	public static string[] ParseTextAssetLines(string filename)
 	{
 		TextAsset textAsset = (TextAsset)Resources.Load(filename);
-		//Debug.Log(filename + ": " + textAsset.text);
 		if (textAsset != null)
 		{
-			return textAsset.text.Split(new char[]
-			{
-				'\n'
-			});
+			return textAsset.text.Split('\n');
 		}
 		return null;
 	}
 
-	// Token: 0x06001D39 RID: 7481 RVA: 0x000CE4C4 File Offset: 0x000CC8C4
 	public static void LoadSFXNames()
 	{
-		string[] array = ResourceLoader.ParseTextAssetLines("SFXList");
+		string[] array = ParseTextAssetLines("SFXList");
 		if (array != null)
 		{
-			foreach (string text in array)
+			string[] array2 = array;
+			foreach (string text in array2)
 			{
 				if (!string.IsNullOrEmpty(text))
 				{
@@ -114,65 +76,71 @@ public static class ResourceLoader
 		}
 	}
 
-	// Token: 0x06001D3A RID: 7482 RVA: 0x000CE524 File Offset: 0x000CC924
-	public static void LoadBlocksFromResources(string baseDir) {
-		string[] array = ResourceLoader.ParseTextAssetLines("BlockList");
+	public static void LoadBlocksFromResources(string baseDir)
+	{
+		string[] array = ParseTextAssetLines("BlockList");
 		List<string> list = new List<string>();
-		if (array != null) {
-			foreach (string text in array) {
+		if (array != null)
+		{
+			string[] array2 = array;
+			foreach (string text in array2)
+			{
 				string text2 = text.Trim();
-				if (text2.Length > 0) {
+				if (text2.Length > 0)
+				{
 					list.Add(text2);
 				}
 			}
-		} else {
+		}
+		else
+		{
 			BWLog.Info("Could not find BlockList, loading all blocks instead...");
-			foreach (GameObject gameObject in Resources.LoadAll(baseDir, typeof(GameObject))) {
-				if (gameObject.name.StartsWith("Prefab ")) {
+			UnityEngine.Object[] array3 = Resources.LoadAll(baseDir, typeof(GameObject));
+			for (int j = 0; j < array3.Length; j++)
+			{
+				GameObject gameObject = (GameObject)array3[j];
+				if (gameObject.name.StartsWith("Prefab "))
+				{
 					string item = gameObject.name.Substring("Prefab ".Length);
 					list.Add(item);
 				}
 			}
 		}
-		foreach (string text3 in list) {
-			Blocksworld.existingBlockNames.Add(text3);
-			Blocksworld.publicProvidedGafs.Add(new GAF("Block.Create", new object[]
-			{
-				text3
-			}));
+		foreach (string item2 in list)
+		{
+			Blocksworld.existingBlockNames.Add(item2);
+			Blocksworld.publicProvidedGafs.Add(new GAF("Block.Create", item2));
 		}
 	}
 
-	// Token: 0x06001D3B RID: 7483 RVA: 0x000CE678 File Offset: 0x000CCA78
 	public static void UpdateTextureInfos()
 	{
-		if (Materials.textureInfos == null)
+		if (Materials.textureInfos != null)
 		{
-			Materials.textureInfos = new Dictionary<string, TextureInfo>();
-			string[] array = ResourceLoader.ParseTextAssetLines("TextureList");
-			foreach (string text in array)
+			return;
+		}
+		Materials.textureInfos = new Dictionary<string, TextureInfo>();
+		string[] array = ParseTextAssetLines("TextureList");
+		string[] array2 = array;
+		foreach (string text in array2)
+		{
+			if (text.Length == 0)
 			{
-				if (text.Length != 0)
+				continue;
+			}
+			string[] array3 = text.Split(',');
+			if (array3.Length == 3)
+			{
+				string text2 = array3[0];
+				if (text2.Length > 0)
 				{
-					string[] array3 = text.Split(new char[]
-					{
-						','
-					});
-					if (array3.Length == 3)
-					{
-						string text2 = array3[0];
-						if (text2.Length > 0)
-						{
-							TextureInfo value = new TextureInfo(text2, (ShaderType)Enum.Parse(typeof(ShaderType), array3[1]), (Mapping)Enum.Parse(typeof(Mapping), array3[2]));
-							Materials.textureInfos[text2] = value;
-						}
-					}
+					TextureInfo value = new TextureInfo(text2, (ShaderType)Enum.Parse(typeof(ShaderType), array3[1]), (Mapping)Enum.Parse(typeof(Mapping), array3[2]));
+					Materials.textureInfos[text2] = value;
 				}
 			}
 		}
 	}
 
-	// Token: 0x06001D3C RID: 7484 RVA: 0x000CE748 File Offset: 0x000CCB48
 	public static void LoadTexture(string name, string baseDir = "Textures")
 	{
 		if (Materials.textureInfos.ContainsKey(name))
@@ -180,17 +148,8 @@ public static class ResourceLoader
 			TextureInfo textureInfo = Materials.textureInfos[name];
 			string name2 = Enum.GetName(typeof(ShaderType), textureInfo.shader);
 			string name3 = Enum.GetName(typeof(Mapping), textureInfo.mapping);
-			string path = string.Concat(new string[]
-			{
-				baseDir,
-				"/",
-				name2,
-				"/",
-				name3,
-				"/",
-				name
-			});
-			Texture2D texture2D = (Texture2D) Exdilin.AssetsManager.GetResource(path, typeof(Texture2D));
+			string path = baseDir + "/" + name2 + "/" + name3 + "/" + name;
+			Texture2D texture2D = (Texture2D)AssetsManager.GetResource(path, typeof(Texture2D));
 			if (texture2D != null)
 			{
 				float num = Materials.MipMapBias(name);
@@ -198,83 +157,45 @@ public static class ResourceLoader
 				{
 					texture2D.mipMapBias = num;
 				}
-				ResourceLoader.AddTexture(texture2D, textureInfo.mapping, textureInfo.shader);
+				AddTexture(texture2D, textureInfo.mapping, textureInfo.shader);
 			}
+			return;
 		}
-		else
+		OnScreenLog.AddLogItem("Could not find '" + name + "' in texture list. Use 'Blocksworld -> Generate Block and Texture Lists'", 5f, log: true);
+		foreach (object value in Enum.GetValues(typeof(ShaderType)))
 		{
-			OnScreenLog.AddLogItem("Could not find '" + name + "' in texture list. Use 'Blocksworld -> Generate Block and Texture Lists'", 5f, true);
-			IEnumerator enumerator = Enum.GetValues(typeof(ShaderType)).GetEnumerator();
-			try
+			ShaderType shaderType = (ShaderType)value;
+			string name4 = Enum.GetName(typeof(ShaderType), shaderType);
+			foreach (object value2 in Enum.GetValues(typeof(Mapping)))
 			{
-				while (enumerator.MoveNext())
+				Mapping mapping = (Mapping)value2;
+				string name5 = Enum.GetName(typeof(Mapping), mapping);
+				string path2 = baseDir + "/" + name4 + "/" + name5 + "/" + name;
+				Texture2D texture2D2 = (Texture2D)Resources.Load(path2, typeof(Texture2D));
+				if (texture2D2 != null)
 				{
-					object obj = enumerator.Current;
-					ShaderType shaderType = (ShaderType)obj;
-					string name4 = Enum.GetName(typeof(ShaderType), shaderType);
-					IEnumerator enumerator2 = Enum.GetValues(typeof(Mapping)).GetEnumerator();
-					try
-					{
-						while (enumerator2.MoveNext())
-						{
-							object obj2 = enumerator2.Current;
-							Mapping mapping = (Mapping)obj2;
-							string name5 = Enum.GetName(typeof(Mapping), mapping);
-							string path2 = string.Concat(new string[]
-							{
-								baseDir,
-								"/",
-								name4,
-								"/",
-								name5,
-								"/",
-								name
-							});
-							Texture2D texture2D2 = (Texture2D)Resources.Load(path2, typeof(Texture2D));
-							if (texture2D2 != null)
-							{
-								ResourceLoader.AddTexture(texture2D2, mapping, shaderType);
-								return;
-							}
-						}
-					}
-					finally
-					{
-						IDisposable disposable;
-						if ((disposable = (enumerator2 as IDisposable)) != null)
-						{
-							disposable.Dispose();
-						}
-					}
-				}
-			}
-			finally
-			{
-				IDisposable disposable2;
-				if ((disposable2 = (enumerator as IDisposable)) != null)
-				{
-					disposable2.Dispose();
+					AddTexture(texture2D2, mapping, shaderType);
+					return;
 				}
 			}
 		}
 	}
 
-	// Token: 0x06001D3D RID: 7485 RVA: 0x000CE9C4 File Offset: 0x000CCDC4
 	private static void AddTexture(Texture2D texture, Mapping mapping, ShaderType shader)
 	{
 		string name = texture.name;
 		Materials.textures[name] = texture;
 		Materials.SetMapping(name, mapping);
 		Materials.shaders[name] = shader;
-		ResourceLoader.loadedTextures.Add(name);
+		loadedTextures.Add(name);
 		if (shader == ShaderType.SkyCube || shader == ShaderType.Metal || shader == ShaderType.NormalGold)
 		{
-			string str = name;
+			string text = name;
 			if (shader == ShaderType.NormalGold)
 			{
-				str = "Metal";
+				text = "Metal";
 			}
-			Cubemap cubemap = (Cubemap)Resources.Load("Cubemaps/" + str, typeof(Cubemap));
+			Cubemap cubemap = (Cubemap)Resources.Load("Cubemaps/" + text, typeof(Cubemap));
 			if (cubemap != null)
 			{
 				Materials.cubemaps[name] = cubemap;
@@ -287,111 +208,93 @@ public static class ResourceLoader
 		}
 	}
 
-	// Token: 0x06001D3E RID: 7486 RVA: 0x000CEAA8 File Offset: 0x000CCEA8
 	public static void UnloadUnusedBlockPrefabs(HashSet<string> toKeep)
 	{
 		HashSet<string> hashSet = new HashSet<string>(toKeep);
 		List<string> list = new List<string>(Blocksworld.goPrefabs.Keys);
-		foreach (string text in list)
+		foreach (string item in list)
 		{
-			if (toKeep.Contains(text))
+			if (!toKeep.Contains(item))
 			{
-				GameObject gameObject = Blocksworld.goPrefabs[text];
-				IEnumerator enumerator2 = gameObject.transform.GetEnumerator();
-				try
-				{
-					while (enumerator2.MoveNext())
-					{
-						object obj = enumerator2.Current;
-						Transform transform = (Transform)obj;
-						hashSet.Add(transform.gameObject.name);
-					}
-				}
-				finally
-				{
-					IDisposable disposable;
-					if ((disposable = (enumerator2 as IDisposable)) != null)
-					{
-						disposable.Dispose();
-					}
-				}
+				continue;
+			}
+			GameObject gameObject = Blocksworld.goPrefabs[item];
+			foreach (object item2 in gameObject.transform)
+			{
+				Transform transform = (Transform)item2;
+				hashSet.Add(transform.gameObject.name);
 			}
 		}
-		foreach (string text2 in list)
+		foreach (string item3 in list)
 		{
-			if (!toKeep.Contains(text2))
+			if (!toKeep.Contains(item3))
 			{
-				Blocksworld.UnloadBlock(text2, hashSet);
+				Blocksworld.UnloadBlock(item3, hashSet);
 			}
 		}
 	}
 
-	// Token: 0x06001D3F RID: 7487 RVA: 0x000CEBE8 File Offset: 0x000CCFE8
 	public static void UnloadUnusedTextures(HashSet<string> toKeep)
 	{
 		List<string> list = new List<string>();
-		foreach (GAF gaf in Blocksworld.publicProvidedGafs)
+		foreach (GAF publicProvidedGaf in Blocksworld.publicProvidedGafs)
 		{
-			if (gaf.Predicate == Block.predicatePaintTo)
+			if (publicProvidedGaf.Predicate == Block.predicatePaintTo)
 			{
-				list.Add((string)gaf.Args[0]);
+				list.Add((string)publicProvidedGaf.Args[0]);
 			}
 		}
 		HashSet<Cubemap> hashSet = new HashSet<Cubemap>();
-		foreach (string key in toKeep)
+		foreach (string item in toKeep)
 		{
-			if (Materials.cubemaps.ContainsKey(key))
+			if (Materials.cubemaps.ContainsKey(item))
 			{
-				hashSet.Add(Materials.cubemaps[key]);
+				hashSet.Add(Materials.cubemaps[item]);
 			}
 		}
-		foreach (string text in ResourceLoader.loadedTextures)
+		foreach (string loadedTexture in loadedTextures)
 		{
-			if (!toKeep.Contains(text))
+			if (!toKeep.Contains(loadedTexture) && Materials.textures.ContainsKey(loadedTexture))
 			{
-				if (Materials.textures.ContainsKey(text))
+				Texture assetToUnload = Materials.textures[loadedTexture];
+				Cubemap cubemap = null;
+				if (Materials.cubemaps.ContainsKey(loadedTexture))
 				{
-					Texture assetToUnload = Materials.textures[text];
-					Cubemap cubemap = null;
-					if (Materials.cubemaps.ContainsKey(text))
-					{
-						cubemap = Materials.cubemaps[text];
-					}
-					Cubemap cubemap2 = null;
-					string key2 = text + " Overlay";
-					if (Materials.cubemaps.ContainsKey(key2))
-					{
-						cubemap2 = Materials.cubemaps[key2];
-					}
-					ShaderType shaderType = Materials.shaders[text];
-					Materials.textures.Remove(text);
-					Materials.RemoveMapping(text);
-					Materials.shaders.Remove(text);
-					Resources.UnloadAsset(assetToUnload);
-					if (cubemap != null && !hashSet.Contains(cubemap))
-					{
-						Resources.UnloadAsset(cubemap);
-					}
-					if (cubemap2 != null && !hashSet.Contains(cubemap2))
-					{
-						Resources.UnloadAsset(cubemap2);
-					}
-					ResourceLoader.RemoveMaterials(list, text, shaderType);
-					if (shaderType == ShaderType.NormalTerrain)
-					{
-						ResourceLoader.RemoveMaterials(list, text, ShaderType.Normal);
-					}
+					cubemap = Materials.cubemaps[loadedTexture];
+				}
+				Cubemap cubemap2 = null;
+				string key = loadedTexture + " Overlay";
+				if (Materials.cubemaps.ContainsKey(key))
+				{
+					cubemap2 = Materials.cubemaps[key];
+				}
+				ShaderType shaderType = Materials.shaders[loadedTexture];
+				Materials.textures.Remove(loadedTexture);
+				Materials.RemoveMapping(loadedTexture);
+				Materials.shaders.Remove(loadedTexture);
+				Resources.UnloadAsset(assetToUnload);
+				if (cubemap != null && !hashSet.Contains(cubemap))
+				{
+					Resources.UnloadAsset(cubemap);
+				}
+				if (cubemap2 != null && !hashSet.Contains(cubemap2))
+				{
+					Resources.UnloadAsset(cubemap2);
+				}
+				RemoveMaterials(list, loadedTexture, shaderType);
+				if (shaderType == ShaderType.NormalTerrain)
+				{
+					RemoveMaterials(list, loadedTexture, ShaderType.Normal);
 				}
 			}
 		}
-		ResourceLoader.loadedTextures.Clear();
-		foreach (string item in toKeep)
+		loadedTextures.Clear();
+		foreach (string item2 in toKeep)
 		{
-			ResourceLoader.loadedTextures.Add(item);
+			loadedTextures.Add(item2);
 		}
 	}
 
-	// Token: 0x06001D40 RID: 7488 RVA: 0x000CEEBC File Offset: 0x000CD2BC
 	private static void RemoveMaterials(List<string> paints, string name, ShaderType shader)
 	{
 		foreach (string paint in paints)
@@ -416,7 +319,4 @@ public static class ResourceLoader
 			}
 		}
 	}
-
-	// Token: 0x040017E1 RID: 6113
-	public static HashSet<string> loadedTextures = new HashSet<string>();
 }

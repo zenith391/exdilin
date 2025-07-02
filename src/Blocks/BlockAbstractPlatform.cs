@@ -1,310 +1,271 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Blocks
+namespace Blocks;
+
+public class BlockAbstractPlatform : BlockAbstractHover
 {
-	// Token: 0x02000067 RID: 103
-	public class BlockAbstractPlatform : BlockAbstractHover
+	protected Vector3 targetPosition = Vector3.zero;
+
+	protected Vector3 rightDirection = Vector3.right;
+
+	protected Vector3 forwardDirection = Vector3.forward;
+
+	protected Vector3 upDirection = Vector3.up;
+
+	private float rightMassDistribution = 1f;
+
+	private float forwardMassDistribution = 1f;
+
+	private float upMassDistribution = 1f;
+
+	protected float massMultiplier = 1f;
+
+	protected float prevMassMultiplier = 1f;
+
+	protected float tensorMultiplier = 1f;
+
+	protected float prevTensorMultiplier = 1f;
+
+	protected Dictionary<Chunk, float> origChunkMasses = new Dictionary<Chunk, float>();
+
+	protected Dictionary<Chunk, Vector3> origChunkTensors = new Dictionary<Chunk, Vector3>();
+
+	private const float MAX_VEL_ERROR = 20f;
+
+	private AntigravityMetaData metaData;
+
+	protected bool enabled = true;
+
+	protected bool controlsVelocity;
+
+	public BlockAbstractPlatform(List<List<Tile>> tiles)
+		: base(tiles)
 	{
-		// Token: 0x06000864 RID: 2148 RVA: 0x00039204 File Offset: 0x00037604
-		public BlockAbstractPlatform(List<List<Tile>> tiles) : base(tiles)
-		{
-		}
+	}
 
-		// Token: 0x06000865 RID: 2149 RVA: 0x000392B0 File Offset: 0x000376B0
-		public override void OnCreate()
+	public override void OnCreate()
+	{
+		base.OnCreate();
+		metaData = go.GetComponent<AntigravityMetaData>();
+		if (metaData != null)
 		{
-			base.OnCreate();
-			this.metaData = this.go.GetComponent<AntigravityMetaData>();
-			if (this.metaData != null)
-			{
-				this.rotation = Quaternion.Euler(this.metaData.orientation);
-			}
-			else
-			{
-				BWLog.Info("Could not find antigravity meta data component in " + base.BlockType());
-			}
+			rotation = Quaternion.Euler(metaData.orientation);
 		}
-
-		// Token: 0x06000866 RID: 2150 RVA: 0x00039315 File Offset: 0x00037715
-		public override void Stop(bool resetBlock = true)
+		else
 		{
-			base.Stop(resetBlock);
-			this.enabled = true;
-			this.origChunkMasses.Clear();
-			this.origChunkTensors.Clear();
+			BWLog.Info("Could not find antigravity meta data component in " + BlockType());
 		}
+	}
 
-		// Token: 0x06000867 RID: 2151 RVA: 0x0003933B File Offset: 0x0003773B
-		public override void Play()
+	public override void Stop(bool resetBlock = true)
+	{
+		base.Stop(resetBlock);
+		enabled = true;
+		origChunkMasses.Clear();
+		origChunkTensors.Clear();
+	}
+
+	public override void Play()
+	{
+		base.Play();
+		enabled = true;
+	}
+
+	public override void Play2()
+	{
+		base.Play2();
+		forwardDirection = goT.forward;
+		upDirection = goT.up;
+		rightDirection = goT.right;
+		chunkRigidBody = chunk.rb;
+		if (chunkRigidBody != null)
 		{
-			base.Play();
-			this.enabled = true;
+			forwardMassDistribution = CalculateMassDistribution(chunk, forwardDirection);
+			rightMassDistribution = CalculateMassDistribution(chunk, rightDirection);
+			upMassDistribution = CalculateMassDistribution(chunk, upDirection);
+			targetPosition = GetPlatformPosition();
 		}
-
-		// Token: 0x06000868 RID: 2152 RVA: 0x0003934C File Offset: 0x0003774C
-		public override void Play2()
+		else
 		{
-			base.Play2();
-			this.forwardDirection = this.goT.forward;
-			this.upDirection = this.goT.up;
-			this.rightDirection = this.goT.right;
-			this.chunkRigidBody = this.chunk.rb;
-			if (this.chunkRigidBody != null)
+			rightMassDistribution = 1f;
+			forwardMassDistribution = 1f;
+			upMassDistribution = 1f;
+		}
+		if (enabled)
+		{
+			UpdateConnectedCache();
+			List<Block> list = Block.connectedCache[this];
+			foreach (Block item in list)
 			{
-				this.forwardMassDistribution = base.CalculateMassDistribution(this.chunk, this.forwardDirection, null);
-				this.rightMassDistribution = base.CalculateMassDistribution(this.chunk, this.rightDirection, null);
-				this.upMassDistribution = base.CalculateMassDistribution(this.chunk, this.upDirection, null);
-				this.targetPosition = this.GetPlatformPosition();
-			}
-			else
-			{
-				this.rightMassDistribution = 1f;
-				this.forwardMassDistribution = 1f;
-				this.upMassDistribution = 1f;
-			}
-			if (this.enabled)
-			{
-				base.UpdateConnectedCache();
-				List<Block> list = Block.connectedCache[this];
-				foreach (Block block in list)
+				if (item != this && item is BlockAbstractPlatform)
 				{
-					if (block != this && block is BlockAbstractPlatform)
+					BlockAbstractPlatform blockAbstractPlatform = (BlockAbstractPlatform)item;
+					blockAbstractPlatform.enabled = false;
+				}
+			}
+		}
+		massMultiplier = 1f;
+		prevMassMultiplier = 1f;
+		tensorMultiplier = 1f;
+		prevTensorMultiplier = 1f;
+		origChunkMasses = new Dictionary<Chunk, float>();
+		origChunkTensors = new Dictionary<Chunk, Vector3>();
+		UpdateConnectedCache();
+		HashSet<Chunk> hashSet = Block.connectedChunks[this];
+		foreach (Chunk item2 in hashSet)
+		{
+			GameObject gameObject = item2.go;
+			if (gameObject != null && gameObject.GetComponent<Rigidbody>() != null)
+			{
+				origChunkMasses[chunk] = gameObject.GetComponent<Rigidbody>().mass;
+				origChunkTensors[chunk] = gameObject.GetComponent<Rigidbody>().inertiaTensor;
+			}
+		}
+	}
+
+	protected virtual Vector3 GetPlatformPosition()
+	{
+		return goT.position;
+	}
+
+	private void ApplyModelGravityForce()
+	{
+		float gravityMultiplier = -1f;
+		foreach (Rigidbody allRigidbody in allRigidbodies)
+		{
+			if (!(allRigidbody == null))
+			{
+				AddGravityForce(allRigidbody, gravityMultiplier, allRigidbody.mass);
+				if (varyingMassBlocksModel.Count > 0 && varyingMassBlocksModel.TryGetValue(allRigidbody, out var value))
+				{
+					float varyingMassOffset = GetVaryingMassOffset(value);
+					AddGravityForce(allRigidbody, gravityMultiplier, varyingMassOffset);
+				}
+			}
+		}
+	}
+
+	public override void FixedUpdate()
+	{
+		base.FixedUpdate();
+		if (!enabled)
+		{
+			return;
+		}
+		if (!controlsVelocity)
+		{
+			ApplyModelGravityForce();
+			ApplyChunkPositionForces();
+			AlignPlatform();
+		}
+		if (prevMassMultiplier != massMultiplier)
+		{
+			foreach (KeyValuePair<Chunk, float> origChunkMass in origChunkMasses)
+			{
+				Chunk key = origChunkMass.Key;
+				GameObject gameObject = key.go;
+				if (gameObject != null && gameObject.GetComponent<Rigidbody>() != null)
+				{
+					gameObject.GetComponent<Rigidbody>().mass = origChunkMass.Value * massMultiplier;
+				}
+			}
+		}
+		if (prevTensorMultiplier != tensorMultiplier)
+		{
+			foreach (KeyValuePair<Chunk, Vector3> origChunkTensor in origChunkTensors)
+			{
+				Chunk key2 = origChunkTensor.Key;
+				GameObject gameObject2 = key2.go;
+				if (gameObject2 != null && gameObject2.GetComponent<Rigidbody>() != null)
+				{
+					try
 					{
-						BlockAbstractPlatform blockAbstractPlatform = (BlockAbstractPlatform)block;
-						blockAbstractPlatform.enabled = false;
+						gameObject2.GetComponent<Rigidbody>().inertiaTensor = origChunkTensor.Value * tensorMultiplier;
+					}
+					catch
+					{
+						BWLog.Info("Unable to set inertia tensor, possibly due to the use of rigidbody constraints in the world.");
 					}
 				}
 			}
-			this.massMultiplier = 1f;
-			this.prevMassMultiplier = 1f;
-			this.tensorMultiplier = 1f;
-			this.prevTensorMultiplier = 1f;
-			this.origChunkMasses = new Dictionary<Chunk, float>();
-			this.origChunkTensors = new Dictionary<Chunk, Vector3>();
-			base.UpdateConnectedCache();
-			HashSet<Chunk> hashSet = Block.connectedChunks[this];
-			foreach (Chunk chunk in hashSet)
+		}
+		prevMassMultiplier = massMultiplier;
+		prevTensorMultiplier = tensorMultiplier;
+		tensorMultiplier = 1f;
+		massMultiplier = 1f;
+	}
+
+	protected virtual Vector3 GetTargetPositionOffset()
+	{
+		return Vector3.zero;
+	}
+
+	private void ApplyChunkPositionForces()
+	{
+		if (!(chunkRigidBody != null))
+		{
+			return;
+		}
+		Vector3 vector = targetPosition + GetTargetPositionOffset();
+		Vector3 vector2 = vector - GetPlatformPosition();
+		float magnitude = vector2.magnitude;
+		if ((double)magnitude > 1E-05)
+		{
+			Vector3 vector3 = vector2 * 20f;
+			Vector3 velocity = chunkRigidBody.velocity;
+			Vector3 vector4 = vector3 - velocity;
+			if (vector4.sqrMagnitude > 400f)
 			{
-				GameObject go = chunk.go;
-				if (go != null && go.GetComponent<Rigidbody>() != null)
-				{
-					this.origChunkMasses[this.chunk] = go.GetComponent<Rigidbody>().mass;
-					this.origChunkTensors[this.chunk] = go.GetComponent<Rigidbody>().inertiaTensor;
-				}
+				vector4 = vector4.normalized * 20f;
 			}
+			float mass = chunkRigidBody.mass;
+			float num = 20f;
+			Vector3 force = vector4 * mass * num;
+			chunkRigidBody.AddForce(force);
 		}
+	}
 
-		// Token: 0x06000869 RID: 2153 RVA: 0x000395AC File Offset: 0x000379AC
-		protected virtual Vector3 GetPlatformPosition()
-		{
-			return this.goT.position;
-		}
+	protected virtual Quaternion GetRotationOffset()
+	{
+		return Quaternion.identity;
+	}
 
-		// Token: 0x0600086A RID: 2154 RVA: 0x000395BC File Offset: 0x000379BC
-		private void ApplyModelGravityForce()
+	protected virtual void AlignPlatform()
+	{
+		Quaternion quaternion = GetRotationOffset() * rotation;
+		Align(upDirection, quaternion * Vector3.up);
+		Align(forwardDirection, quaternion * Vector3.forward);
+	}
+
+	private float GetTorqueScaler(Vector3 normalizedTorque)
+	{
+		return Mathf.Abs(Vector3.Dot(normalizedTorque, forwardMassDistribution * goT.forward)) + Mathf.Abs(Vector3.Dot(normalizedTorque, rightMassDistribution * goT.right)) + Mathf.Abs(Vector3.Dot(normalizedTorque, upMassDistribution * goT.up));
+	}
+
+	protected virtual void Align(Vector3 target, Vector3 localUp)
+	{
+		if (chunkRigidBody != null)
 		{
-			float gravityMultiplier = -1f;
-			foreach (Rigidbody rigidbody in this.allRigidbodies)
+			Vector3 vector = goT.TransformDirection(localUp);
+			float a = Vector3.Angle(vector, target);
+			Vector3 vector2 = Vector3.Cross(vector, target);
+			vector2 = ((!(vector2.sqrMagnitude > 0.001f)) ? goT.forward : vector2.normalized);
+			float torqueScaler = GetTorqueScaler(vector2);
+			float num = 0.7f;
+			Vector3 torque = num * Mathf.Min(a, 90f) * torqueScaler * vector2;
+			Vector3 angularVelocity = chunkRigidBody.angularVelocity;
+			angularVelocity = Util.ProjectOntoPlane(angularVelocity, target.normalized);
+			float magnitude = angularVelocity.magnitude;
+			if (magnitude > 0.001f)
 			{
-				if (!(rigidbody == null))
-				{
-					base.AddGravityForce(rigidbody, gravityMultiplier, rigidbody.mass);
-					List<Block> list;
-					if (this.varyingMassBlocksModel.Count > 0 && this.varyingMassBlocksModel.TryGetValue(rigidbody, out list))
-					{
-						float varyingMassOffset = base.GetVaryingMassOffset(list);
-						base.AddGravityForce(rigidbody, gravityMultiplier, varyingMassOffset);
-					}
-				}
+				Vector3 normalizedTorque = angularVelocity / magnitude;
+				float torqueScaler2 = GetTorqueScaler(normalizedTorque);
+				float num2 = 1f;
+				float num3 = magnitude * num2 * torqueScaler2;
+				torque += (0f - num3) * angularVelocity;
 			}
+			chunkRigidBody.AddTorque(torque);
 		}
-
-		// Token: 0x0600086B RID: 2155 RVA: 0x00039670 File Offset: 0x00037A70
-		public override void FixedUpdate()
-		{
-			base.FixedUpdate();
-			if (this.enabled)
-			{
-				if (!this.controlsVelocity)
-				{
-					this.ApplyModelGravityForce();
-					this.ApplyChunkPositionForces();
-					this.AlignPlatform();
-				}
-				if (this.prevMassMultiplier != this.massMultiplier)
-				{
-					foreach (KeyValuePair<Chunk, float> keyValuePair in this.origChunkMasses)
-					{
-						Chunk key = keyValuePair.Key;
-						GameObject go = key.go;
-						if (go != null && go.GetComponent<Rigidbody>() != null)
-						{
-							go.GetComponent<Rigidbody>().mass = keyValuePair.Value * this.massMultiplier;
-						}
-					}
-				}
-				if (this.prevTensorMultiplier != this.tensorMultiplier)
-				{
-					foreach (KeyValuePair<Chunk, Vector3> keyValuePair2 in this.origChunkTensors)
-					{
-						Chunk key2 = keyValuePair2.Key;
-						GameObject go2 = key2.go;
-						if (go2 != null && go2.GetComponent<Rigidbody>() != null)
-						{
-							try
-							{
-								go2.GetComponent<Rigidbody>().inertiaTensor = keyValuePair2.Value * this.tensorMultiplier;
-							}
-							catch
-							{
-								BWLog.Info("Unable to set inertia tensor, possibly due to the use of rigidbody constraints in the world.");
-							}
-						}
-					}
-				}
-				this.prevMassMultiplier = this.massMultiplier;
-				this.prevTensorMultiplier = this.tensorMultiplier;
-				this.tensorMultiplier = 1f;
-				this.massMultiplier = 1f;
-			}
-		}
-
-		// Token: 0x0600086C RID: 2156 RVA: 0x00039840 File Offset: 0x00037C40
-		protected virtual Vector3 GetTargetPositionOffset()
-		{
-			return Vector3.zero;
-		}
-
-		// Token: 0x0600086D RID: 2157 RVA: 0x00039848 File Offset: 0x00037C48
-		private void ApplyChunkPositionForces()
-		{
-			if (this.chunkRigidBody != null)
-			{
-				Vector3 a = this.targetPosition + this.GetTargetPositionOffset();
-				Vector3 a2 = a - this.GetPlatformPosition();
-				float magnitude = a2.magnitude;
-				if ((double)magnitude > 1E-05)
-				{
-					Vector3 a3 = a2 * 20f;
-					Vector3 velocity = this.chunkRigidBody.velocity;
-					Vector3 a4 = a3 - velocity;
-					if (a4.sqrMagnitude > 400f)
-					{
-						a4 = a4.normalized * 20f;
-					}
-					float mass = this.chunkRigidBody.mass;
-					float d = 20f;
-					Vector3 force = a4 * mass * d;
-					this.chunkRigidBody.AddForce(force);
-				}
-			}
-		}
-
-		// Token: 0x0600086E RID: 2158 RVA: 0x00039917 File Offset: 0x00037D17
-		protected virtual Quaternion GetRotationOffset()
-		{
-			return Quaternion.identity;
-		}
-
-		// Token: 0x0600086F RID: 2159 RVA: 0x00039920 File Offset: 0x00037D20
-		protected virtual void AlignPlatform()
-		{
-			Quaternion rotation = this.GetRotationOffset() * this.rotation;
-			this.Align(this.upDirection, rotation * Vector3.up);
-			this.Align(this.forwardDirection, rotation * Vector3.forward);
-		}
-
-		// Token: 0x06000870 RID: 2160 RVA: 0x00039970 File Offset: 0x00037D70
-		private float GetTorqueScaler(Vector3 normalizedTorque)
-		{
-			return Mathf.Abs(Vector3.Dot(normalizedTorque, this.forwardMassDistribution * this.goT.forward)) + Mathf.Abs(Vector3.Dot(normalizedTorque, this.rightMassDistribution * this.goT.right)) + Mathf.Abs(Vector3.Dot(normalizedTorque, this.upMassDistribution * this.goT.up));
-		}
-
-		// Token: 0x06000871 RID: 2161 RVA: 0x000399E4 File Offset: 0x00037DE4
-		protected virtual void Align(Vector3 target, Vector3 localUp)
-		{
-			if (this.chunkRigidBody != null)
-			{
-				Vector3 vector = this.goT.TransformDirection(localUp);
-				float a = Vector3.Angle(vector, target);
-				Vector3 vector2 = Vector3.Cross(vector, target);
-				if (vector2.sqrMagnitude > 0.001f)
-				{
-					vector2 = vector2.normalized;
-				}
-				else
-				{
-					vector2 = this.goT.forward;
-				}
-				float torqueScaler = this.GetTorqueScaler(vector2);
-				float num = 0.7f;
-				Vector3 vector3 = num * Mathf.Min(a, 90f) * torqueScaler * vector2;
-				Vector3 vector4 = this.chunkRigidBody.angularVelocity;
-				vector4 = Util.ProjectOntoPlane(vector4, target.normalized);
-				float magnitude = vector4.magnitude;
-				if (magnitude > 0.001f)
-				{
-					Vector3 normalizedTorque = vector4 / magnitude;
-					float torqueScaler2 = this.GetTorqueScaler(normalizedTorque);
-					float num2 = 1f;
-					float num3 = magnitude * num2 * torqueScaler2;
-					vector3 += -num3 * vector4;
-				}
-				this.chunkRigidBody.AddTorque(vector3);
-			}
-		}
-
-		// Token: 0x04000664 RID: 1636
-		protected Vector3 targetPosition = Vector3.zero;
-
-		// Token: 0x04000665 RID: 1637
-		protected Vector3 rightDirection = Vector3.right;
-
-		// Token: 0x04000666 RID: 1638
-		protected Vector3 forwardDirection = Vector3.forward;
-
-		// Token: 0x04000667 RID: 1639
-		protected Vector3 upDirection = Vector3.up;
-
-		// Token: 0x04000668 RID: 1640
-		private float rightMassDistribution = 1f;
-
-		// Token: 0x04000669 RID: 1641
-		private float forwardMassDistribution = 1f;
-
-		// Token: 0x0400066A RID: 1642
-		private float upMassDistribution = 1f;
-
-		// Token: 0x0400066B RID: 1643
-		protected float massMultiplier = 1f;
-
-		// Token: 0x0400066C RID: 1644
-		protected float prevMassMultiplier = 1f;
-
-		// Token: 0x0400066D RID: 1645
-		protected float tensorMultiplier = 1f;
-
-		// Token: 0x0400066E RID: 1646
-		protected float prevTensorMultiplier = 1f;
-
-		// Token: 0x0400066F RID: 1647
-		protected Dictionary<Chunk, float> origChunkMasses = new Dictionary<Chunk, float>();
-
-		// Token: 0x04000670 RID: 1648
-		protected Dictionary<Chunk, Vector3> origChunkTensors = new Dictionary<Chunk, Vector3>();
-
-		// Token: 0x04000671 RID: 1649
-		private const float MAX_VEL_ERROR = 20f;
-
-		// Token: 0x04000672 RID: 1650
-		private AntigravityMetaData metaData;
-
-		// Token: 0x04000673 RID: 1651
-		protected bool enabled = true;
-
-		// Token: 0x04000674 RID: 1652
-		protected bool controlsVelocity;
 	}
 }

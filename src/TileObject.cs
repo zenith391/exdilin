@@ -1,73 +1,148 @@
-﻿using System;
+using System;
 using UnityEngine;
 
-// Token: 0x02000230 RID: 560
 public class TileObject : MonoBehaviour
 {
-	// Token: 0x06001AA3 RID: 6819 RVA: 0x000C3036 File Offset: 0x000C1436
+	public int poolIndex;
+
+	public TilePool obtainedFromPool;
+
+	private GameObject mainGameObject;
+
+	private GameObject tileBackground;
+
+	private GameObject labelObject;
+
+	private GameObject rarityBorderObject;
+
+	private MeshRenderer mainTileRenderer;
+
+	private MeshRenderer backgroundRenderer;
+
+	private MeshRenderer rarityBorderRenderer;
+
+	private MeshRenderer labelRenderer;
+
+	private Material mainTileMaterial;
+
+	private Material backgroundMaterial;
+
+	private Texture2D mainTileTexture;
+
+	private TileIconHandle iconLoader;
+
+	private Transform iconTransform;
+
+	private GAF _gaf;
+
+	private BlockItem _blockItem;
+
+	private string _iconName;
+
+	private WorldInfo _thumbnailWorldInfo;
+
+	private Mesh tileIconMesh;
+
+	private Mesh tileBackgroundMesh;
+
+	private Mesh labelMesh;
+
+	private MeshFilter iconMeshFilter;
+
+	private MeshFilter backgroundMeshFilter;
+
+	private MeshFilter labelMeshFilter;
+
+	private Material enabledBackgroundMaterial;
+
+	private Material disabledBackgroundMaterial;
+
+	private Material enabledLabelMaterial;
+
+	private Material disabledLabelMaterial;
+
+	private TilePool.TileImageSource imageSource;
+
+	private bool isEnabled = true;
+
+	private bool hasIcon;
+
+	private bool iconLoaded;
+
+	private bool hasLabel;
+
+	public TileObject childTileObject;
+
+	public bool isOverlay;
+
+	public static Vector2 sizeTile = new Vector2(67f, 67f);
+
+	private static Vector2 sizeLabel = new Vector2(63f, 14f);
+
+	private static Vector2 sizeBorder = new Vector2(64f, 64f);
+
+	private static Material iconBaseMaterial;
+
+	private static Mesh sharedBorderMesh;
+
 	public bool IsIconLoaded()
 	{
-		return this.iconLoaded;
+		return iconLoaded;
 	}
 
-	// Token: 0x06001AA4 RID: 6820 RVA: 0x000C3040 File Offset: 0x000C1440
 	public void MoveTo(float x, float y)
 	{
-		float z = this.mainGameObject.transform.position.z;
-		this.MoveTo(new Vector3(x, y, z));
+		float z = mainGameObject.transform.position.z;
+		MoveTo(new Vector3(x, y, z));
 	}
 
-	// Token: 0x06001AA5 RID: 6821 RVA: 0x000C3074 File Offset: 0x000C1474
 	public void MoveTo(Vector3 pos)
 	{
-		this.mainGameObject.transform.position = pos;
+		mainGameObject.transform.position = pos;
 	}
 
-	// Token: 0x06001AA6 RID: 6822 RVA: 0x000C3087 File Offset: 0x000C1487
 	public void LocalMoveTo(Vector3 pos)
 	{
-		this.mainGameObject.transform.localPosition = pos;
+		mainGameObject.transform.localPosition = pos;
 	}
 
-	// Token: 0x06001AA7 RID: 6823 RVA: 0x000C309C File Offset: 0x000C149C
 	public void SetupForIcon(string iconName, bool enabled)
 	{
-		this._iconName = iconName;
+		_iconName = iconName;
 		if (TileIconManager.Instance.preloadedIcons.ContainsKey(iconName))
 		{
-			this.mainTileTexture = TileIconManager.Instance.preloadedIcons[iconName];
-			this.mainTileRenderer.enabled = true;
-			this.mainTileMaterial.mainTexture = this.mainTileTexture;
-			this.RefreshMainTileAlpha();
-			this.RefreshMainTileScale();
-			this.hasIcon = true;
-			this.iconLoaded = true;
-			this.iconLoader.loadState = TileIconLoadState.Applied;
+			mainTileTexture = TileIconManager.Instance.preloadedIcons[iconName];
+			mainTileRenderer.enabled = true;
+			mainTileMaterial.mainTexture = mainTileTexture;
+			RefreshMainTileAlpha();
+			RefreshMainTileScale();
+			hasIcon = true;
+			iconLoaded = true;
+			iconLoader.loadState = TileIconLoadState.Applied;
 		}
 		else
 		{
 			TileIconInfo tileInfoForIcon = TileIconManager.Instance.GetTileInfoForIcon(iconName);
-			this.hasIcon = TileIconManager.Instance.RequestIconLoad(tileInfoForIcon.filePath, this.iconLoader);
-			if (this.hasIcon)
+			hasIcon = TileIconManager.Instance.RequestIconLoad(tileInfoForIcon.filePath, iconLoader);
+			if (hasIcon)
 			{
-				this.iconLoaded = false;
-				this.mainTileMaterial.mainTexture = null;
+				iconLoaded = false;
+				mainTileMaterial.mainTexture = null;
 			}
-			this.mainTileRenderer.enabled = false;
+			mainTileRenderer.enabled = false;
 		}
-		this.labelRenderer.enabled = false;
-		this.backgroundRenderer.enabled = false;
-		this.rarityBorderRenderer.enabled = false;
-		this.SetScale(Vector3.one * NormalizedScreen.pixelScale);
-		this.isEnabled = enabled;
-		this.RefreshMainTileAlpha();
+		labelRenderer.enabled = false;
+		backgroundRenderer.enabled = false;
+		rarityBorderRenderer.enabled = false;
+		SetScale(Vector3.one * NormalizedScreen.pixelScale);
+		isEnabled = enabled;
+		RefreshMainTileAlpha();
 	}
 
-	// Token: 0x06001AA8 RID: 6824 RVA: 0x000C31BC File Offset: 0x000C15BC
 	public void Setup(GAF gaf, bool enabled)
 	{
-		this._gaf = gaf;
-		this._blockItem = BlockItem.FindByGafPredicateNameAndArguments(gaf.Predicate.Name, gaf.Args);
+		_gaf = gaf;
+		_blockItem = BlockItem.FindByGafPredicateNameAndArguments(gaf.Predicate.Name, gaf.Args);
 		bool flag = gaf.IsCreateModel();
 		bool flag2 = gaf.IsButtonInput();
 		TileIconInfo tileIconInfo;
@@ -76,38 +151,31 @@ public class TileObject : MonoBehaviour
 			tileIconInfo = new TileIconInfo();
 			tileIconInfo.filePath = Blocksworld.modelCollection.GetPathToIcon(gaf);
 			tileIconInfo.clearBackground = true;
-            tileIconInfo.label = Blocksworld.modelCollection.GetModelLabel(gaf);
+			tileIconInfo.label = Blocksworld.modelCollection.GetModelLabel(gaf);
 		}
 		else
 		{
 			tileIconInfo = TileIconManager.Instance.GetTileInfo(gaf);
-            if (tileIconInfo != null && (tileIconInfo.label == null || tileIconInfo.label.Length == 0))
-            {
-				// ADDED BY EXDILIN: EMPTY LABEL TILE RENAME
-                string str = gaf.Predicate.Name;
-				if (str != "Sky.SkyBoxTo" && str != "AnimCharacter.ReplaceBodyPart") {
-					tileIconInfo.label = str.Substring(str.IndexOf('.') + 1);
+			if (tileIconInfo != null && (tileIconInfo.label == null || tileIconInfo.label.Length == 0))
+			{
+				string text = gaf.Predicate.Name;
+				if (text != "Sky.SkyBoxTo" && text != "AnimCharacter.ReplaceBodyPart")
+				{
+					tileIconInfo.label = text.Substring(text.IndexOf('.') + 1);
 				}
-            }
-        }
+			}
+		}
 		if (tileIconInfo == null)
 		{
-			BWLog.Info(string.Concat(new object[]
-			{
-				"NULL tile info, disabling renderer for tile: ",
-				gaf,
-				"\nBlock item: ",
-				this._blockItem,
-				"\nMost likely it is unable to find the corresponding block item for this GAF because the declaration of argument types in the Register function does not match the types in use in the code!"
-			}));
-			this.mainTileRenderer.enabled = false;
-			this.labelRenderer.enabled = false;
-			this.backgroundRenderer.enabled = false;
+			BWLog.Info(string.Concat("NULL tile info, disabling renderer for tile: ", gaf, "\nBlock item: ", _blockItem, "\nMost likely it is unable to find the corresponding block item for this GAF because the declaration of argument types in the Register function does not match the types in use in the code!"));
+			mainTileRenderer.enabled = false;
+			labelRenderer.enabled = false;
+			backgroundRenderer.enabled = false;
 			return;
 		}
 		if (flag2)
 		{
-			if (this.isOverlay)
+			if (isOverlay)
 			{
 				string buttonInputVariantKeyImagePath = TileIconManager.Instance.GetButtonInputVariantKeyImagePath(gaf);
 				if (!string.IsNullOrEmpty(buttonInputVariantKeyImagePath))
@@ -115,45 +183,45 @@ public class TileObject : MonoBehaviour
 					tileIconInfo.filePath = buttonInputVariantKeyImagePath;
 				}
 			}
-			else if (this.childTileObject != null)
+			else if (childTileObject != null)
 			{
-				this.childTileObject.Setup(gaf, enabled);
+				childTileObject.Setup(gaf, enabled);
 			}
 			else
 			{
-				this.childTileObject = this.obtainedFromPool.GetTileObject(gaf, this.isEnabled, true);
-				this.childTileObject.transform.SetParent(this.mainGameObject.transform, false);
-				this.childTileObject.transform.localScale = Vector3.one;
+				childTileObject = obtainedFromPool.GetTileObject(gaf, isEnabled, asOverlay: true);
+				childTileObject.transform.SetParent(mainGameObject.transform, worldPositionStays: false);
+				childTileObject.transform.localScale = Vector3.one;
 			}
 		}
 		if (flag && Blocksworld.modelCollection.IsSourceLocked(gaf))
 		{
-			if (this.isOverlay)
+			if (isOverlay)
 			{
 				tileIconInfo.filePath = TileIconManager.GetPathToIcon("Misc/Locked_Model_Icon_Overlay");
 			}
-			else if (this.childTileObject != null)
+			else if (childTileObject != null)
 			{
-				this.childTileObject.Setup(gaf, enabled);
+				childTileObject.Setup(gaf, enabled);
 			}
 			else
 			{
-				this.childTileObject = Blocksworld.tilePool.GetTileObject(gaf, this.isEnabled, true);
-				this.childTileObject.transform.SetParent(this.mainGameObject.transform, false);
-				this.childTileObject.transform.localScale = Vector3.one;
+				childTileObject = Blocksworld.tilePool.GetTileObject(gaf, isEnabled, asOverlay: true);
+				childTileObject.transform.SetParent(mainGameObject.transform, worldPositionStays: false);
+				childTileObject.transform.localScale = Vector3.one;
 			}
 		}
 		bool flag3 = false;
-		if (this._gaf.Predicate.Name == "BlockWorldJumper.Jump")
+		if (_gaf.Predicate.Name == "BlockWorldJumper.Jump")
 		{
-			string text = (string)gaf.Args[0];
-			if (!string.IsNullOrEmpty(text))
+			string text2 = (string)gaf.Args[0];
+			if (!string.IsNullOrEmpty(text2))
 			{
-				WorldInfo worldWithId = WorldSession.current.availableTeleportWorlds.GetWorldWithId(text);
+				WorldInfo worldWithId = WorldSession.current.availableTeleportWorlds.GetWorldWithId(text2);
 				if (worldWithId != null)
 				{
 					flag3 = true;
-					this.LinkToWorldThumbnail(worldWithId);
+					LinkToWorldThumbnail(worldWithId);
 				}
 			}
 		}
@@ -161,468 +229,445 @@ public class TileObject : MonoBehaviour
 		{
 			string modelID = Blocksworld.modelCollection.GetModelID(gaf);
 			string modelType = Blocksworld.modelCollection.GetModelType(gaf);
-			this.hasIcon = TileIconManager.Instance.RequestModelIconLoad(tileIconInfo.filePath, modelID, modelType, this.iconLoader);
+			hasIcon = TileIconManager.Instance.RequestModelIconLoad(tileIconInfo.filePath, modelID, modelType, iconLoader);
 		}
 		else if (!flag3)
 		{
-			this.hasIcon = TileIconManager.Instance.RequestIconLoad(tileIconInfo.filePath, this.iconLoader);
+			hasIcon = TileIconManager.Instance.RequestIconLoad(tileIconInfo.filePath, iconLoader);
 		}
-		if (!this.hasIcon)
+		if (!hasIcon)
 		{
-			this.mainTileRenderer.enabled = false;
+			mainTileRenderer.enabled = false;
 		}
 		else if (!flag3)
 		{
-			this.iconLoaded = false;
-			this.mainTileMaterial.mainTexture = null;
-			this.mainTileRenderer.enabled = false;
+			iconLoaded = false;
+			mainTileMaterial.mainTexture = null;
+			mainTileRenderer.enabled = false;
 		}
-		this.hasLabel = ((this._gaf.HasBuildPanelLabel || this._gaf.HasDynamicLabel()) && !string.IsNullOrEmpty(tileIconInfo.label) && !this.isOverlay);
-		if (this.hasLabel)
+		hasLabel = (_gaf.HasBuildPanelLabel || _gaf.HasDynamicLabel()) && !string.IsNullOrEmpty(tileIconInfo.label) && !isOverlay;
+		if (hasLabel)
 		{
 			TileLabelAtlas labelAtlas = TileIconManager.Instance.labelAtlas;
-			string text2 = tileIconInfo.label;
-			if (this._gaf.HasDynamicLabel() && !flag)
+			string text3 = tileIconInfo.label;
+			if (_gaf.HasDynamicLabel() && !flag)
 			{
-				text2 = this._gaf.GetDynamicLabel();
+				text3 = _gaf.GetDynamicLabel();
 			}
-			if (!labelAtlas.Contains(text2))
+			if (!labelAtlas.Contains(text3))
 			{
-				labelAtlas.AddNewLabel(text2);
+				labelAtlas.AddNewLabel(text3);
 			}
-			Vector2[] labelUVs = labelAtlas.GetLabelUVs(text2);
+			Vector2[] labelUVs = labelAtlas.GetLabelUVs(text3);
 			if (labelUVs != null && labelUVs.Length >= 4)
 			{
-				string str = "UVs ";
+				string text4 = "UVs ";
 				for (int i = 0; i < 4; i++)
 				{
-					str = str + labelUVs[i].ToString() + ((i >= 3) ? string.Empty : ", ");
+					text4 = text4 + labelUVs[i].ToString() + ((i >= 3) ? string.Empty : ", ");
 				}
-				this.enabledLabelMaterial = labelAtlas.GetMaterial(text2);
-				this.disabledLabelMaterial = labelAtlas.GetMaterialDisabled(text2);
-				if (this.enabledLabelMaterial != null && this.disabledLabelMaterial != null)
+				enabledLabelMaterial = labelAtlas.GetMaterial(text3);
+				disabledLabelMaterial = labelAtlas.GetMaterialDisabled(text3);
+				if (enabledLabelMaterial != null && disabledLabelMaterial != null)
 				{
-					this.labelMeshFilter.sharedMesh.uv = labelUVs;
-					this.labelRenderer.sharedMaterial = ((!enabled) ? this.disabledLabelMaterial : this.enabledLabelMaterial);
-					this.labelRenderer.enabled = true;
+					labelMeshFilter.sharedMesh.uv = labelUVs;
+					labelRenderer.sharedMaterial = ((!enabled) ? disabledLabelMaterial : enabledLabelMaterial);
+					labelRenderer.enabled = true;
 				}
 				else
 				{
-					BWLog.Info("No label materials for label " + text2);
-					this.labelRenderer.enabled = false;
+					BWLog.Info("No label materials for label " + text3);
+					labelRenderer.enabled = false;
 				}
 			}
 			else
 			{
-				BWLog.Info("No label uvs for : " + this._gaf);
-				this.labelRenderer.enabled = false;
+				BWLog.Info("No label uvs for : " + _gaf);
+				labelRenderer.enabled = false;
 			}
 		}
 		else
 		{
-			this.labelRenderer.enabled = false;
+			labelRenderer.enabled = false;
 		}
-		if (tileIconInfo.clearBackground || this.isOverlay)
+		if (tileIconInfo.clearBackground || isOverlay)
 		{
-			this.backgroundRenderer.enabled = false;
+			backgroundRenderer.enabled = false;
 		}
 		else
 		{
-			this.enabledBackgroundMaterial = TileIconManager.Instance.GetBackgroundMaterial(this._gaf);
-			this.disabledBackgroundMaterial = TileIconManager.Instance.GetBackgroundMaterialDisabled(this._gaf);
-			this.backgroundRenderer.sharedMaterial = ((!enabled) ? this.disabledBackgroundMaterial : this.enabledBackgroundMaterial);
+			enabledBackgroundMaterial = TileIconManager.Instance.GetBackgroundMaterial(_gaf);
+			disabledBackgroundMaterial = TileIconManager.Instance.GetBackgroundMaterialDisabled(_gaf);
+			backgroundRenderer.sharedMaterial = ((!enabled) ? disabledBackgroundMaterial : enabledBackgroundMaterial);
 			Color[] colors = Blocksworld.GetColors(tileIconInfo.backgroundColorName);
-			this.backgroundMeshFilter.sharedMesh.colors = new Color[]
+			backgroundMeshFilter.sharedMesh.colors = new Color[4]
 			{
 				colors[0],
 				colors[0],
 				colors[1],
 				colors[1]
 			};
-			this.backgroundRenderer.enabled = true;
+			backgroundRenderer.enabled = true;
 		}
-		if (this._blockItem != null && this._blockItem.HasRarityBorder)
+		if (_blockItem != null && _blockItem.HasRarityBorder)
 		{
-			this.rarityBorderRenderer.sharedMaterial = ((!enabled) ? Blocksworld.rarityBorderMaterialsDisabled[this._blockItem.Rarity] : Blocksworld.rarityBorderMaterialsEnabled[this._blockItem.Rarity]);
-			this.rarityBorderRenderer.enabled = true;
+			rarityBorderRenderer.sharedMaterial = ((!enabled) ? Blocksworld.rarityBorderMaterialsDisabled[_blockItem.Rarity] : Blocksworld.rarityBorderMaterialsEnabled[_blockItem.Rarity]);
+			rarityBorderRenderer.enabled = true;
 		}
 		else
 		{
-			this.rarityBorderRenderer.enabled = false;
+			rarityBorderRenderer.enabled = false;
 		}
-		this.SetScale(Vector3.one * NormalizedScreen.pixelScale);
-		this.isEnabled = enabled;
-		this.RefreshMainTileAlpha();
+		SetScale(Vector3.one * NormalizedScreen.pixelScale);
+		isEnabled = enabled;
+		RefreshMainTileAlpha();
 	}
 
-	// Token: 0x06001AA9 RID: 6825 RVA: 0x000C3874 File Offset: 0x000C1C74
 	private void LinkToWorldThumbnail(WorldInfo worldInfo)
 	{
-		this._thumbnailWorldInfo = worldInfo;
-		worldInfo.ThumbnailLoaded += this.WorldInfoLoadedScreenshot;
+		_thumbnailWorldInfo = worldInfo;
+		worldInfo.ThumbnailLoaded += WorldInfoLoadedScreenshot;
 		Texture2D worldThumbnailForTiles = worldInfo.GetWorldThumbnailForTiles();
-		this.backgroundRenderer.enabled = false;
-		this.labelRenderer.enabled = false;
-		this.rarityBorderRenderer.enabled = false;
-		this.hasIcon = true;
+		backgroundRenderer.enabled = false;
+		labelRenderer.enabled = false;
+		rarityBorderRenderer.enabled = false;
+		hasIcon = true;
 		if (worldThumbnailForTiles == null)
 		{
 			worldInfo.LoadThumbnail();
-			this.iconLoaded = false;
-			this.mainTileRenderer.enabled = false;
+			iconLoaded = false;
+			mainTileRenderer.enabled = false;
+			return;
 		}
-		else
-		{
-			this.iconLoaded = true;
-			this.mainTileTexture = worldThumbnailForTiles;
-			this.mainTileRenderer.enabled = true;
-			this.mainTileMaterial.mainTexture = this.mainTileTexture;
-			this.RefreshMainTileAlpha();
-			this.RefreshMainTileScale();
-			this.iconLoader.loadState = TileIconLoadState.Applied;
-		}
+		iconLoaded = true;
+		mainTileTexture = worldThumbnailForTiles;
+		mainTileRenderer.enabled = true;
+		mainTileMaterial.mainTexture = mainTileTexture;
+		RefreshMainTileAlpha();
+		RefreshMainTileScale();
+		iconLoader.loadState = TileIconLoadState.Applied;
 	}
 
-	// Token: 0x06001AAA RID: 6826 RVA: 0x000C393C File Offset: 0x000C1D3C
 	private void WorldInfoLoadedScreenshot(object sender, EventArgs e)
 	{
-		if (sender != this._thumbnailWorldInfo)
+		if (sender == _thumbnailWorldInfo)
 		{
-			return;
+			Texture2D worldThumbnailForTiles = _thumbnailWorldInfo.GetWorldThumbnailForTiles();
+			if (worldThumbnailForTiles == null)
+			{
+				BWLog.Error("Failed to load thumbnail");
+				return;
+			}
+			hasIcon = true;
+			iconLoaded = true;
+			mainTileTexture = worldThumbnailForTiles;
+			mainTileRenderer.enabled = true;
+			mainTileMaterial.mainTexture = mainTileTexture;
+			RefreshMainTileAlpha();
+			RefreshMainTileScale();
+			iconLoader.loadState = TileIconLoadState.Applied;
 		}
-		Texture2D worldThumbnailForTiles = this._thumbnailWorldInfo.GetWorldThumbnailForTiles();
-		if (worldThumbnailForTiles == null)
-		{
-			BWLog.Error("Failed to load thumbnail");
-			return;
-		}
-		this.hasIcon = true;
-		this.iconLoaded = true;
-		this.mainTileTexture = worldThumbnailForTiles;
-		this.mainTileRenderer.enabled = true;
-		this.mainTileMaterial.mainTexture = this.mainTileTexture;
-		this.RefreshMainTileAlpha();
-		this.RefreshMainTileScale();
-		this.iconLoader.loadState = TileIconLoadState.Applied;
 	}
 
-	// Token: 0x06001AAB RID: 6827 RVA: 0x000C39C3 File Offset: 0x000C1DC3
 	public bool IsSetupForGAF(GAF gaf)
 	{
-		return gaf.Equals(this._gaf) && this.hasIcon;
+		if (gaf.Equals(_gaf))
+		{
+			return hasIcon;
+		}
+		return false;
 	}
 
-	// Token: 0x06001AAC RID: 6828 RVA: 0x000C39E6 File Offset: 0x000C1DE6
 	public bool IsActive()
 	{
-		return this.mainGameObject.activeSelf;
+		return mainGameObject.activeSelf;
 	}
 
-	// Token: 0x06001AAD RID: 6829 RVA: 0x000C39F3 File Offset: 0x000C1DF3
 	public string IconName()
 	{
-		return this._iconName;
+		return _iconName;
 	}
 
-	// Token: 0x06001AAE RID: 6830 RVA: 0x000C39FB File Offset: 0x000C1DFB
 	public void Show(bool show)
 	{
 		if (show)
 		{
-			this.Show();
+			Show();
 		}
 		else
 		{
-			this.Hide();
+			Hide();
 		}
 	}
 
-	// Token: 0x06001AAF RID: 6831 RVA: 0x000C3A14 File Offset: 0x000C1E14
 	public void Show()
 	{
-		this.mainGameObject.SetActive(true);
-		this.mainTileRenderer.enabled = (this.hasIcon && this.iconLoaded);
-		this.RefreshMainTileAlpha();
-		if (this.childTileObject != null)
+		mainGameObject.SetActive(value: true);
+		mainTileRenderer.enabled = hasIcon && iconLoaded;
+		RefreshMainTileAlpha();
+		if (childTileObject != null)
 		{
-			this.childTileObject.Show();
+			childTileObject.Show();
 		}
 	}
 
-	// Token: 0x06001AB0 RID: 6832 RVA: 0x000C3A6E File Offset: 0x000C1E6E
 	public void Hide()
 	{
-		this.mainGameObject.SetActive(false);
-		if (this.childTileObject != null)
+		mainGameObject.SetActive(value: false);
+		if (childTileObject != null)
 		{
-			this.childTileObject.Hide();
+			childTileObject.Hide();
 		}
 	}
 
-	// Token: 0x06001AB1 RID: 6833 RVA: 0x000C3A98 File Offset: 0x000C1E98
 	public bool IsShowing()
 	{
-		return this.IsActive() && this.mainTileRenderer.enabled;
+		if (IsActive())
+		{
+			return mainTileRenderer.enabled;
+		}
+		return false;
 	}
 
-	// Token: 0x06001AB2 RID: 6834 RVA: 0x000C3AB3 File Offset: 0x000C1EB3
 	public bool IsEnabled()
 	{
-		return this.isEnabled;
+		return isEnabled;
 	}
 
-	// Token: 0x06001AB3 RID: 6835 RVA: 0x000C3ABB File Offset: 0x000C1EBB
 	public void Enable(bool enable)
 	{
 		if (enable)
 		{
-			this.Enable();
+			Enable();
 		}
 		else
 		{
-			this.Disable();
+			Disable();
 		}
 	}
 
-	// Token: 0x06001AB4 RID: 6836 RVA: 0x000C3AD4 File Offset: 0x000C1ED4
 	public void Enable()
 	{
-		if (this.childTileObject != null)
+		if (childTileObject != null)
 		{
-			this.childTileObject.Enable();
+			childTileObject.Enable();
 		}
-		this.isEnabled = true;
-		if (this.hasIcon && this.iconLoaded)
+		isEnabled = true;
+		if (hasIcon && iconLoaded)
 		{
-			this.mainTileRenderer.enabled = true;
+			mainTileRenderer.enabled = true;
 		}
-		this.RefreshMainTileAlpha();
-		this.RefreshMainTileScale();
-		if (this.backgroundRenderer.enabled)
+		RefreshMainTileAlpha();
+		RefreshMainTileScale();
+		if (backgroundRenderer.enabled)
 		{
-			this.backgroundRenderer.sharedMaterial = this.enabledBackgroundMaterial;
+			backgroundRenderer.sharedMaterial = enabledBackgroundMaterial;
 		}
-		if (this.labelRenderer.enabled)
+		if (labelRenderer.enabled)
 		{
-			this.labelRenderer.sharedMaterial = this.enabledLabelMaterial;
+			labelRenderer.sharedMaterial = enabledLabelMaterial;
 		}
-		if (this._blockItem != null && this._blockItem.HasRarityBorder)
+		if (_blockItem != null && _blockItem.HasRarityBorder)
 		{
-			this.rarityBorderRenderer.sharedMaterial = Blocksworld.rarityBorderMaterialsEnabled[this._blockItem.Rarity];
-			this.rarityBorderRenderer.enabled = true;
+			rarityBorderRenderer.sharedMaterial = Blocksworld.rarityBorderMaterialsEnabled[_blockItem.Rarity];
+			rarityBorderRenderer.enabled = true;
 		}
 		else
 		{
-			this.rarityBorderRenderer.enabled = false;
+			rarityBorderRenderer.enabled = false;
 		}
 	}
 
-	// Token: 0x06001AB5 RID: 6837 RVA: 0x000C3BCC File Offset: 0x000C1FCC
 	public void Disable()
 	{
-		if (this.childTileObject != null)
+		if (childTileObject != null)
 		{
-			this.childTileObject.Disable();
+			childTileObject.Disable();
 		}
-		this.isEnabled = false;
-		if (this.hasIcon && this.iconLoaded)
+		isEnabled = false;
+		if (hasIcon && iconLoaded)
 		{
-			this.mainTileRenderer.enabled = true;
+			mainTileRenderer.enabled = true;
 		}
-		this.RefreshMainTileAlpha();
-		this.RefreshMainTileScale();
-		this.backgroundRenderer.sharedMaterial = this.disabledBackgroundMaterial;
-		if (this.labelRenderer.enabled)
+		RefreshMainTileAlpha();
+		RefreshMainTileScale();
+		backgroundRenderer.sharedMaterial = disabledBackgroundMaterial;
+		if (labelRenderer.enabled)
 		{
-			this.labelRenderer.sharedMaterial = this.disabledLabelMaterial;
+			labelRenderer.sharedMaterial = disabledLabelMaterial;
 		}
-		if (this._blockItem != null && this._blockItem.HasRarityBorder)
+		if (_blockItem != null && _blockItem.HasRarityBorder)
 		{
-			this.rarityBorderRenderer.sharedMaterial = Blocksworld.rarityBorderMaterialsDisabled[this._blockItem.Rarity];
-			this.rarityBorderRenderer.enabled = true;
+			rarityBorderRenderer.sharedMaterial = Blocksworld.rarityBorderMaterialsDisabled[_blockItem.Rarity];
+			rarityBorderRenderer.enabled = true;
 		}
 		else
 		{
-			this.rarityBorderRenderer.enabled = false;
+			rarityBorderRenderer.enabled = false;
 		}
 	}
 
-	// Token: 0x06001AB6 RID: 6838 RVA: 0x000C3CB4 File Offset: 0x000C20B4
 	public void SetGhosted(bool ghosted)
 	{
 		if (ghosted)
 		{
-			bool flag = this.isEnabled;
-			this.Disable();
-			this.isEnabled = flag;
+			bool flag = isEnabled;
+			Disable();
+			isEnabled = flag;
 		}
-		else if (this.isEnabled)
+		else if (isEnabled)
 		{
-			this.Enable();
+			Enable();
 		}
 		else
 		{
-			this.Disable();
+			Disable();
 		}
 	}
 
-	// Token: 0x06001AB7 RID: 6839 RVA: 0x000C3CFC File Offset: 0x000C20FC
 	private void RefreshMainTileAlpha()
 	{
-		float value = (!this.isEnabled) ? 0.3f : 1f;
-		this.mainTileMaterial.SetFloat("_Alpha", value);
+		float value = ((!isEnabled) ? 0.3f : 1f);
+		mainTileMaterial.SetFloat("_Alpha", value);
 	}
 
-	// Token: 0x06001AB8 RID: 6840 RVA: 0x000C3D38 File Offset: 0x000C2138
 	private void RefreshMainTileScale()
 	{
-		if (this.isOverlay)
+		if (isOverlay)
 		{
 			return;
 		}
-		if (this.hasIcon && this.iconLoaded)
+		if (hasIcon && iconLoaded)
 		{
-			float num = (float)this.mainTileTexture.width;
-			float num2 = (float)this.mainTileTexture.height;
+			float num = mainTileTexture.width;
+			float num2 = mainTileTexture.height;
 			float num3 = NormalizedScreen.scale * TileIconManager.iconScaleFactor;
 			float x = 2f + Mathf.Ceil(31.5f - num / (2f * num3));
 			float y = 2f + Mathf.Ceil(31.5f - num2 / (2f * num3));
 			float num4 = num / num3;
 			float num5 = num2 / num3;
-			if (this.hasLabel && this._thumbnailWorldInfo == null)
+			if (hasLabel && _thumbnailWorldInfo == null)
 			{
-				y = Mathf.Ceil((TileObject.sizeTile.x + 14f) / 2f - num2 / (2f * num3));
+				y = Mathf.Ceil((sizeTile.x + 14f) / 2f - num2 / (2f * num3));
 			}
-			this.iconTransform.localPosition = new Vector3(x, y, this.iconTransform.localPosition.z);
-			this.iconTransform.localScale = new Vector3(num4 / TileObject.sizeTile.x, num5 / TileObject.sizeTile.y, 1f);
+			iconTransform.localPosition = new Vector3(x, y, iconTransform.localPosition.z);
+			iconTransform.localScale = new Vector3(num4 / sizeTile.x, num5 / sizeTile.y, 1f);
 		}
 		else
 		{
-			this.iconTransform.localPosition = new Vector3(0f, 0f, -0.1f);
-			this.iconTransform.localScale = Vector3.one;
+			iconTransform.localPosition = new Vector3(0f, 0f, -0.1f);
+			iconTransform.localScale = Vector3.one;
 		}
 	}
 
-	// Token: 0x06001AB9 RID: 6841 RVA: 0x000C3E95 File Offset: 0x000C2295
 	public void SetPosition(Vector3 position)
 	{
-		this.mainGameObject.transform.position = position;
+		mainGameObject.transform.position = position;
 	}
 
-	// Token: 0x06001ABA RID: 6842 RVA: 0x000C3EA8 File Offset: 0x000C22A8
 	public Vector3 GetPosition()
 	{
-		return this.mainGameObject.transform.position;
+		return mainGameObject.transform.position;
 	}
 
-	// Token: 0x06001ABB RID: 6843 RVA: 0x000C3EBC File Offset: 0x000C22BC
 	public Vector3 GetCenterPosition()
 	{
-		Vector3 position = this.mainGameObject.transform.position;
-		Vector3 vector = this.GetScale();
-		Vector3 b = new Vector3(vector.x / 2f, vector.y / 2f, 0f);
-		return position + b;
+		Vector3 position = mainGameObject.transform.position;
+		Vector3 vector = GetScale();
+		Vector3 vector2 = new Vector3(vector.x / 2f, vector.y / 2f, 0f);
+		return position + vector2;
 	}
 
-	// Token: 0x06001ABC RID: 6844 RVA: 0x000C3F13 File Offset: 0x000C2313
 	public void SetLocalPosition(Vector3 position)
 	{
-		this.mainGameObject.transform.localPosition = position;
+		mainGameObject.transform.localPosition = position;
 	}
 
-	// Token: 0x06001ABD RID: 6845 RVA: 0x000C3F26 File Offset: 0x000C2326
 	public Vector3 GetLocalPosition()
 	{
-		return this.mainGameObject.transform.localPosition;
+		return mainGameObject.transform.localPosition;
 	}
 
-	// Token: 0x06001ABE RID: 6846 RVA: 0x000C3F38 File Offset: 0x000C2338
 	public void SetScale(float scale)
 	{
-		this.SetScale(scale * Vector3.one);
+		SetScale(scale * Vector3.one);
 	}
 
-	// Token: 0x06001ABF RID: 6847 RVA: 0x000C3F4B File Offset: 0x000C234B
 	public void SetScale(Vector3 scale)
 	{
-		this.mainGameObject.transform.localScale = scale;
+		mainGameObject.transform.localScale = scale;
 	}
 
-	// Token: 0x06001AC0 RID: 6848 RVA: 0x000C3F5E File Offset: 0x000C235E
 	public Vector2 GetScale()
 	{
-		return Vector3.Scale(this.mainGameObject.transform.localScale, TileObject.sizeTile);
+		return Vector3.Scale(mainGameObject.transform.localScale, sizeTile);
 	}
 
-	// Token: 0x06001AC1 RID: 6849 RVA: 0x000C3F84 File Offset: 0x000C2384
 	public GameObject GetGameObject()
 	{
-		return this.mainGameObject;
+		return mainGameObject;
 	}
 
-	// Token: 0x06001AC2 RID: 6850 RVA: 0x000C3F8C File Offset: 0x000C238C
 	public void SetParent(Transform p)
 	{
-		this.mainGameObject.transform.parent = p;
+		mainGameObject.transform.parent = p;
 	}
 
-	// Token: 0x06001AC3 RID: 6851 RVA: 0x000C3FA0 File Offset: 0x000C23A0
 	public Vector3 CalculateTileOffset()
 	{
 		Bounds bounds = default(Bounds);
-		foreach (Vector3 point in this.backgroundMeshFilter.sharedMesh.vertices)
+		Vector3[] vertices = backgroundMeshFilter.sharedMesh.vertices;
+		foreach (Vector3 point in vertices)
 		{
 			bounds.Encapsulate(point);
 		}
 		return bounds.center;
 	}
 
-	// Token: 0x06001AC4 RID: 6852 RVA: 0x000C3FF8 File Offset: 0x000C23F8
 	public void Cleanup()
 	{
-		this.Enable();
-		if (this.iconLoader != null)
+		Enable();
+		if (iconLoader != null)
 		{
-			this.iconLoader.CancelLoad();
+			iconLoader.CancelLoad();
 		}
-		if (!TileIconManager.Instance.IsPreloadedIcon(this.mainTileTexture) && this.imageSource != TilePool.TileImageSource.StandaloneImageManger && this._thumbnailWorldInfo == null)
+		if (!TileIconManager.Instance.IsPreloadedIcon(mainTileTexture) && imageSource != TilePool.TileImageSource.StandaloneImageManger && _thumbnailWorldInfo == null)
 		{
-			this.mainTileTexture.Resize(1, 1);
+			mainTileTexture.Resize(1, 1);
 		}
-		if (this._thumbnailWorldInfo != null)
+		if (_thumbnailWorldInfo != null)
 		{
-			this._thumbnailWorldInfo.ThumbnailLoaded -= this.WorldInfoLoadedScreenshot;
-			this._thumbnailWorldInfo = null;
+			_thumbnailWorldInfo.ThumbnailLoaded -= WorldInfoLoadedScreenshot;
+			_thumbnailWorldInfo = null;
 		}
-		this.poolIndex = -1;
-		this.iconTransform.localPosition = new Vector3(0f, 0f, -0.1f);
-		this.iconTransform.localScale = Vector3.one;
+		poolIndex = -1;
+		iconTransform.localPosition = new Vector3(0f, 0f, -0.1f);
+		iconTransform.localScale = Vector3.one;
 		base.transform.position = Vector3.zero;
 		base.transform.localScale = Vector3.one;
-		this.mainTileRenderer.enabled = false;
-		this.mainTileMaterial.mainTexture = null;
-		this.backgroundRenderer.enabled = false;
-		this.rarityBorderRenderer.enabled = false;
-		this.childTileObject = null;
-		this.isOverlay = false;
-		this.hasIcon = false;
-		this.iconLoaded = false;
-		this.hasLabel = false;
-		this._blockItem = null;
-		this._gaf = null;
+		mainTileRenderer.enabled = false;
+		mainTileMaterial.mainTexture = null;
+		backgroundRenderer.enabled = false;
+		rarityBorderRenderer.enabled = false;
+		childTileObject = null;
+		isOverlay = false;
+		hasIcon = false;
+		iconLoaded = false;
+		hasLabel = false;
+		_blockItem = null;
+		_gaf = null;
 	}
 
-	// Token: 0x06001AC5 RID: 6853 RVA: 0x000C413C File Offset: 0x000C253C
 	public void ReturnToPool()
 	{
-		if (this.childTileObject != null)
+		if (childTileObject != null)
 		{
-			this.childTileObject.ReturnToPool();
-			this.childTileObject = null;
+			childTileObject.ReturnToPool();
+			childTileObject = null;
 		}
-		if (this.obtainedFromPool != null)
+		if (obtainedFromPool != null)
 		{
-			this.obtainedFromPool.RecycleTileObject(this);
+			obtainedFromPool.RecycleTileObject(this);
 		}
 		else
 		{
@@ -630,101 +675,91 @@ public class TileObject : MonoBehaviour
 		}
 	}
 
-	// Token: 0x06001AC6 RID: 6854 RVA: 0x000C4192 File Offset: 0x000C2592
 	public GameObject GetIconGameObject()
 	{
-		return this.iconTransform.gameObject;
+		return iconTransform.gameObject;
 	}
 
-	// Token: 0x06001AC7 RID: 6855 RVA: 0x000C41A0 File Offset: 0x000C25A0
 	public void OverrideBackgroundColor(Color color)
 	{
-		this.backgroundMeshFilter.sharedMesh.colors = new Color[]
-		{
-			color,
-			color,
-			color,
-			color
-		};
+		backgroundMeshFilter.sharedMesh.colors = new Color[4] { color, color, color, color };
 	}
 
-	// Token: 0x06001AC8 RID: 6856 RVA: 0x000C41F8 File Offset: 0x000C25F8
 	public void OverrideForegroundColor(Color color)
 	{
-		this.iconMeshFilter.sharedMesh.colors = new Color[]
-		{
-			color,
-			color,
-			color,
-			color
-		};
+		iconMeshFilter.sharedMesh.colors = new Color[4] { color, color, color, color };
 	}
 
-	// Token: 0x06001AC9 RID: 6857 RVA: 0x000C4250 File Offset: 0x000C2650
 	private void Update()
 	{
-		if (this.iconLoader != null && this.iconLoader.loadState == TileIconLoadState.Loaded)
+		if (iconLoader != null && iconLoader.loadState == TileIconLoadState.Loaded)
 		{
-			this.iconLoaded = true;
-			this.iconLoader.ApplyTexture(this.mainTileTexture);
-			this.mainTileMaterial.mainTexture = this.mainTileTexture;
-			this.RefreshMainTileAlpha();
-			this.RefreshMainTileScale();
-			this.mainTileRenderer.enabled = true;
+			iconLoaded = true;
+			iconLoader.ApplyTexture(mainTileTexture);
+			mainTileMaterial.mainTexture = mainTileTexture;
+			RefreshMainTileAlpha();
+			RefreshMainTileScale();
+			mainTileRenderer.enabled = true;
 		}
 	}
 
-	// Token: 0x06001ACA RID: 6858 RVA: 0x000C42BA File Offset: 0x000C26BA
 	private void OnDisable()
 	{
-		if (this.iconLoader != null)
+		if (iconLoader != null)
 		{
-			this.iconLoader.CancelLoad();
+			iconLoader.CancelLoad();
 		}
 	}
 
-	// Token: 0x06001ACB RID: 6859 RVA: 0x000C42D4 File Offset: 0x000C26D4
 	private void OnEnable()
 	{
-		if (this.hasIcon && !this.iconLoaded)
+		if (hasIcon && !iconLoaded)
 		{
-			if (this._gaf != null)
+			if (_gaf != null)
 			{
-				this.Setup(this._gaf, this.isEnabled);
+				Setup(_gaf, isEnabled);
 			}
-			else if (this._iconName != null)
+			else if (_iconName != null)
 			{
-				this.SetupForIcon(this._iconName, this.isEnabled);
+				SetupForIcon(_iconName, isEnabled);
 			}
 		}
 	}
 
-	// Token: 0x06001ACC RID: 6860 RVA: 0x000C4338 File Offset: 0x000C2738
 	public bool Hit(Vector3 v, bool allowDisabledTiles = false)
 	{
-		Vector3 position = this.GetPosition();
+		Vector3 position = GetPosition();
 		float num = -7f * NormalizedScreen.pixelScale;
-		Vector2 scale = this.GetScale();
-		return (allowDisabledTiles || this.isEnabled) && v.x >= position.x - num && v.x <= position.x + scale.x + num && v.y >= position.y - num && v.y <= position.y + scale.y + num;
+		Vector2 scale = GetScale();
+		if ((allowDisabledTiles || isEnabled) && v.x >= position.x - num && v.x <= position.x + scale.x + num && v.y >= position.y - num)
+		{
+			return v.y <= position.y + scale.y + num;
+		}
+		return false;
 	}
 
-	// Token: 0x06001ACD RID: 6861 RVA: 0x000C43DC File Offset: 0x000C27DC
 	public bool Hit40(Vector3 v)
 	{
 		float num = -15f * NormalizedScreen.pixelScale;
-		Vector2 scale = this.GetScale();
-		return this.isEnabled && v.x >= this.GetPosition().x - num && v.x <= this.GetPosition().x + scale.x + num && v.y >= this.GetPosition().y - num && v.y <= this.GetPosition().y + scale.y + num;
+		Vector2 scale = GetScale();
+		if (isEnabled && v.x >= GetPosition().x - num && v.x <= GetPosition().x + scale.x + num && v.y >= GetPosition().y - num)
+		{
+			return v.y <= GetPosition().y + scale.y + num;
+		}
+		return false;
 	}
 
-	// Token: 0x06001ACE RID: 6862 RVA: 0x000C448C File Offset: 0x000C288C
 	public bool HitExtended(Vector3 v, float extendXMin, float extendXMax, float extendYMin, float extendYMax, bool allowDisabledTiles = false)
 	{
 		float num = -7f * NormalizedScreen.pixelScale;
-		Vector2 scale = this.GetScale();
-		return (allowDisabledTiles || this.isEnabled) && v.x + extendXMin >= this.GetPosition().x - num && v.x - extendXMax <= this.GetPosition().x + scale.x + num && v.y + extendYMin >= this.GetPosition().y - num && v.y - extendYMax <= this.GetPosition().y + scale.y + num;
+		Vector2 scale = GetScale();
+		if ((allowDisabledTiles || isEnabled) && v.x + extendXMin >= GetPosition().x - num && v.x - extendXMax <= GetPosition().x + scale.x + num && v.y + extendYMin >= GetPosition().y - num)
+		{
+			return v.y - extendYMax <= GetPosition().y + scale.y + num;
+		}
+		return false;
 	}
 
-	// Token: 0x06001ACF RID: 6863 RVA: 0x000C4550 File Offset: 0x000C2950
 	public static TileObject CreateTemplate(TilePool.TileImageSource imageSource)
 	{
 		GameObject gameObject = new GameObject("Tile");
@@ -735,17 +770,17 @@ public class TileObject : MonoBehaviour
 		tileObject.imageSource = imageSource;
 		tileObject.mainGameObject = gameObject;
 		tileObject.iconTransform = gameObject2.transform;
-		if (TileObject.sharedBorderMesh == null)
+		if (sharedBorderMesh == null)
 		{
-			TileObject.sharedBorderMesh = TileObject.CreateQuadMesh(TileObject.sizeBorder);
+			sharedBorderMesh = CreateQuadMesh(sizeBorder);
 		}
-		tileObject.tileIconMesh = TileObject.CreateQuadMesh(TileObject.sizeTile);
-		tileObject.tileBackgroundMesh = TileObject.CreateQuadMesh(TileObject.sizeTile);
-		tileObject.labelMesh = TileObject.CreateQuadMesh(TileObject.sizeLabel);
-		TileObject.AddQuadMeshOnGameObject(gameObject2, tileObject.tileIconMesh);
-		TileObject.AddQuadMeshOnGameObject(gameObject, tileObject.tileBackgroundMesh);
-		TileObject.AddQuadMeshOnGameObject(gameObject4, tileObject.labelMesh);
-		TileObject.AddQuadMeshOnGameObject(gameObject3, TileObject.sharedBorderMesh);
+		tileObject.tileIconMesh = CreateQuadMesh(sizeTile);
+		tileObject.tileBackgroundMesh = CreateQuadMesh(sizeTile);
+		tileObject.labelMesh = CreateQuadMesh(sizeLabel);
+		AddQuadMeshOnGameObject(gameObject2, tileObject.tileIconMesh);
+		AddQuadMeshOnGameObject(gameObject, tileObject.tileBackgroundMesh);
+		AddQuadMeshOnGameObject(gameObject4, tileObject.labelMesh);
+		AddQuadMeshOnGameObject(gameObject3, sharedBorderMesh);
 		tileObject.iconMeshFilter = gameObject2.GetComponent<MeshFilter>();
 		tileObject.backgroundMeshFilter = gameObject.GetComponent<MeshFilter>();
 		tileObject.labelMeshFilter = gameObject4.GetComponent<MeshFilter>();
@@ -757,73 +792,63 @@ public class TileObject : MonoBehaviour
 		MeshUtils.DisableUnusedProperties(tileObject.backgroundRenderer);
 		MeshUtils.DisableUnusedProperties(tileObject.rarityBorderRenderer);
 		MeshUtils.DisableUnusedProperties(tileObject.labelRenderer);
-		if (TileObject.iconBaseMaterial == null)
+		if (iconBaseMaterial == null)
 		{
-			TileObject.iconBaseMaterial = new Material(Resources.Load<Material>("GUI/TileObjectForeground"));
+			iconBaseMaterial = new Material(Resources.Load<Material>("GUI/TileObjectForeground"));
 		}
-		tileObject.mainTileMaterial = new Material(TileObject.iconBaseMaterial);
-		tileObject.mainTileTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+		tileObject.mainTileMaterial = new Material(iconBaseMaterial);
+		tileObject.mainTileTexture = new Texture2D(1, 1, TextureFormat.RGBA32, mipmap: false);
 		tileObject.mainTileMaterial.mainTexture = tileObject.mainTileTexture;
 		tileObject.mainTileRenderer.sharedMaterial = tileObject.mainTileMaterial;
 		tileObject.iconTransform.parent = gameObject.transform;
 		gameObject3.transform.parent = gameObject.transform;
 		gameObject4.transform.parent = gameObject.transform;
 		tileObject.iconTransform.localPosition = new Vector3(0f, 0f, -0.1f);
-		gameObject3.transform.localPosition = new Vector3((TileObject.sizeTile.x - TileObject.sizeBorder.x) / 2f, (TileObject.sizeTile.y - TileObject.sizeBorder.y) / 2f, -0.2f);
-		gameObject4.transform.localPosition = new Vector3((TileObject.sizeTile.x - TileObject.sizeLabel.x) / 2f, 1f, -0.15f);
-		if (imageSource == TilePool.TileImageSource.Resources)
+		gameObject3.transform.localPosition = new Vector3((sizeTile.x - sizeBorder.x) / 2f, (sizeTile.y - sizeBorder.y) / 2f, -0.2f);
+		gameObject4.transform.localPosition = new Vector3((sizeTile.x - sizeLabel.x) / 2f, 1f, -0.15f);
+		switch (imageSource)
 		{
+		case TilePool.TileImageSource.Resources:
 			tileObject.iconLoader = new TileIconResourceHandle();
-		}
-		else if (imageSource == TilePool.TileImageSource.StandaloneImageManger)
-		{
+			break;
+		case TilePool.TileImageSource.StandaloneImageManger:
 			tileObject.iconLoader = new TileIconImageMangerHandle(tileObject.GetInstanceID());
-		}
-		else
-		{
+			break;
+		default:
 			tileObject.iconLoader = new TileIconHandle();
+			break;
 		}
 		tileObject.Hide();
 		return tileObject;
 	}
 
-	// Token: 0x06001AD0 RID: 6864 RVA: 0x000C4848 File Offset: 0x000C2C48
 	private static Mesh CreateQuadMesh(Vector2 size)
 	{
 		Mesh mesh = new Mesh();
-		Vector3[] vertices = new Vector3[4];
-		Vector2[] uv = new Vector2[4];
-		int[] triangles = new int[6];
-		vertices = new Vector3[]
+		Vector3[] array = new Vector3[4];
+		Vector2[] array2 = new Vector2[4];
+		int[] array3 = new int[6];
+		array = new Vector3[4]
 		{
 			new Vector3(0f, 0f, 0f),
 			new Vector3(size.x, 0f, 0f),
 			new Vector3(0f, size.y, 0f),
 			new Vector3(size.x, size.y, 0f)
 		};
-		uv = new Vector2[]
+		array2 = new Vector2[4]
 		{
 			new Vector2(0f, 0f),
 			new Vector2(1f, 0f),
 			new Vector2(0f, 1f),
 			new Vector2(1f, 1f)
 		};
-		triangles = new int[]
-		{
-			0,
-			2,
-			1,
-			1,
-			2,
-			3
-		};
-		mesh.vertices = vertices;
-		mesh.triangles = triangles;
-		mesh.uv = uv;
+		array3 = new int[6] { 0, 2, 1, 1, 2, 3 };
+		mesh.vertices = array;
+		mesh.triangles = array3;
+		mesh.uv = array2;
 		return mesh;
 	}
 
-	// Token: 0x06001AD1 RID: 6865 RVA: 0x000C499C File Offset: 0x000C2D9C
 	private static void AddQuadMeshOnGameObject(GameObject obj, Mesh mesh)
 	{
 		obj.layer = LayerMask.NameToLayer("GUI");
@@ -831,127 +856,4 @@ public class TileObject : MonoBehaviour
 		MeshUtils.AddBWDefaultMeshRenderer(obj);
 		meshFilter.mesh = mesh;
 	}
-
-	// Token: 0x04001659 RID: 5721
-	public int poolIndex;
-
-	// Token: 0x0400165A RID: 5722
-	public TilePool obtainedFromPool;
-
-	// Token: 0x0400165B RID: 5723
-	private GameObject mainGameObject;
-
-	// Token: 0x0400165C RID: 5724
-	private GameObject tileBackground;
-
-	// Token: 0x0400165D RID: 5725
-	private GameObject labelObject;
-
-	// Token: 0x0400165E RID: 5726
-	private GameObject rarityBorderObject;
-
-	// Token: 0x0400165F RID: 5727
-	private MeshRenderer mainTileRenderer;
-
-	// Token: 0x04001660 RID: 5728
-	private MeshRenderer backgroundRenderer;
-
-	// Token: 0x04001661 RID: 5729
-	private MeshRenderer rarityBorderRenderer;
-
-	// Token: 0x04001662 RID: 5730
-	private MeshRenderer labelRenderer;
-
-	// Token: 0x04001663 RID: 5731
-	private Material mainTileMaterial;
-
-	// Token: 0x04001664 RID: 5732
-	private Material backgroundMaterial;
-
-	// Token: 0x04001665 RID: 5733
-	private Texture2D mainTileTexture;
-
-	// Token: 0x04001666 RID: 5734
-	private TileIconHandle iconLoader;
-
-	// Token: 0x04001667 RID: 5735
-	private Transform iconTransform;
-
-	// Token: 0x04001668 RID: 5736
-	private GAF _gaf;
-
-	// Token: 0x04001669 RID: 5737
-	private BlockItem _blockItem;
-
-	// Token: 0x0400166A RID: 5738
-	private string _iconName;
-
-	// Token: 0x0400166B RID: 5739
-	private WorldInfo _thumbnailWorldInfo;
-
-	// Token: 0x0400166C RID: 5740
-	private Mesh tileIconMesh;
-
-	// Token: 0x0400166D RID: 5741
-	private Mesh tileBackgroundMesh;
-
-	// Token: 0x0400166E RID: 5742
-	private Mesh labelMesh;
-
-	// Token: 0x0400166F RID: 5743
-	private MeshFilter iconMeshFilter;
-
-	// Token: 0x04001670 RID: 5744
-	private MeshFilter backgroundMeshFilter;
-
-	// Token: 0x04001671 RID: 5745
-	private MeshFilter labelMeshFilter;
-
-	// Token: 0x04001672 RID: 5746
-	private Material enabledBackgroundMaterial;
-
-	// Token: 0x04001673 RID: 5747
-	private Material disabledBackgroundMaterial;
-
-	// Token: 0x04001674 RID: 5748
-	private Material enabledLabelMaterial;
-
-	// Token: 0x04001675 RID: 5749
-	private Material disabledLabelMaterial;
-
-	// Token: 0x04001676 RID: 5750
-	private TilePool.TileImageSource imageSource;
-
-	// Token: 0x04001677 RID: 5751
-	private bool isEnabled = true;
-
-	// Token: 0x04001678 RID: 5752
-	private bool hasIcon;
-
-	// Token: 0x04001679 RID: 5753
-	private bool iconLoaded;
-
-	// Token: 0x0400167A RID: 5754
-	private bool hasLabel;
-
-	// Token: 0x0400167B RID: 5755
-	public TileObject childTileObject;
-
-	// Token: 0x0400167C RID: 5756
-	public bool isOverlay;
-
-	// Token: 0x0400167D RID: 5757
-	public static Vector2 sizeTile = new Vector2(67f, 67f);
-
-	// Token: 0x0400167E RID: 5758
-	private static Vector2 sizeLabel = new Vector2(63f, 14f);
-
-	// Token: 0x0400167F RID: 5759
-	private static Vector2 sizeBorder = new Vector2(64f, 64f);
-
-	// Token: 0x04001680 RID: 5760
-	private static Material iconBaseMaterial;
-
-	// Token: 0x04001681 RID: 5761
-	private static Mesh sharedBorderMesh;
 }

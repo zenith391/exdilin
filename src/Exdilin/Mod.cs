@@ -1,90 +1,49 @@
-﻿using System.Reflection;
 using System.Collections.Generic;
-using System;
+using System.Reflection;
 
-namespace Exdilin
+namespace Exdilin;
+
+public abstract class Mod
 {
+	public static Mod ExecutionMod;
 
-    public class Dependency : IEquatable<Dependency>
-    {
-        public string Id;
-        public Version MinimumVersion;
-		public Version MaximumVersion;
+	public List<Dependency> Dependencies = new List<Dependency>();
 
-        public Dependency(string id, Version minimum)
-        {
-            Id = id;
-            MinimumVersion = minimum;
-			MaximumVersion = new Version(int.MaxValue, int.MaxValue, int.MaxValue);
-        }
+	public abstract string Name { get; }
 
-		public static bool operator==(Dependency a, Dependency b) {
-			return a.Id == b.Id && a.MinimumVersion == b.MinimumVersion && a.MaximumVersion == b.MaximumVersion;
-		}
+	public abstract Version Version { get; }
 
-		public static bool operator !=(Dependency a, Dependency b) {
-			return a.Id != b.Id || a.MinimumVersion != b.MinimumVersion || a.MaximumVersion != b.MaximumVersion;
-		}
+	public abstract string Id { get; }
 
-		public bool Equals(Dependency obj) {
-			return this == obj;
-		}
+	public virtual bool IsImportant { get; }
 
-		public override bool Equals(object obj) {
-			if (obj is Dependency) {
-				return this == (obj as Dependency);
-			} else {
-				return false;
+	public string Directory { get; set; }
+
+	public static Mod GetById(string id)
+	{
+		foreach (Mod mod in ModLoader.mods)
+		{
+			if (mod.Id == id)
+			{
+				return mod;
 			}
 		}
-
-		public override int GetHashCode() {
-			int hashCode = -375925812;
-			hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(Id);
-			hashCode = hashCode * -1521134295 + EqualityComparer<Version>.Default.GetHashCode(MinimumVersion);
-			hashCode = hashCode * -1521134295 + EqualityComparer<Version>.Default.GetHashCode(MaximumVersion);
-			return hashCode;
-		}
+		return null;
 	}
 
-	public abstract class Mod
-    {
+	public virtual void PreInit()
+	{
+	}
 
-        /*
-         * The mod currently being executed.
-         */
-        public static Mod ExecutionMod;
+	public virtual void ApplyPatches(Assembly assembly)
+	{
+	}
 
-        public static Mod GetById(string id)
-        {
-            foreach (Mod mod in ModLoader.mods)
-            {
-                if (mod.Id == id)
-                {
-                    return mod;
-                }
-            }
-            return null;
-        }
+	public virtual void Init()
+	{
+	}
 
-        public abstract string Name { get; }
-        public abstract Version Version { get; }
-        public abstract string Id { get; }
-        public List<Dependency> Dependencies = new List<Dependency>();
-		/// <summary>
-		/// True if the mod changes gameplay of a world. A mod
-		/// that doesn't change gameplay could be a mod that replaces
-		/// game textures (a texture pack) in a way that doesn't
-		/// affect the world gameplay, but a mod that adds any content
-		/// or would limit worlds playability if non-present changes gameplay.
-		/// </summary>
-		/// <value><c>true</c> if changes gameplay; otherwise, <c>false</c>.</value>
-		public virtual bool IsImportant { get; } = false;
-		public string Directory { get; set; }
-
-        public virtual void PreInit() { }
-        public virtual void ApplyPatches(Assembly assembly) { }
-        public virtual void Init() { }
-        public virtual void Register(RegisterType registerType) { }
-    }
+	public virtual void Register(RegisterType registerType)
+	{
+	}
 }

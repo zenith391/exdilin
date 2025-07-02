@@ -1,80 +1,118 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x0200010F RID: 271
 public class CharacterEditor
 {
-	// Token: 0x17000051 RID: 81
-	// (get) Token: 0x0600131F RID: 4895 RVA: 0x00082949 File Offset: 0x00080D49
+	public enum SnapTarget
+	{
+		None,
+		Head,
+		Body,
+		HeadLeft,
+		HeadRight,
+		HeadBack,
+		HeadFront,
+		LeftHand,
+		RightHand
+	}
+
+	private static CharacterEditor _instance;
+
+	private BlockAnimatedCharacter _character;
+
+	private Vector3 _restoreColliderSize;
+
+	private List<Block> _attachedGear = new List<Block>();
+
+	private List<Block> _displacedGear = new List<Block>();
+
+	private HashSet<Block> _nonGearAttachments = new HashSet<Block>();
+
+	private GameObject _TColliderGameObject;
+
+	private Dictionary<SnapTarget, Vector3> _snapTargetPositions = new Dictionary<SnapTarget, Vector3>();
+
+	private Dictionary<SnapTarget, Quaternion> _snapTargetRotations = new Dictionary<SnapTarget, Quaternion>();
+
+	private Dictionary<BlocksterGearType, Quaternion> _gearSnapRotations = new Dictionary<BlocksterGearType, Quaternion>();
+
+	private static List<SnapTarget> AllSnapTargets = new List<SnapTarget>
+	{
+		SnapTarget.Head,
+		SnapTarget.Body,
+		SnapTarget.HeadLeft,
+		SnapTarget.HeadRight,
+		SnapTarget.HeadBack,
+		SnapTarget.HeadFront,
+		SnapTarget.RightHand,
+		SnapTarget.LeftHand
+	};
+
 	public static CharacterEditor Instance
 	{
 		get
 		{
-			if (CharacterEditor._instance == null)
+			if (_instance == null)
 			{
-				CharacterEditor._instance = new CharacterEditor();
+				_instance = new CharacterEditor();
 			}
-			return CharacterEditor._instance;
+			return _instance;
 		}
 	}
 
-	// Token: 0x06001320 RID: 4896 RVA: 0x00082964 File Offset: 0x00080D64
-	public bool GetGearUnderScreenPosition(Vector3 pos, out Block gearBlock, out CharacterEditor.SnapTarget snapTarget)
+	public bool GetGearUnderScreenPosition(Vector3 pos, out Block gearBlock, out SnapTarget snapTarget)
 	{
 		Ray ray = Blocksworld.mainCamera.ScreenPointToRay(pos * NormalizedScreen.scale);
-		foreach (Block block in this._attachedGear)
+		foreach (Block item in _attachedGear)
 		{
-			if (this.GearHitTest(block, ray))
+			if (!GearHitTest(item, ray))
 			{
-				BlocksterGearType blocksterGearType = CharacterEditor.GetBlocksterGearType(block);
-				if (blocksterGearType != BlocksterGearType.None)
+				continue;
+			}
+			BlocksterGearType blocksterGearType = GetBlocksterGearType(item);
+			if (blocksterGearType != BlocksterGearType.None)
+			{
+				if (blocksterGearType == BlocksterGearType.Back || blocksterGearType == BlocksterGearType.Body)
 				{
-					if (blocksterGearType == BlocksterGearType.Back || blocksterGearType == BlocksterGearType.Body)
-					{
-						snapTarget = CharacterEditor.SnapTarget.Body;
-					}
-					else
-					{
-						snapTarget = this.GetSnapTargetUnderScreenPosition(pos, blocksterGearType, null);
-					}
-					gearBlock = block;
-					return true;
+					snapTarget = SnapTarget.Body;
 				}
+				else
+				{
+					snapTarget = GetSnapTargetUnderScreenPosition(pos, blocksterGearType);
+				}
+				gearBlock = item;
+				return true;
 			}
 		}
 		gearBlock = null;
-		snapTarget = CharacterEditor.SnapTarget.None;
+		snapTarget = SnapTarget.None;
 		return false;
 	}
 
-	// Token: 0x06001321 RID: 4897 RVA: 0x00082A24 File Offset: 0x00080E24
-	public CharacterEditor.SnapTarget GetSnapTargetUnderScreenPosition(Vector3 pos, BlocksterGearType gearType, List<CharacterEditor.SnapTarget> allowedTargets = null)
+	public SnapTarget GetSnapTargetUnderScreenPosition(Vector3 pos, BlocksterGearType gearType, List<SnapTarget> allowedTargets = null)
 	{
 		if (allowedTargets == null)
 		{
-			allowedTargets = CharacterEditor.AllSnapTargets;
+			allowedTargets = AllSnapTargets;
 		}
 		Ray ray = Blocksworld.mainCamera.ScreenPointToRay(pos * NormalizedScreen.scale);
-		CharacterEditor.SnapTarget result = CharacterEditor.SnapTarget.None;
+		SnapTarget result = SnapTarget.None;
 		float num = float.MaxValue;
-		foreach (CharacterEditor.SnapTarget snapTarget in allowedTargets)
+		foreach (SnapTarget allowedTarget in allowedTargets)
 		{
-			Vector3 snapTargetPosition = CharacterEditor.Instance.GetSnapTargetPosition(snapTarget, gearType);
-			Bounds bounds = new Bounds(snapTargetPosition, Vector3.one);
-			bool flag = bounds.IntersectRay(ray);
+			Vector3 snapTargetPosition = Instance.GetSnapTargetPosition(allowedTarget, gearType);
+			bool flag = new Bounds(snapTargetPosition, Vector3.one).IntersectRay(ray);
 			float sqrMagnitude = (ray.origin - snapTargetPosition).sqrMagnitude;
 			if (flag && sqrMagnitude < num)
 			{
 				num = sqrMagnitude;
-				result = snapTarget;
+				result = allowedTarget;
 			}
 		}
 		return result;
 	}
 
-	// Token: 0x06001322 RID: 4898 RVA: 0x00082AF4 File Offset: 0x00080EF4
 	private bool GearHitTest(Block b, Ray ray)
 	{
 		if (b.go == null)
@@ -83,8 +121,7 @@ public class CharacterEditor
 		}
 		foreach (Collider collider in b.GetColliders())
 		{
-			RaycastHit raycastHit;
-			if (collider.Raycast(ray, out raycastHit, 20f))
+			if (collider.Raycast(ray, out var _, 20f))
 			{
 				return true;
 			}
@@ -92,58 +129,48 @@ public class CharacterEditor
 		return false;
 	}
 
-	// Token: 0x06001323 RID: 4899 RVA: 0x00082B7C File Offset: 0x00080F7C
-	public Vector3 GetSnapTargetPosition(CharacterEditor.SnapTarget snapTarget, BlocksterGearType gearType)
+	public Vector3 GetSnapTargetPosition(SnapTarget snapTarget, BlocksterGearType gearType)
 	{
-		Vector3 vector = this._snapTargetPositions[snapTarget];
-		if (gearType != BlocksterGearType.Back)
+		Vector3 result = _snapTargetPositions[snapTarget];
+		switch (gearType)
 		{
-			if (gearType != BlocksterGearType.HeadTop)
+		case BlocksterGearType.None:
+			switch (snapTarget)
 			{
-				if (gearType == BlocksterGearType.None)
-				{
-					if (snapTarget == CharacterEditor.SnapTarget.Head)
-					{
-						vector += this._character.goT.up;
-					}
-					else if (snapTarget == CharacterEditor.SnapTarget.Body)
-					{
-						vector -= this._character.goT.forward;
-					}
-				}
+			case SnapTarget.Head:
+				result += _character.goT.up;
+				break;
+			case SnapTarget.Body:
+				result -= _character.goT.forward;
+				break;
 			}
-			else
-			{
-				vector += this._character.goT.up;
-			}
+			break;
+		case BlocksterGearType.HeadTop:
+			result += _character.goT.up;
+			break;
+		case BlocksterGearType.Back:
+			result -= _character.goT.forward;
+			break;
 		}
-		else
-		{
-			vector -= this._character.goT.forward;
-		}
-		return vector;
+		return result;
 	}
 
-	// Token: 0x06001324 RID: 4900 RVA: 0x00082C2E File Offset: 0x0008102E
-	public Quaternion GetSnapTargetRotation(CharacterEditor.SnapTarget snapTarget)
+	public Quaternion GetSnapTargetRotation(SnapTarget snapTarget)
 	{
-		return this._snapTargetRotations[snapTarget];
+		return _snapTargetRotations[snapTarget];
 	}
 
-	// Token: 0x06001325 RID: 4901 RVA: 0x00082C3C File Offset: 0x0008103C
 	public Quaternion GetGearTypeRotation(BlocksterGearType gearType)
 	{
-		return this._gearSnapRotations[gearType];
+		return _gearSnapRotations[gearType];
 	}
 
-	// Token: 0x06001326 RID: 4902 RVA: 0x00082C4C File Offset: 0x0008104C
 	public Quaternion GetGearDefaultOrientation(Block block)
 	{
 		BlockMetaData blockMetaData = block.GetBlockMetaData();
 		return Quaternion.Euler(blockMetaData.defaultOrientation);
 	}
 
-	// Token: 0x06001327 RID: 4903 RVA: 0x00082C6C File Offset: 0x0008106C
 	public Quaternion GetGearCharacterEditorOrientation(Block block)
 	{
 		BlockMetaData blockMetaData = block.GetBlockMetaData();
@@ -154,141 +181,123 @@ public class CharacterEditor
 		return Quaternion.Euler(blockMetaData.characterEditModeOrientation);
 	}
 
-	// Token: 0x06001328 RID: 4904 RVA: 0x00082CA4 File Offset: 0x000810A4
-	public CharacterEditor.SnapTarget GetSnappedTarget(Block block)
+	public SnapTarget GetSnappedTarget(Block block)
 	{
-		BlocksterGearType blocksterGearType = CharacterEditor.GetBlocksterGearType(block);
-		foreach (CharacterEditor.SnapTarget snapTarget in CharacterEditor.AllSnapTargets)
+		BlocksterGearType blocksterGearType = GetBlocksterGearType(block);
+		foreach (SnapTarget allSnapTarget in AllSnapTargets)
 		{
-			if (this.IsSnappedToTarget(block, blocksterGearType, snapTarget))
+			if (IsSnappedToTarget(block, blocksterGearType, allSnapTarget))
 			{
-				return snapTarget;
+				return allSnapTarget;
 			}
 		}
-		return CharacterEditor.SnapTarget.None;
+		return SnapTarget.None;
 	}
 
-	// Token: 0x06001329 RID: 4905 RVA: 0x00082D18 File Offset: 0x00081118
-	private bool IsSnappedToTarget(Block block, BlocksterGearType gearType, CharacterEditor.SnapTarget snapTarget)
+	private bool IsSnappedToTarget(Block block, BlocksterGearType gearType, SnapTarget snapTarget)
 	{
-		Vector3 a = block.GetPosition() - this.BlockSnapOffset(block, snapTarget);
-		Vector3 snapTargetPosition = this.GetSnapTargetPosition(snapTarget, gearType);
-		return (a - snapTargetPosition).sqrMagnitude < 0.1f;
+		Vector3 vector = block.GetPosition() - BlockSnapOffset(block, snapTarget);
+		Vector3 snapTargetPosition = GetSnapTargetPosition(snapTarget, gearType);
+		return (vector - snapTargetPosition).sqrMagnitude < 0.1f;
 	}
 
-	// Token: 0x0600132A RID: 4906 RVA: 0x00082D58 File Offset: 0x00081158
 	public void AddAttachment(Block attachment)
 	{
 		BWSceneManager.AddBlock(attachment);
-		this._attachedGear.Add(attachment);
-		HashSet<Block> exclude = new HashSet<Block>
+		_attachedGear.Add(attachment);
+		HashSet<Block> exclude = new HashSet<Block> { _character };
+		for (int num = _attachedGear.Count - 1; num >= 0; num--)
 		{
-			this._character
-		};
-		for (int i = this._attachedGear.Count - 1; i >= 0; i--)
-		{
-			Block block = this._attachedGear[i];
-			if (block != attachment)
+			Block block = _attachedGear[num];
+			if (block != attachment && block.IsColliding(0f, exclude))
 			{
-				if (block.IsColliding(0f, exclude))
-				{
-					this.DisplaceBlock(block);
-					this._attachedGear.Remove(block);
-				}
+				DisplaceBlock(block);
+				_attachedGear.Remove(block);
 			}
 		}
 	}
 
-	// Token: 0x0600132B RID: 4907 RVA: 0x00082DE8 File Offset: 0x000811E8
 	public void RemoveAttachment(Block attachment)
 	{
-		int num = this._attachedGear.IndexOf(attachment);
+		int num = _attachedGear.IndexOf(attachment);
 		if (num >= 0)
 		{
-			this._attachedGear.RemoveAt(num);
+			_attachedGear.RemoveAt(num);
 		}
 		BWSceneManager.RemoveBlock(attachment);
 	}
 
-	// Token: 0x0600132C RID: 4908 RVA: 0x00082E1B File Offset: 0x0008121B
 	private void DisplaceBlock(Block b)
 	{
 		b.Deactivate();
-		this._displacedGear.Add(b);
+		_displacedGear.Add(b);
 		BWSceneManager.RemoveBlock(b);
 	}
 
-	// Token: 0x0600132D RID: 4909 RVA: 0x00082E38 File Offset: 0x00081238
 	public void RestoreAllDisplacedBlocks()
 	{
-		foreach (Block block in this._displacedGear)
+		foreach (Block item in _displacedGear)
 		{
-			block.Activate();
-			this._attachedGear.Add(block);
-			BWSceneManager.AddBlock(block);
+			item.Activate();
+			_attachedGear.Add(item);
+			BWSceneManager.AddBlock(item);
 		}
-		this._displacedGear.Clear();
+		_displacedGear.Clear();
 	}
 
-	// Token: 0x0600132E RID: 4910 RVA: 0x00082EB0 File Offset: 0x000812B0
 	public void RemoveAllDisplacedBlocks()
 	{
-		foreach (Block block in this._displacedGear)
+		foreach (Block item in _displacedGear)
 		{
-			BWSceneManager.RemoveBlock(block);
-			block.Destroy();
+			BWSceneManager.RemoveBlock(item);
+			item.Destroy();
 		}
-		this._displacedGear.Clear();
+		_displacedGear.Clear();
 	}
 
-	// Token: 0x0600132F RID: 4911 RVA: 0x00082F1C File Offset: 0x0008131C
 	public List<Block> GetDisplacedBlocks()
 	{
-		return this._displacedGear;
+		return _displacedGear;
 	}
 
-	// Token: 0x06001330 RID: 4912 RVA: 0x00082F24 File Offset: 0x00081324
 	public BlockAnimatedCharacter CharacterBlock()
 	{
-		return this._character;
+		return _character;
 	}
 
-	// Token: 0x06001331 RID: 4913 RVA: 0x00082F2C File Offset: 0x0008132C
 	public bool IsCharacterBlock(Block b)
 	{
-		return b == this._character;
+		return b == _character;
 	}
 
-	// Token: 0x06001332 RID: 4914 RVA: 0x00082F37 File Offset: 0x00081337
 	public bool IsCharacterAttachment(Block b)
 	{
-		return this._attachedGear.Contains(b);
+		return _attachedGear.Contains(b);
 	}
 
-	// Token: 0x06001333 RID: 4915 RVA: 0x00082F48 File Offset: 0x00081348
 	public void EditCharacter(BlockAnimatedCharacter character)
 	{
-		this._character = character;
-		BoxCollider component = this._character.go.GetComponent<BoxCollider>();
-		this._restoreColliderSize = component.size;
+		_character = character;
+		BoxCollider component = _character.go.GetComponent<BoxCollider>();
+		_restoreColliderSize = component.size;
 		component.size = new Vector3(1f, 3f, 1f);
 		component.center = new Vector3(0f, 0.8f, 0f);
-		this._TColliderGameObject = new GameObject("TCollider");
-		BoxCollider boxCollider = this._TColliderGameObject.AddComponent<BoxCollider>();
-		this._TColliderGameObject.transform.position = this._character.goT.position;
+		_TColliderGameObject = new GameObject("TCollider");
+		BoxCollider boxCollider = _TColliderGameObject.AddComponent<BoxCollider>();
+		_TColliderGameObject.transform.position = _character.goT.position;
 		boxCollider.center = new Vector3(0f, 1.15f, 0.2f);
 		boxCollider.size = new Vector3(3f, 0.5f, 0.5f);
-		this._TColliderGameObject.transform.rotation = this._character.goT.rotation;
-		BWSceneManager.AddChildBlockInstanceID(this._TColliderGameObject, this._character);
-		this._character.stateHandler.ForceSitStill();
-		this._character.DetermineAttachments();
-		this._attachedGear.Clear();
-		this._displacedGear.Clear();
+		_TColliderGameObject.transform.rotation = _character.goT.rotation;
+		BWSceneManager.AddChildBlockInstanceID(_TColliderGameObject, _character);
+		_character.stateHandler.ForceSitStill();
+		_character.DetermineAttachments();
+		_attachedGear.Clear();
+		_displacedGear.Clear();
 		if (Blocksworld.cWidgetGesture.IsActive)
 		{
 			Blocksworld.cWidgetGesture.Cancel();
 		}
-		TBox.Show(false);
+		TBox.Show(show: false);
 		TBox.tileCharacterEditExitIcon.Show();
 		Vector3 position = character.GetPosition();
 		Vector3 vector = position + 0.75f * Vector3.up;
@@ -302,240 +311,231 @@ public class CharacterEditor
 		Blocksworld.blocksworldCamera.PlaceCamera(quaternion.eulerAngles, vector2);
 		Blocksworld.blocksworldCamera.SetTargetDistance(5f);
 		Blocksworld.blocksworldCamera.SetTargetPosition(vector);
-		Vector3 position2 = this._character.GetHeadAttach().transform.position;
-		Vector3 position3 = this._character.GetBodyAttach().transform.position;
-		Vector3 forward = this._character.goT.forward;
-		Vector3 up = this._character.goT.up;
-		Vector3 right = this._character.goT.right;
-		Vector3 a = this._character.GetPosition() + 0.5f * Vector3.up;
-		Vector3 a2 = this._character.GetPosition() - 0.5f * Vector3.up;
-		Transform transform = this._character.GetHandAttach(0).transform;
-		Transform transform2 = this._character.GetHandAttach(1).transform;
-		Vector3 vector4 = position + right;
-		Vector3 vector5 = position - right;
-		foreach (Block block in this._character.attachedHeadBlocks)
+		Vector3 position2 = _character.GetHeadAttach().transform.position;
+		Vector3 position3 = _character.GetBodyAttach().transform.position;
+		Vector3 forward = _character.goT.forward;
+		Vector3 up = _character.goT.up;
+		Vector3 right = _character.goT.right;
+		Vector3 vector4 = _character.GetPosition() + 0.5f * Vector3.up;
+		Vector3 vector5 = _character.GetPosition() - 0.5f * Vector3.up;
+		Transform transform = _character.GetHandAttach(0).transform;
+		Transform transform2 = _character.GetHandAttach(1).transform;
+		Vector3 vector6 = position + right;
+		Vector3 vector7 = position - right;
+		foreach (Block attachedHeadBlock in _character.attachedHeadBlocks)
 		{
-			if (CharacterEditor.IsGear(block))
+			if (IsGear(attachedHeadBlock))
 			{
-				this._attachedGear.Add(block);
+				_attachedGear.Add(attachedHeadBlock);
+				continue;
 			}
-			else
-			{
-				this._nonGearAttachments.Add(block);
-				block.goT.SetParent(this._character.GetHeadAttach().transform);
-			}
+			_nonGearAttachments.Add(attachedHeadBlock);
+			attachedHeadBlock.goT.SetParent(_character.GetHeadAttach().transform);
 		}
-		foreach (Block block2 in this._character.attachedBackBlocks)
+		foreach (Block attachedBackBlock in _character.attachedBackBlocks)
 		{
-			if (CharacterEditor.IsGear(block2))
+			if (IsGear(attachedBackBlock))
 			{
-				this._attachedGear.Add(block2);
+				_attachedGear.Add(attachedBackBlock);
+				continue;
 			}
-			else
-			{
-				this._nonGearAttachments.Add(block2);
-				block2.goT.SetParent(this._character.GetBodyAttach().transform);
-			}
+			_nonGearAttachments.Add(attachedBackBlock);
+			attachedBackBlock.goT.SetParent(_character.GetBodyAttach().transform);
 		}
-		if (this._character.attachedRightBlock != null)
+		if (_character.attachedRightBlock != null)
 		{
-			Block attachedRightBlock = this._character.attachedRightBlock;
-			foreach (Block block3 in this._character.attachedRightHandBlocks)
+			Block attachedRightBlock = _character.attachedRightBlock;
+			foreach (Block attachedRightHandBlock in _character.attachedRightHandBlocks)
 			{
-				block3.goT.SetParent(attachedRightBlock.goT);
+				attachedRightHandBlock.goT.SetParent(attachedRightBlock.goT);
 			}
-			if (CharacterEditor.IsGear(attachedRightBlock))
+			if (IsGear(attachedRightBlock))
 			{
-				this._attachedGear.Add(attachedRightBlock);
+				_attachedGear.Add(attachedRightBlock);
 			}
 			else
 			{
-				this._nonGearAttachments.Add(attachedRightBlock);
+				_nonGearAttachments.Add(attachedRightBlock);
 				attachedRightBlock.goT.SetParent(transform);
 			}
 		}
-		if (this._character.attachedLeftBlock != null)
+		if (_character.attachedLeftBlock != null)
 		{
-			Block attachedLeftBlock = this._character.attachedLeftBlock;
-			foreach (Block block4 in this._character.attachedLeftHandBlocks)
+			Block attachedLeftBlock = _character.attachedLeftBlock;
+			foreach (Block attachedLeftHandBlock in _character.attachedLeftHandBlocks)
 			{
-				block4.goT.SetParent(attachedLeftBlock.goT);
+				attachedLeftHandBlock.goT.SetParent(attachedLeftBlock.goT);
 			}
-			if (CharacterEditor.IsGear(attachedLeftBlock))
+			if (IsGear(attachedLeftBlock))
 			{
-				this._attachedGear.Add(attachedLeftBlock);
+				_attachedGear.Add(attachedLeftBlock);
 			}
 			else
 			{
-				this._nonGearAttachments.Add(attachedLeftBlock);
+				_nonGearAttachments.Add(attachedLeftBlock);
 				attachedLeftBlock.goT.SetParent(transform2);
 			}
 		}
-		this._character.stateHandler.ForceEditPose();
-		Vector3 position4 = this._character.GetHeadAttach().transform.position;
-		Vector3 position5 = this._character.GetBodyAttach().transform.position;
-		Vector3 b = position4 - position2;
-		Vector3 b2 = position5 - position3;
-		Vector3 vector6 = a + b;
-		Vector3 value = a2 + b2;
+		_character.stateHandler.ForceEditPose();
+		Vector3 position4 = _character.GetHeadAttach().transform.position;
+		Vector3 position5 = _character.GetBodyAttach().transform.position;
+		Vector3 vector8 = position4 - position2;
+		Vector3 vector9 = position5 - position3;
+		Vector3 vector10 = vector4 + vector8;
+		Vector3 value = vector5 + vector9;
 		Vector3 value2 = transform.TransformPoint(BlockAnimatedCharacter.rightHandPlacementOffset);
 		Vector3 value3 = transform2.TransformPoint(BlockAnimatedCharacter.leftHandPlacementOffset);
-		Quaternion rotation = this._character.GetRotation();
+		Quaternion rotation = _character.GetRotation();
 		Quaternion value4 = rotation * Quaternion.AngleAxis(180f, Vector3.up);
 		Quaternion value5 = rotation * Quaternion.AngleAxis(90f, Vector3.up);
 		Quaternion value6 = rotation * Quaternion.AngleAxis(-90f, Vector3.up);
 		Quaternion value7 = rotation * Quaternion.Euler(-90f, 180f, 0f);
 		Quaternion value8 = rotation * Quaternion.Euler(-90f, 180f, 0f);
-		this._gearSnapRotations.Clear();
-		this._gearSnapRotations.Add(BlocksterGearType.Head, rotation);
-		this._gearSnapRotations.Add(BlocksterGearType.HeadSide, rotation);
-		this._gearSnapRotations.Add(BlocksterGearType.HeadTop, rotation);
-		this._gearSnapRotations.Add(BlocksterGearType.Body, rotation);
-		this._gearSnapRotations.Add(BlocksterGearType.Back, rotation);
-		this._snapTargetPositions.Clear();
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.Body, value);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.Head, vector6);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadBack, vector6 - forward);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadLeft, vector6 - right);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadRight, vector6 + right);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadFront, vector6 + forward);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.RightHand, value2);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.LeftHand, value3);
-		this._snapTargetRotations.Clear();
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.Body, rotation);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.Head, rotation);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.HeadBack, value4);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.HeadLeft, value6);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.HeadRight, value5);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.HeadFront, rotation);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.RightHand, value7);
-		this._snapTargetRotations.Add(CharacterEditor.SnapTarget.LeftHand, value8);
-		foreach (Block block5 in this._character.attachedHeadBlocks)
+		_gearSnapRotations.Clear();
+		_gearSnapRotations.Add(BlocksterGearType.Head, rotation);
+		_gearSnapRotations.Add(BlocksterGearType.HeadSide, rotation);
+		_gearSnapRotations.Add(BlocksterGearType.HeadTop, rotation);
+		_gearSnapRotations.Add(BlocksterGearType.Body, rotation);
+		_gearSnapRotations.Add(BlocksterGearType.Back, rotation);
+		_snapTargetPositions.Clear();
+		_snapTargetPositions.Add(SnapTarget.Body, value);
+		_snapTargetPositions.Add(SnapTarget.Head, vector10);
+		_snapTargetPositions.Add(SnapTarget.HeadBack, vector10 - forward);
+		_snapTargetPositions.Add(SnapTarget.HeadLeft, vector10 - right);
+		_snapTargetPositions.Add(SnapTarget.HeadRight, vector10 + right);
+		_snapTargetPositions.Add(SnapTarget.HeadFront, vector10 + forward);
+		_snapTargetPositions.Add(SnapTarget.RightHand, value2);
+		_snapTargetPositions.Add(SnapTarget.LeftHand, value3);
+		_snapTargetRotations.Clear();
+		_snapTargetRotations.Add(SnapTarget.Body, rotation);
+		_snapTargetRotations.Add(SnapTarget.Head, rotation);
+		_snapTargetRotations.Add(SnapTarget.HeadBack, value4);
+		_snapTargetRotations.Add(SnapTarget.HeadLeft, value6);
+		_snapTargetRotations.Add(SnapTarget.HeadRight, value5);
+		_snapTargetRotations.Add(SnapTarget.HeadFront, rotation);
+		_snapTargetRotations.Add(SnapTarget.RightHand, value7);
+		_snapTargetRotations.Add(SnapTarget.LeftHand, value8);
+		foreach (Block attachedHeadBlock2 in _character.attachedHeadBlocks)
 		{
-			if (CharacterEditor.IsGear(block5))
+			if (IsGear(attachedHeadBlock2))
 			{
-				block5.MoveTo(block5.GetPosition() + b);
+				attachedHeadBlock2.MoveTo(attachedHeadBlock2.GetPosition() + vector8);
 			}
-			if (this.GetSnappedTarget(block5) == CharacterEditor.SnapTarget.None)
+			if (GetSnappedTarget(attachedHeadBlock2) == SnapTarget.None)
 			{
-				this._attachedGear.Remove(block5);
-				this._nonGearAttachments.Add(block5);
-				block5.goT.SetParent(this._character.GetHeadAttach().transform);
-			}
-		}
-		foreach (Block block6 in this._character.attachedBackBlocks)
-		{
-			if (CharacterEditor.IsGear(block6))
-			{
-				block6.MoveTo(block6.GetPosition() + b2);
-			}
-			if (this.GetSnappedTarget(block6) == CharacterEditor.SnapTarget.None)
-			{
-				this._attachedGear.Remove(block6);
-				this._nonGearAttachments.Add(block6);
-				block6.goT.SetParent(this._character.GetBodyAttach().transform);
+				_attachedGear.Remove(attachedHeadBlock2);
+				_nonGearAttachments.Add(attachedHeadBlock2);
+				attachedHeadBlock2.goT.SetParent(_character.GetHeadAttach().transform);
 			}
 		}
-		if (this._character.attachedRightBlock != null && CharacterEditor.IsGear(this._character.attachedRightBlock))
+		foreach (Block attachedBackBlock2 in _character.attachedBackBlocks)
 		{
-			this._character.attachedRightBlock.MoveTo(this.GetSnapTargetPosition(CharacterEditor.SnapTarget.RightHand, BlocksterGearType.RightHand) + this.BlockSnapOffset(this._character.attachedRightBlock, CharacterEditor.SnapTarget.RightHand));
-			this._character.attachedRightBlock.RotateTo(this.GetSnapTargetRotation(CharacterEditor.SnapTarget.RightHand) * this.GetGearCharacterEditorOrientation(this._character.attachedRightBlock));
+			if (IsGear(attachedBackBlock2))
+			{
+				attachedBackBlock2.MoveTo(attachedBackBlock2.GetPosition() + vector9);
+			}
+			if (GetSnappedTarget(attachedBackBlock2) == SnapTarget.None)
+			{
+				_attachedGear.Remove(attachedBackBlock2);
+				_nonGearAttachments.Add(attachedBackBlock2);
+				attachedBackBlock2.goT.SetParent(_character.GetBodyAttach().transform);
+			}
 		}
-		if (this._character.attachedLeftBlock != null && CharacterEditor.IsGear(this._character.attachedLeftBlock))
+		if (_character.attachedRightBlock != null && IsGear(_character.attachedRightBlock))
 		{
-			this._character.attachedLeftBlock.MoveTo(this.GetSnapTargetPosition(CharacterEditor.SnapTarget.LeftHand, BlocksterGearType.LeftHand) + this.BlockSnapOffset(this._character.attachedLeftBlock, CharacterEditor.SnapTarget.LeftHand));
-			this._character.attachedLeftBlock.RotateTo(this.GetSnapTargetRotation(CharacterEditor.SnapTarget.LeftHand) * this.GetGearCharacterEditorOrientation(this._character.attachedLeftBlock));
+			_character.attachedRightBlock.MoveTo(GetSnapTargetPosition(SnapTarget.RightHand, BlocksterGearType.RightHand) + BlockSnapOffset(_character.attachedRightBlock, SnapTarget.RightHand));
+			_character.attachedRightBlock.RotateTo(GetSnapTargetRotation(SnapTarget.RightHand) * GetGearCharacterEditorOrientation(_character.attachedRightBlock));
+		}
+		if (_character.attachedLeftBlock != null && IsGear(_character.attachedLeftBlock))
+		{
+			_character.attachedLeftBlock.MoveTo(GetSnapTargetPosition(SnapTarget.LeftHand, BlocksterGearType.LeftHand) + BlockSnapOffset(_character.attachedLeftBlock, SnapTarget.LeftHand));
+			_character.attachedLeftBlock.RotateTo(GetSnapTargetRotation(SnapTarget.LeftHand) * GetGearCharacterEditorOrientation(_character.attachedLeftBlock));
 		}
 		Blocksworld.buildPanel.Layout();
 	}
 
-	// Token: 0x06001334 RID: 4916 RVA: 0x000839C8 File Offset: 0x00081DC8
 	public static bool IsGear(Block b)
 	{
-		return CharacterEditor.GetBlocksterGearType(b) != BlocksterGearType.None;
+		return GetBlocksterGearType(b) != BlocksterGearType.None;
 	}
 
-	// Token: 0x06001335 RID: 4917 RVA: 0x000839D8 File Offset: 0x00081DD8
 	public void Exit()
 	{
-		Dictionary<CharacterEditor.SnapTarget, List<Block>> dictionary = new Dictionary<CharacterEditor.SnapTarget, List<Block>>();
-		foreach (Block block in this._attachedGear)
+		Dictionary<SnapTarget, List<Block>> dictionary = new Dictionary<SnapTarget, List<Block>>();
+		foreach (Block item in _attachedGear)
 		{
-			CharacterEditor.SnapTarget snappedTarget = this.GetSnappedTarget(block);
-			if (snappedTarget == CharacterEditor.SnapTarget.None)
+			SnapTarget snappedTarget = GetSnappedTarget(item);
+			if (snappedTarget == SnapTarget.None)
 			{
-				BWLog.Info("Failed to get snap target for attachment " + block);
+				BWLog.Info("Failed to get snap target for attachment " + item);
+				continue;
 			}
-			else
+			if (!dictionary.TryGetValue(snappedTarget, out var value))
 			{
-				List<Block> list;
-				if (!dictionary.TryGetValue(snappedTarget, out list))
-				{
-					list = new List<Block>();
-					dictionary.Add(snappedTarget, list);
-				}
-				list.Add(block);
+				value = new List<Block>();
+				dictionary.Add(snappedTarget, value);
 			}
+			value.Add(item);
 		}
-		this._character.stateHandler.ForceSitStill();
-		foreach (Block block2 in this._nonGearAttachments)
+		_character.stateHandler.ForceSitStill();
+		foreach (Block nonGearAttachment in _nonGearAttachments)
 		{
-			block2.goT.SetParent(null);
-			block2.MoveTo(block2.goT.position);
+			nonGearAttachment.goT.SetParent(null);
+			nonGearAttachment.MoveTo(nonGearAttachment.goT.position);
 		}
-		BoxCollider component = this._character.go.GetComponent<BoxCollider>();
-		component.size = this._restoreColliderSize;
+		BoxCollider component = _character.go.GetComponent<BoxCollider>();
+		component.size = _restoreColliderSize;
 		component.center = Vector3.zero;
-		BWSceneManager.RemoveChildBlockInstanceID(this._TColliderGameObject);
-		UnityEngine.Object.Destroy(this._TColliderGameObject);
-		Vector3 vector = this._character.GetPosition() + 0.5f * Vector3.up;
-		Vector3 vector2 = this._character.GetPosition() - 0.5f * Vector3.up;
-		Vector3 forward = this._character.goT.forward;
-		Vector3 right = this._character.goT.right;
-		this._snapTargetPositions.Clear();
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.Body, vector2);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.Head, vector);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadBack, vector - forward);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadLeft, vector - right);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadRight, vector + right);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.HeadFront, vector + forward);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.RightHand, vector2 + right);
-		this._snapTargetPositions.Add(CharacterEditor.SnapTarget.LeftHand, vector2 - right);
-		foreach (KeyValuePair<CharacterEditor.SnapTarget, List<Block>> keyValuePair in dictionary)
+		BWSceneManager.RemoveChildBlockInstanceID(_TColliderGameObject);
+		Object.Destroy(_TColliderGameObject);
+		Vector3 vector = _character.GetPosition() + 0.5f * Vector3.up;
+		Vector3 vector2 = _character.GetPosition() - 0.5f * Vector3.up;
+		Vector3 forward = _character.goT.forward;
+		Vector3 right = _character.goT.right;
+		_snapTargetPositions.Clear();
+		_snapTargetPositions.Add(SnapTarget.Body, vector2);
+		_snapTargetPositions.Add(SnapTarget.Head, vector);
+		_snapTargetPositions.Add(SnapTarget.HeadBack, vector - forward);
+		_snapTargetPositions.Add(SnapTarget.HeadLeft, vector - right);
+		_snapTargetPositions.Add(SnapTarget.HeadRight, vector + right);
+		_snapTargetPositions.Add(SnapTarget.HeadFront, vector + forward);
+		_snapTargetPositions.Add(SnapTarget.RightHand, vector2 + right);
+		_snapTargetPositions.Add(SnapTarget.LeftHand, vector2 - right);
+		foreach (KeyValuePair<SnapTarget, List<Block>> item2 in dictionary)
 		{
-			CharacterEditor.SnapTarget key = keyValuePair.Key;
-			foreach (Block block3 in keyValuePair.Value)
+			SnapTarget key = item2.Key;
+			foreach (Block item3 in item2.Value)
 			{
-				BlocksterGearType blocksterGearType = CharacterEditor.GetBlocksterGearType(block3);
-				Vector3 snapTargetPosition = this.GetSnapTargetPosition(key, blocksterGearType);
-				block3.MoveTo(snapTargetPosition + this.BlockSnapOffset(block3, key));
-				if (key == CharacterEditor.SnapTarget.RightHand)
+				BlocksterGearType blocksterGearType = GetBlocksterGearType(item3);
+				Vector3 snapTargetPosition = GetSnapTargetPosition(key, blocksterGearType);
+				item3.MoveTo(snapTargetPosition + BlockSnapOffset(item3, key));
+				switch (key)
 				{
-					block3.RotateTo(this._character.GetRotation() * Quaternion.Euler(new Vector3(0f, 90f, 90f)) * this.GetGearCharacterEditorOrientation(block3));
+				case SnapTarget.RightHand:
+					item3.RotateTo(_character.GetRotation() * Quaternion.Euler(new Vector3(0f, 90f, 90f)) * GetGearCharacterEditorOrientation(item3));
+					break;
+				case SnapTarget.LeftHand:
+					item3.RotateTo(_character.GetRotation() * Quaternion.Euler(new Vector3(0f, -90f, -90f)) * GetGearCharacterEditorOrientation(item3));
+					break;
 				}
-				else if (key == CharacterEditor.SnapTarget.LeftHand)
-				{
-					block3.RotateTo(this._character.GetRotation() * Quaternion.Euler(new Vector3(0f, -90f, -90f)) * this.GetGearCharacterEditorOrientation(block3));
-				}
-				ConnectednessGraph.Update(block3);
+				ConnectednessGraph.Update(item3);
 			}
 		}
-		this._character.DetermineAttachments();
-		this._character = null;
+		_character.DetermineAttachments();
+		_character = null;
 		bool show = TBox.selected != null;
 		TBox.Show(show);
 		Blocksworld.blocksworldCamera.Restore();
 		Blocksworld.buildPanel.Layout();
-		this._attachedGear.Clear();
-		this._nonGearAttachments.Clear();
-		this._TColliderGameObject = null;
-		this._snapTargetPositions.Clear();
-		this._snapTargetRotations.Clear();
-		this._gearSnapRotations.Clear();
+		_attachedGear.Clear();
+		_nonGearAttachments.Clear();
+		_TColliderGameObject = null;
+		_snapTargetPositions.Clear();
+		_snapTargetRotations.Clear();
+		_gearSnapRotations.Clear();
 	}
 
-	// Token: 0x06001336 RID: 4918 RVA: 0x00083E40 File Offset: 0x00082240
-	public Vector3 BlockSnapOffset(Block b, CharacterEditor.SnapTarget snapTarget)
+	public Vector3 BlockSnapOffset(Block b, SnapTarget snapTarget)
 	{
 		BlockMetaData blockMetaData = b.GetBlockMetaData();
 		float num;
@@ -556,7 +556,7 @@ public class CharacterEditor
 			num = 0f;
 			num2 = num5 / 2f - 0.5f;
 			num3 = num6 / 2f - 0.5f;
-			if (snapTarget == CharacterEditor.SnapTarget.RightHand || snapTarget == CharacterEditor.SnapTarget.LeftHand)
+			if (snapTarget == SnapTarget.RightHand || snapTarget == SnapTarget.LeftHand)
 			{
 				num3 = num2;
 				num = 0f;
@@ -564,79 +564,84 @@ public class CharacterEditor
 			}
 			else
 			{
-				if (num2 > 0f && (snapTarget == CharacterEditor.SnapTarget.Head || snapTarget == CharacterEditor.SnapTarget.HeadFront || snapTarget == CharacterEditor.SnapTarget.HeadBack || snapTarget == CharacterEditor.SnapTarget.HeadLeft || snapTarget == CharacterEditor.SnapTarget.HeadRight))
+				if (num2 > 0f && (snapTarget == SnapTarget.Head || snapTarget == SnapTarget.HeadFront || snapTarget == SnapTarget.HeadBack || snapTarget == SnapTarget.HeadLeft || snapTarget == SnapTarget.HeadRight))
 				{
 					num2 -= 1f;
 				}
 				if (num3 > 0f)
 				{
-					if (snapTarget == CharacterEditor.SnapTarget.HeadBack || snapTarget == CharacterEditor.SnapTarget.Body)
+					switch (snapTarget)
 					{
-						num3 = -num3;
-					}
-					else if (snapTarget == CharacterEditor.SnapTarget.HeadLeft)
+					case SnapTarget.Body:
+					case SnapTarget.HeadBack:
+						num3 = 0f - num3;
+						break;
+					case SnapTarget.HeadLeft:
 					{
-						float num7 = num;
-						num = -num3;
-						num3 = num7;
+						float num8 = num;
+						num = 0f - num3;
+						num3 = num8;
+						break;
 					}
-					else if (snapTarget == CharacterEditor.SnapTarget.HeadRight)
+					case SnapTarget.HeadRight:
 					{
 						float num7 = num;
 						num = num3;
 						num3 = num7;
+						break;
+					}
 					}
 				}
 			}
 		}
 		Vector3 direction = new Vector3(num, num2, num3);
-		return this._character.goT.TransformDirection(direction);
+		return _character.goT.TransformDirection(direction);
 	}
 
-	// Token: 0x06001337 RID: 4919 RVA: 0x00083FCC File Offset: 0x000823CC
 	public void RefreshAttachments()
 	{
-		this._attachedGear.Clear();
+		_attachedGear.Clear();
 		Collider[] array = new Collider[8];
 		Vector3 one = Vector3.one;
-		foreach (CharacterEditor.SnapTarget snapTarget in CharacterEditor.AllSnapTargets)
+		foreach (SnapTarget allSnapTarget in AllSnapTargets)
 		{
 			HashSet<BlocksterGearType> hashSet = new HashSet<BlocksterGearType>();
-			switch (snapTarget)
+			switch (allSnapTarget)
 			{
-			case CharacterEditor.SnapTarget.Head:
+			case SnapTarget.Head:
 				hashSet.Add(BlocksterGearType.Head);
 				hashSet.Add(BlocksterGearType.HeadTop);
 				break;
-			case CharacterEditor.SnapTarget.Body:
+			case SnapTarget.Body:
 				hashSet.Add(BlocksterGearType.Back);
 				hashSet.Add(BlocksterGearType.Body);
 				break;
-			case CharacterEditor.SnapTarget.HeadLeft:
-			case CharacterEditor.SnapTarget.HeadRight:
-			case CharacterEditor.SnapTarget.HeadBack:
-			case CharacterEditor.SnapTarget.HeadFront:
+			case SnapTarget.HeadLeft:
+			case SnapTarget.HeadRight:
+			case SnapTarget.HeadBack:
+			case SnapTarget.HeadFront:
 				hashSet.Add(BlocksterGearType.HeadSide);
 				break;
-			case CharacterEditor.SnapTarget.LeftHand:
-			case CharacterEditor.SnapTarget.RightHand:
+			case SnapTarget.LeftHand:
+			case SnapTarget.RightHand:
 				hashSet.Add(BlocksterGearType.RightHand);
 				hashSet.Add(BlocksterGearType.LeftHand);
 				break;
 			}
-			foreach (BlocksterGearType blocksterGearType in hashSet)
+			foreach (BlocksterGearType item in hashSet)
 			{
-				Vector3 snapTargetPosition = this.GetSnapTargetPosition(snapTarget, blocksterGearType);
+				Vector3 snapTargetPosition = GetSnapTargetPosition(allSnapTarget, item);
 				Physics.OverlapBoxNonAlloc(snapTargetPosition, one, array);
-				foreach (Collider collider in array)
+				Collider[] array2 = array;
+				foreach (Collider collider in array2)
 				{
 					if (!(collider == null) && !(collider.gameObject == null))
 					{
-						Block block = BWSceneManager.FindBlock(collider.gameObject, true);
-						if (block != null && block.go != null && CharacterEditor.GetBlocksterGearType(block) == blocksterGearType)
+						Block block = BWSceneManager.FindBlock(collider.gameObject, checkChildGos: true);
+						if (block != null && block.go != null && GetBlocksterGearType(block) == item)
 						{
 							ConnectednessGraph.Remove(block);
-							this._attachedGear.Add(block);
+							_attachedGear.Add(block);
 						}
 					}
 				}
@@ -644,13 +649,11 @@ public class CharacterEditor
 		}
 	}
 
-	// Token: 0x06001338 RID: 4920 RVA: 0x000841C0 File Offset: 0x000825C0
 	public bool InEditMode()
 	{
-		return this._character != null;
+		return _character != null;
 	}
 
-	// Token: 0x06001339 RID: 4921 RVA: 0x000841D0 File Offset: 0x000825D0
 	public static BlocksterGearType GetBlocksterGearType(Block b)
 	{
 		BlockMetaData blockMetaData = b.GetBlockMetaData();
@@ -675,7 +678,7 @@ public class CharacterEditor
 			{
 				if (blockMetaData.shapeCategories[j] == "Head Gear" || blockMetaData.shapeCategories[j] == "Eyewear" || blockMetaData.shapeCategories[j] == "Beard" || blockMetaData.shapeCategories[j] == "Mustache" || blockMetaData.shapeCategories[j] == "Bangs" || blockMetaData.shapeCategories[j] == "Head Back Gear" || blockMetaData.shapeCategories[j] == "Ponytail")
 				{
-					blocksterGearType = ((!flag) ? BlocksterGearType.HeadSide : BlocksterGearType.Head);
+					blocksterGearType = (flag ? BlocksterGearType.Head : BlocksterGearType.HeadSide);
 					break;
 				}
 			}
@@ -705,71 +708,5 @@ public class CharacterEditor
 			}
 		}
 		return blocksterGearType;
-	}
-
-	// Token: 0x04000F12 RID: 3858
-	private static CharacterEditor _instance;
-
-	// Token: 0x04000F13 RID: 3859
-	private BlockAnimatedCharacter _character;
-
-	// Token: 0x04000F14 RID: 3860
-	private Vector3 _restoreColliderSize;
-
-	// Token: 0x04000F15 RID: 3861
-	private List<Block> _attachedGear = new List<Block>();
-
-	// Token: 0x04000F16 RID: 3862
-	private List<Block> _displacedGear = new List<Block>();
-
-	// Token: 0x04000F17 RID: 3863
-	private HashSet<Block> _nonGearAttachments = new HashSet<Block>();
-
-	// Token: 0x04000F18 RID: 3864
-	private GameObject _TColliderGameObject;
-
-	// Token: 0x04000F19 RID: 3865
-	private Dictionary<CharacterEditor.SnapTarget, Vector3> _snapTargetPositions = new Dictionary<CharacterEditor.SnapTarget, Vector3>();
-
-	// Token: 0x04000F1A RID: 3866
-	private Dictionary<CharacterEditor.SnapTarget, Quaternion> _snapTargetRotations = new Dictionary<CharacterEditor.SnapTarget, Quaternion>();
-
-	// Token: 0x04000F1B RID: 3867
-	private Dictionary<BlocksterGearType, Quaternion> _gearSnapRotations = new Dictionary<BlocksterGearType, Quaternion>();
-
-	// Token: 0x04000F1C RID: 3868
-	private static List<CharacterEditor.SnapTarget> AllSnapTargets = new List<CharacterEditor.SnapTarget>
-	{
-		CharacterEditor.SnapTarget.Head,
-		CharacterEditor.SnapTarget.Body,
-		CharacterEditor.SnapTarget.HeadLeft,
-		CharacterEditor.SnapTarget.HeadRight,
-		CharacterEditor.SnapTarget.HeadBack,
-		CharacterEditor.SnapTarget.HeadFront,
-		CharacterEditor.SnapTarget.RightHand,
-		CharacterEditor.SnapTarget.LeftHand
-	};
-
-	// Token: 0x02000110 RID: 272
-	public enum SnapTarget
-	{
-		// Token: 0x04000F1E RID: 3870
-		None,
-		// Token: 0x04000F1F RID: 3871
-		Head,
-		// Token: 0x04000F20 RID: 3872
-		Body,
-		// Token: 0x04000F21 RID: 3873
-		HeadLeft,
-		// Token: 0x04000F22 RID: 3874
-		HeadRight,
-		// Token: 0x04000F23 RID: 3875
-		HeadBack,
-		// Token: 0x04000F24 RID: 3876
-		HeadFront,
-		// Token: 0x04000F25 RID: 3877
-		LeftHand,
-		// Token: 0x04000F26 RID: 3878
-		RightHand
 	}
 }

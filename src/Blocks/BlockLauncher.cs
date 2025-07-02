@@ -1,141 +1,129 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Blocks
+namespace Blocks;
+
+public class BlockLauncher : Block
 {
-	// Token: 0x020000A2 RID: 162
-	public class BlockLauncher : Block
+	private ConfigurableJoint joint;
+
+	private bool isLaunched;
+
+	private bool wasLaunched;
+
+	private float launchForce;
+
+	public BlockLauncher(List<List<Tile>> tiles)
+		: base(tiles)
 	{
-		// Token: 0x06000C9F RID: 3231 RVA: 0x00058901 File Offset: 0x00056D01
-		public BlockLauncher(List<List<Tile>> tiles) : base(tiles)
-		{
-		}
+	}
 
-		// Token: 0x06000CA0 RID: 3232 RVA: 0x0005890C File Offset: 0x00056D0C
-		public new static void Register()
+	public new static void Register()
+	{
+		PredicateRegistry.Add<BlockLauncher>("Launcher.Launch", (Block b) => ((BlockLauncher)b).IsLaunched, (Block b) => ((BlockLauncher)b).Launch, new Type[1] { typeof(float) });
+	}
+
+	public override void Play2()
+	{
+		base.Play2();
+		CreateFakeRigidbodyBetweenJoints();
+	}
+
+	public override void Play()
+	{
+		base.Play();
+		List<Block> list = ConnectionsOfType(2, directed: true);
+		joint = null;
+		if (list.Count > 0)
 		{
-			PredicateRegistry.Add<BlockLauncher>("Launcher.Launch", (Block b) => new PredicateSensorDelegate(((BlockLauncher)b).IsLaunched), (Block b) => new PredicateActionDelegate(((BlockLauncher)b).Launch), new Type[]
+			BWLog.Info("Created joint");
+			GameObject gameObject = list[0].chunk.go;
+			GameObject gameObject2 = new GameObject(go.name + " Middle");
+			gameObject2.transform.position = go.transform.position + go.transform.up;
+			Rigidbody rigidbody = gameObject2.AddComponent<Rigidbody>();
+			rigidbody.mass = 1f;
+			if (Blocksworld.interpolateRigidBodies)
 			{
-				typeof(float)
-			}, null, null);
-		}
-
-		// Token: 0x06000CA1 RID: 3233 RVA: 0x00058973 File Offset: 0x00056D73
-		public override void Play2()
-		{
-			base.Play2();
-			base.CreateFakeRigidbodyBetweenJoints();
-		}
-
-		// Token: 0x06000CA2 RID: 3234 RVA: 0x00058984 File Offset: 0x00056D84
-		public override void Play()
-		{
-			base.Play();
-			List<Block> list = base.ConnectionsOfType(2, true);
-			this.joint = null;
-			if (list.Count > 0)
-			{
-				BWLog.Info("Created joint");
-				GameObject go = list[0].chunk.go;
-				GameObject gameObject = new GameObject(this.go.name + " Middle");
-				gameObject.transform.position = this.go.transform.position + this.go.transform.up;
-				Rigidbody rigidbody = gameObject.AddComponent<Rigidbody>();
-				rigidbody.mass = 1f;
-				if (Blocksworld.interpolateRigidBodies)
-				{
-					rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
-				}
-				this.joint = this.chunk.go.AddComponent<ConfigurableJoint>();
-				this.joint.anchor = this.go.transform.localPosition;
-				this.joint.axis = this.go.transform.up;
-				this.joint.xMotion = ConfigurableJointMotion.Locked;
-				this.joint.yMotion = ConfigurableJointMotion.Locked;
-				this.joint.zMotion = ConfigurableJointMotion.Locked;
-				this.joint.angularXMotion = ConfigurableJointMotion.Locked;
-				this.joint.angularYMotion = ConfigurableJointMotion.Locked;
-				this.joint.angularZMotion = ConfigurableJointMotion.Locked;
-				this.joint.connectedBody = rigidbody;
-				ConfigurableJoint configurableJoint = gameObject.AddComponent<ConfigurableJoint>();
-				configurableJoint.anchor = this.go.transform.localPosition;
-				configurableJoint.axis = this.go.transform.up;
-				configurableJoint.xMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.yMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.zMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.angularXMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.angularYMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.angularZMotion = ConfigurableJointMotion.Locked;
-				configurableJoint.connectedBody = go.GetComponent<Rigidbody>();
+				rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 			}
-			this.isLaunched = false;
-			this.wasLaunched = false;
-			this.launchForce = 0f;
+			joint = chunk.go.AddComponent<ConfigurableJoint>();
+			joint.anchor = go.transform.localPosition;
+			joint.axis = go.transform.up;
+			joint.xMotion = ConfigurableJointMotion.Locked;
+			joint.yMotion = ConfigurableJointMotion.Locked;
+			joint.zMotion = ConfigurableJointMotion.Locked;
+			joint.angularXMotion = ConfigurableJointMotion.Locked;
+			joint.angularYMotion = ConfigurableJointMotion.Locked;
+			joint.angularZMotion = ConfigurableJointMotion.Locked;
+			joint.connectedBody = rigidbody;
+			ConfigurableJoint configurableJoint = gameObject2.AddComponent<ConfigurableJoint>();
+			configurableJoint.anchor = go.transform.localPosition;
+			configurableJoint.axis = go.transform.up;
+			configurableJoint.xMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.yMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.zMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.angularXMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.angularYMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.angularZMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.connectedBody = gameObject.GetComponent<Rigidbody>();
 		}
+		isLaunched = false;
+		wasLaunched = false;
+		launchForce = 0f;
+	}
 
-		// Token: 0x06000CA3 RID: 3235 RVA: 0x00058B69 File Offset: 0x00056F69
-		public override void Stop(bool resetBlock = true)
+	public override void Stop(bool resetBlock = true)
+	{
+		if (joint != null)
 		{
-			if (this.joint != null)
-			{
-				UnityEngine.Object.Destroy(this.joint);
-				this.joint = null;
-				base.DestroyFakeRigidbodies();
-			}
-			base.Stop(resetBlock);
+			UnityEngine.Object.Destroy(joint);
+			joint = null;
+			DestroyFakeRigidbodies();
 		}
+		base.Stop(resetBlock);
+	}
 
-		// Token: 0x06000CA4 RID: 3236 RVA: 0x00058B9C File Offset: 0x00056F9C
-		public TileResultCode Launch(ScriptRowExecutionInfo eInfo, object[] args)
+	public TileResultCode Launch(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		float num = (float)args[0];
+		if (joint != null && !wasLaunched)
 		{
-			float num = (float)args[0];
-			if (this.joint != null && !this.wasLaunched)
+			joint.xMotion = ConfigurableJointMotion.Free;
+			joint.yMotion = ConfigurableJointMotion.Free;
+			joint.zMotion = ConfigurableJointMotion.Free;
+			joint.angularXMotion = ConfigurableJointMotion.Free;
+			joint.angularYMotion = ConfigurableJointMotion.Free;
+			joint.angularZMotion = ConfigurableJointMotion.Free;
+			launchForce += num;
+			isLaunched = true;
+		}
+		return TileResultCode.True;
+	}
+
+	public override void FixedUpdate()
+	{
+		base.FixedUpdate();
+		if (isLaunched && !wasLaunched)
+		{
+			Vector3 vector = go.transform.up * launchForce;
+			Vector3 position = go.transform.position + go.transform.up * 0.5f;
+			joint.connectedBody.AddForceAtPosition(vector, position, ForceMode.Force);
+			go.transform.parent.gameObject.GetComponent<Rigidbody>().AddForceAtPosition(-vector, position, ForceMode.Force);
+			if (vector.magnitude > 0.5f)
 			{
-				this.joint.xMotion = ConfigurableJointMotion.Free;
-				this.joint.yMotion = ConfigurableJointMotion.Free;
-				this.joint.zMotion = ConfigurableJointMotion.Free;
-				this.joint.angularXMotion = ConfigurableJointMotion.Free;
-				this.joint.angularYMotion = ConfigurableJointMotion.Free;
-				this.joint.angularZMotion = ConfigurableJointMotion.Free;
-				this.launchForce += num;
-				this.isLaunched = true;
+				PlayPositionedSound("Explode");
 			}
+		}
+		wasLaunched = isLaunched;
+	}
+
+	public TileResultCode IsLaunched(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		if (isLaunched)
+		{
 			return TileResultCode.True;
 		}
-
-		// Token: 0x06000CA5 RID: 3237 RVA: 0x00058C2C File Offset: 0x0005702C
-		public override void FixedUpdate()
-		{
-			base.FixedUpdate();
-			if (this.isLaunched && !this.wasLaunched)
-			{
-				Vector3 vector = this.go.transform.up * this.launchForce;
-				Vector3 position = this.go.transform.position + this.go.transform.up * 0.5f;
-				this.joint.connectedBody.AddForceAtPosition(vector, position, ForceMode.Force);
-				this.go.transform.parent.gameObject.GetComponent<Rigidbody>().AddForceAtPosition(-vector, position, ForceMode.Force);
-				if (vector.magnitude > 0.5f)
-				{
-					base.PlayPositionedSound("Explode", 1f, 1f);
-				}
-			}
-			this.wasLaunched = this.isLaunched;
-		}
-
-		// Token: 0x06000CA6 RID: 3238 RVA: 0x00058D0D File Offset: 0x0005710D
-		public TileResultCode IsLaunched(ScriptRowExecutionInfo eInfo, object[] args)
-		{
-			return (!this.isLaunched) ? TileResultCode.False : TileResultCode.True;
-		}
-
-		// Token: 0x040009F7 RID: 2551
-		private ConfigurableJoint joint;
-
-		// Token: 0x040009F8 RID: 2552
-		private bool isLaunched;
-
-		// Token: 0x040009F9 RID: 2553
-		private bool wasLaunched;
-
-		// Token: 0x040009FA RID: 2554
-		private float launchForce;
+		return TileResultCode.False;
 	}
 }

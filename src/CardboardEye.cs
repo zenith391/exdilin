@@ -1,13 +1,24 @@
-﻿using System;
 using UnityEngine;
 
-// Token: 0x02000017 RID: 23
 [RequireComponent(typeof(Camera))]
 [AddComponentMenu("Cardboard/CardboardEye")]
 public class CardboardEye : MonoBehaviour
 {
-	// Token: 0x1700002C RID: 44
-	// (get) Token: 0x060000E0 RID: 224 RVA: 0x00005A58 File Offset: 0x00003E58
+	public Cardboard.Eye eye;
+
+	[Tooltip("Culling mask layers that this eye should toggle relative to the parent camera.")]
+	public LayerMask toggleCullingMask = 0;
+
+	private StereoController controller;
+
+	private StereoRenderEffect stereoEffect;
+
+	private Camera monoCamera;
+
+	private Matrix4x4 realProj;
+
+	private float interpPosition = 1f;
+
 	public StereoController Controller
 	{
 		get
@@ -16,66 +27,52 @@ public class CardboardEye : MonoBehaviour
 			{
 				return null;
 			}
-			if ((Application.isEditor && !Application.isPlaying) || this.controller == null)
+			if ((Application.isEditor && !Application.isPlaying) || controller == null)
 			{
 				return base.transform.parent.GetComponentInParent<StereoController>();
 			}
-			return this.controller;
+			return controller;
 		}
 	}
 
-	// Token: 0x1700002D RID: 45
-	// (get) Token: 0x060000E1 RID: 225 RVA: 0x00005AB9 File Offset: 0x00003EB9
-	public CardboardHead Head
-	{
-		get
-		{
-			return base.GetComponentInParent<CardboardHead>();
-		}
-	}
+	public CardboardHead Head => GetComponentInParent<CardboardHead>();
 
-	// Token: 0x1700002E RID: 46
-	// (get) Token: 0x060000E2 RID: 226 RVA: 0x00005AC1 File Offset: 0x00003EC1
-	// (set) Token: 0x060000E3 RID: 227 RVA: 0x00005AC9 File Offset: 0x00003EC9
 	public Camera cam { get; private set; }
 
-	// Token: 0x060000E4 RID: 228 RVA: 0x00005AD2 File Offset: 0x00003ED2
 	private void Awake()
 	{
-		this.cam = base.GetComponent<Camera>();
+		cam = GetComponent<Camera>();
 	}
 
-	// Token: 0x060000E5 RID: 229 RVA: 0x00005AE0 File Offset: 0x00003EE0
 	private void Start()
 	{
-		StereoController x = this.Controller;
-		if (x == null)
+		StereoController stereoController = Controller;
+		if (stereoController == null)
 		{
 			Debug.LogError("CardboardEye must be child of a StereoController.");
 			base.enabled = false;
-			return;
 		}
-		this.controller = x;
-		this.monoCamera = this.controller.GetComponent<Camera>();
-		this.UpdateStereoValues();
+		else
+		{
+			controller = stereoController;
+			monoCamera = controller.GetComponent<Camera>();
+			UpdateStereoValues();
+		}
 	}
 
-	// Token: 0x060000E6 RID: 230 RVA: 0x00005B30 File Offset: 0x00003F30
 	private void FixProjection(ref Matrix4x4 proj)
 	{
-		ref Matrix4x4 ptr = ref proj;
-		proj[0, 0] = ptr[0, 0] * (this.cam.rect.height / this.cam.rect.width / 2f);
-		float nearClipPlane = this.monoCamera.nearClipPlane;
-		float farClipPlane = this.monoCamera.farClipPlane;
+		proj[0, 0] *= cam.rect.height / cam.rect.width / 2f;
+		float nearClipPlane = monoCamera.nearClipPlane;
+		float farClipPlane = monoCamera.farClipPlane;
 		proj[2, 2] = (nearClipPlane + farClipPlane) / (nearClipPlane - farClipPlane);
 		proj[2, 3] = 2f * nearClipPlane * farClipPlane / (nearClipPlane - farClipPlane);
 	}
 
-	// Token: 0x060000E7 RID: 231 RVA: 0x00005BC0 File Offset: 0x00003FC0
 	private Rect FixViewport(Rect rect)
 	{
-		Rect rect2 = Cardboard.SDK.Viewport(this.eye, Cardboard.Distortion.Distorted);
-		if (this.eye == Cardboard.Eye.Right)
+		Rect rect2 = Cardboard.SDK.Viewport(eye);
+		if (eye == Cardboard.Eye.Right)
 		{
 			rect.x -= 0.5f;
 		}
@@ -103,104 +100,98 @@ public class CardboardEye : MonoBehaviour
 		return rect;
 	}
 
-	// Token: 0x060000E8 RID: 232 RVA: 0x00005D20 File Offset: 0x00004120
 	public void UpdateStereoValues()
 	{
-		Matrix4x4 projectionMatrix = Cardboard.SDK.Projection(this.eye, Cardboard.Distortion.Distorted);
-		this.realProj = Cardboard.SDK.Projection(this.eye, Cardboard.Distortion.Undistorted);
-		this.CopyCameraAndMakeSideBySide(this.controller, projectionMatrix[0, 2], projectionMatrix[1, 2]);
-		this.FixProjection(ref projectionMatrix);
-		this.FixProjection(ref this.realProj);
-		float t = Mathf.Clamp01(this.controller.matchByZoom) * Mathf.Clamp01(this.controller.matchMonoFOV);
-		float num = this.monoCamera.projectionMatrix[1, 1];
-		float num2 = 1f / Mathf.Lerp(1f / projectionMatrix[1, 1], 1f / num, t) / projectionMatrix[1, 1];
-		ref Matrix4x4 ptr = ref projectionMatrix;
-		projectionMatrix[0, 0] = ptr[0, 0] * num2;
-		ptr = ref projectionMatrix;
-		projectionMatrix[1, 1] = ptr[1, 1] * num2;
-		this.cam.projectionMatrix = projectionMatrix;
+		Matrix4x4 proj = Cardboard.SDK.Projection(eye);
+		realProj = Cardboard.SDK.Projection(eye, Cardboard.Distortion.Undistorted);
+		CopyCameraAndMakeSideBySide(controller, proj[0, 2], proj[1, 2]);
+		FixProjection(ref proj);
+		FixProjection(ref realProj);
+		float t = Mathf.Clamp01(controller.matchByZoom) * Mathf.Clamp01(controller.matchMonoFOV);
+		float num = monoCamera.projectionMatrix[1, 1];
+		float num2 = 1f / Mathf.Lerp(1f / proj[1, 1], 1f / num, t) / proj[1, 1];
+		proj[0, 0] *= num2;
+		proj[1, 1] *= num2;
+		cam.projectionMatrix = proj;
 		if (Application.isEditor)
 		{
-			this.cam.fieldOfView = 2f * Mathf.Atan(1f / projectionMatrix[1, 1]) * 57.29578f;
+			cam.fieldOfView = 2f * Mathf.Atan(1f / proj[1, 1]) * 57.29578f;
 		}
-		this.cam.targetTexture = (this.monoCamera.targetTexture ?? Cardboard.SDK.StereoScreen);
-		if (this.cam.targetTexture == null)
+		cam.targetTexture = monoCamera.targetTexture ?? Cardboard.SDK.StereoScreen;
+		if (cam.targetTexture == null)
 		{
-			this.cam.rect = this.FixViewport(this.cam.rect);
+			cam.rect = FixViewport(cam.rect);
 		}
 	}
 
-	// Token: 0x060000E9 RID: 233 RVA: 0x00005EB8 File Offset: 0x000042B8
 	private void SetupStereo()
 	{
 		Cardboard.SDK.UpdateState();
-		bool flag = this.controller.centerOfInterest != null && this.controller.centerOfInterest.gameObject.activeInHierarchy;
-		bool flag2 = flag || this.interpPosition < 1f;
-		if (this.controller.keepStereoUpdated || Cardboard.SDK.ProfileChanged || (this.cam.targetTexture == null && Cardboard.SDK.StereoScreen != null))
+		bool flag = controller.centerOfInterest != null && controller.centerOfInterest.gameObject.activeInHierarchy;
+		bool flag2 = flag || interpPosition < 1f;
+		if (controller.keepStereoUpdated || Cardboard.SDK.ProfileChanged || (cam.targetTexture == null && Cardboard.SDK.StereoScreen != null))
 		{
-			this.UpdateStereoValues();
+			UpdateStereoValues();
 			flag2 = true;
 		}
 		if (flag2)
 		{
-			float proj = this.cam.projectionMatrix[1, 1];
+			float proj = cam.projectionMatrix[1, 1];
 			float z = base.transform.lossyScale.z;
-			Vector3 b = this.controller.ComputeStereoEyePosition(this.eye, proj, z);
-			this.interpPosition = ((!this.controller.keepStereoUpdated && !flag) ? 1f : (Time.deltaTime / (this.controller.stereoAdjustSmoothing + Time.deltaTime)));
-			base.transform.localPosition = Vector3.Lerp(base.transform.localPosition, b, this.interpPosition);
+			Vector3 b = controller.ComputeStereoEyePosition(eye, proj, z);
+			interpPosition = ((!controller.keepStereoUpdated && !flag) ? 1f : (Time.deltaTime / (controller.stereoAdjustSmoothing + Time.deltaTime)));
+			base.transform.localPosition = Vector3.Lerp(base.transform.localPosition, b, interpPosition);
 		}
 		if (Cardboard.SDK.DistortionCorrection == Cardboard.DistortionCorrectionMethod.None)
 		{
-			Matrix4x4 mat = this.cam.cameraToWorldMatrix * Matrix4x4.Inverse(this.cam.projectionMatrix) * this.realProj;
-			Shader.SetGlobalMatrix("_RealProjection", this.realProj);
+			Matrix4x4 mat = cam.cameraToWorldMatrix * Matrix4x4.Inverse(cam.projectionMatrix) * realProj;
+			Shader.SetGlobalMatrix("_RealProjection", realProj);
 			Shader.SetGlobalMatrix("_FixProjection", mat);
 		}
 		else
 		{
-			Shader.SetGlobalMatrix("_RealProjection", this.cam.projectionMatrix);
-			Shader.SetGlobalMatrix("_FixProjection", this.cam.cameraToWorldMatrix);
+			Shader.SetGlobalMatrix("_RealProjection", cam.projectionMatrix);
+			Shader.SetGlobalMatrix("_FixProjection", cam.cameraToWorldMatrix);
 		}
-		Shader.SetGlobalFloat("_NearClip", this.cam.nearClipPlane);
+		Shader.SetGlobalFloat("_NearClip", cam.nearClipPlane);
 	}
 
-	// Token: 0x060000EA RID: 234 RVA: 0x000060AC File Offset: 0x000044AC
 	private void OnPreCull()
 	{
-		if (!Cardboard.SDK.VRModeEnabled || !this.monoCamera.enabled)
+		if (!Cardboard.SDK.VRModeEnabled || !monoCamera.enabled)
 		{
-			this.cam.enabled = false;
+			cam.enabled = false;
 			return;
 		}
-		this.SetupStereo();
-		if (!this.controller.directRender && Cardboard.SDK.StereoScreen != null)
+		SetupStereo();
+		if (!controller.directRender && Cardboard.SDK.StereoScreen != null)
 		{
-			this.stereoEffect = base.GetComponent<StereoRenderEffect>();
-			if (this.stereoEffect == null)
+			stereoEffect = GetComponent<StereoRenderEffect>();
+			if (stereoEffect == null)
 			{
-				this.stereoEffect = base.gameObject.AddComponent<StereoRenderEffect>();
+				stereoEffect = base.gameObject.AddComponent<StereoRenderEffect>();
 			}
-			this.stereoEffect.enabled = true;
+			stereoEffect.enabled = true;
 		}
-		else if (this.stereoEffect != null)
+		else if (stereoEffect != null)
 		{
-			this.stereoEffect.enabled = false;
+			stereoEffect.enabled = false;
 		}
 	}
 
-	// Token: 0x060000EB RID: 235 RVA: 0x0000616C File Offset: 0x0000456C
 	public void CopyCameraAndMakeSideBySide(StereoController controller, float parx = 0f, float pary = 0f)
 	{
-		Camera camera = (!(controller == this.controller)) ? controller.GetComponent<Camera>() : this.monoCamera;
+		Camera camera = ((!(controller == this.controller)) ? controller.GetComponent<Camera>() : monoCamera);
 		float num = CardboardProfile.Default.device.lenses.separation * controller.stereoMultiplier;
-		Vector3 localPosition = (!Application.isPlaying) ? (((this.eye != Cardboard.Eye.Left) ? (num / 2f) : (-num / 2f)) * Vector3.right) : base.transform.localPosition;
-		this.cam.CopyFrom(camera);
-		this.cam.cullingMask ^= this.toggleCullingMask.value;
-		this.cam.depth = camera.depth;
+		Vector3 localPosition = ((!Application.isPlaying) ? (((eye != Cardboard.Eye.Left) ? (num / 2f) : ((0f - num) / 2f)) * Vector3.right) : base.transform.localPosition);
+		cam.CopyFrom(camera);
+		cam.cullingMask ^= toggleCullingMask.value;
+		cam.depth = camera.depth;
 		base.transform.localPosition = localPosition;
 		base.transform.localRotation = Quaternion.identity;
 		base.transform.localScale = Vector3.one;
 		Skybox component = camera.GetComponent<Skybox>();
-		Skybox skybox = base.GetComponent<Skybox>();
+		Skybox skybox = GetComponent<Skybox>();
 		if (component != null)
 		{
 			if (skybox == null)
@@ -211,9 +202,9 @@ public class CardboardEye : MonoBehaviour
 		}
 		else if (skybox != null)
 		{
-			UnityEngine.Object.Destroy(skybox);
+			Object.Destroy(skybox);
 		}
-		Rect rect = this.cam.rect;
+		Rect rect = cam.rect;
 		Vector2 center = rect.center;
 		center.x = Mathf.Lerp(center.x, 0.5f, Mathf.Clamp01(controller.stereoPaddingX));
 		center.y = Mathf.Lerp(center.y, 0.5f, Mathf.Clamp01(controller.stereoPaddingY));
@@ -222,7 +213,7 @@ public class CardboardEye : MonoBehaviour
 		rect.x += (rect.width - num2) / 2f;
 		rect.width = num2;
 		rect.x *= (0.5f - rect.width) / (1f - rect.width);
-		if (this.eye == Cardboard.Eye.Right)
+		if (eye == Cardboard.Eye.Right)
 		{
 			rect.x += 0.5f;
 		}
@@ -232,28 +223,6 @@ public class CardboardEye : MonoBehaviour
 			rect.x -= parx / 4f * num3;
 			rect.y -= pary / 2f * num3;
 		}
-		this.cam.rect = rect;
+		cam.rect = rect;
 	}
-
-	// Token: 0x04000118 RID: 280
-	public Cardboard.Eye eye;
-
-	// Token: 0x04000119 RID: 281
-	[Tooltip("Culling mask layers that this eye should toggle relative to the parent camera.")]
-	public LayerMask toggleCullingMask = 0;
-
-	// Token: 0x0400011A RID: 282
-	private StereoController controller;
-
-	// Token: 0x0400011B RID: 283
-	private StereoRenderEffect stereoEffect;
-
-	// Token: 0x0400011C RID: 284
-	private Camera monoCamera;
-
-	// Token: 0x0400011D RID: 285
-	private Matrix4x4 realProj;
-
-	// Token: 0x0400011E RID: 286
-	private float interpPosition = 1f;
 }

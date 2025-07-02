@@ -1,21 +1,19 @@
-﻿using System;
 using System.Collections.Generic;
 
-namespace Exdilin
+namespace Exdilin;
+
+public static class SettingsRegistry
 {
-    public static class SettingsRegistry
-    {
-        private static List<SettingEntry> entries = new List<SettingEntry>();
-        public static SettingEntry[] GetSettings()
-        {
-            return entries.ToArray();
-        }
+	private static List<SettingEntry> entries = new List<SettingEntry>();
 
-        public static void AddSetting(SettingEntry entry)
-        {
-            entry.mod = Mod.ExecutionMod;
-            entries.Add(entry);
-        }
+	public static SettingEntry[] GetSettings()
+	{
+		return entries.ToArray();
+	}
 
-    }
+	public static void AddSetting(SettingEntry entry)
+	{
+		entry.mod = Mod.ExecutionMod;
+		entries.Add(entry);
+	}
 }

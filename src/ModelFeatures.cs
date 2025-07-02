@@ -1,14 +1,21 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 
-// Token: 0x020001D2 RID: 466
 public class ModelFeatures
 {
-	// Token: 0x06001863 RID: 6243 RVA: 0x000ABA5C File Offset: 0x000A9E5C
+	public const string MAX_WHEELS_ALONG_SAME_LINE = "MaxWheelsAlongSameLine";
+
+	public const string NON_CONDITIONAL_FREEZE = "NonConditionalFreeze";
+
+	private static List<ModelFeatureType> featureTypes;
+
+	private static List<List<List<Tile>>> tempList;
+
 	static ModelFeatures()
 	{
-		ModelFeatures.featureTypes = new List<ModelFeatureType>
+		featureTypes = new List<ModelFeatureType>();
+		tempList = new List<List<List<Tile>>>();
+		featureTypes = new List<ModelFeatureType>
 		{
 			new MultiCounterModelFeatureType
 			{
@@ -21,32 +28,27 @@ public class ModelFeatures
 			},
 			new NonConditionalTileWithAnyPredicateExistsFeatureType
 			{
-				predicates = 
-				{
-					Block.predicateFreeze
-				},
+				predicates = { Block.predicateFreeze },
 				name = "NonConditionalFreeze"
 			}
 		};
 	}
 
-	// Token: 0x06001865 RID: 6245 RVA: 0x000ABAF8 File Offset: 0x000A9EF8
 	public static List<ModelFeatureType> GetModelFeatures(IEnumerable<Block> model)
 	{
-		ModelFeatures.tempList.Clear();
-		foreach (Block block in model)
+		tempList.Clear();
+		foreach (Block item in model)
 		{
-			ModelFeatures.tempList.Add(block.tiles);
+			tempList.Add(item.tiles);
 		}
-		return ModelFeatures.GetModelFeatures(ModelFeatures.tempList);
+		return GetModelFeatures(tempList);
 	}
 
-	// Token: 0x06001866 RID: 6246 RVA: 0x000ABB6C File Offset: 0x000A9F6C
 	public static List<ModelFeatureType> GetModelFeatures(List<List<List<Tile>>> model)
 	{
-		for (int i = 0; i < ModelFeatures.featureTypes.Count; i++)
+		for (int i = 0; i < featureTypes.Count; i++)
 		{
-			ModelFeatures.featureTypes[i].Reset();
+			featureTypes[i].Reset();
 		}
 		for (int j = 0; j < model.Count; j++)
 		{
@@ -62,32 +64,19 @@ public class ModelFeatures
 					{
 						beforeThen = false;
 					}
-					for (int m = 0; m < ModelFeatures.featureTypes.Count; m++)
+					for (int m = 0; m < featureTypes.Count; m++)
 					{
-						ModelFeatures.featureTypes[m].Update(model, tile, j, k, l, beforeThen);
+						featureTypes[m].Update(model, tile, j, k, l, beforeThen);
 					}
 				}
 			}
 		}
-		return ModelFeatures.featureTypes;
+		return featureTypes;
 	}
 
-	// Token: 0x06001867 RID: 6247 RVA: 0x000ABC64 File Offset: 0x000AA064
 	public static string CategorizeModel(List<List<List<Tile>>> model)
 	{
-		List<ModelFeatureType> modelFeatures = ModelFeatures.GetModelFeatures(model);
-		return ModelCategorizer.GetModelCategory(modelFeatures, null);
+		List<ModelFeatureType> modelFeatures = GetModelFeatures(model);
+		return ModelCategorizer.GetModelCategory(modelFeatures);
 	}
-
-	// Token: 0x04001354 RID: 4948
-	public const string MAX_WHEELS_ALONG_SAME_LINE = "MaxWheelsAlongSameLine";
-
-	// Token: 0x04001355 RID: 4949
-	public const string NON_CONDITIONAL_FREEZE = "NonConditionalFreeze";
-
-	// Token: 0x04001356 RID: 4950
-	private static List<ModelFeatureType> featureTypes = new List<ModelFeatureType>();
-
-	// Token: 0x04001357 RID: 4951
-	private static List<List<List<Tile>>> tempList = new List<List<List<Tile>>>();
 }

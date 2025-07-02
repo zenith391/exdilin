@@ -1,720 +1,662 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Blocks
+namespace Blocks;
+
+public class BlockWater : BlockAbstractWater
 {
-	// Token: 0x020000ED RID: 237
-	public class BlockWater : BlockAbstractWater
+	private static Dictionary<string, int> f__switch_map4;
+
+	private Dictionary<int, BlockWaterInfo> blockInfos;
+
+	private List<BlockWaterInfo> blockInfoList;
+
+	private int counter;
+
+	private float mass;
+
+	protected static BlockWater mainWater = null;
+
+	public static HashSet<Block> blocksWithinWater;
+
+	private static float maxWaterLevel = -1000000f;
+
+	private float origPosY;
+
+	private bool isInfiniteOcean = true;
+
+	private Bounds waterBounds;
+
+	public bool isReflective = true;
+
+	private GameObject reflectiveWater;
+
+	private float fogMultiplier = 1f;
+
+	private Color fogColorOverride = Color.white;
+
+	private static Color32 bubbleColor = Color.white;
+
+	private bool doSnap;
+
+	public float snapper = 80f;
+
+	public BlockWater(List<List<Tile>> tiles)
+		: base(tiles)
 	{
-		// Token: 0x06001191 RID: 4497 RVA: 0x00077ACC File Offset: 0x00075ECC
-		public BlockWater(List<List<Tile>> tiles) : base(tiles)
+		Transform transform = goT.Find("Reflective Water");
+		if (transform != null)
 		{
-			Transform transform = this.goT.Find("Reflective Water");
-			if (transform != null)
-			{
-				this.reflectiveWater = transform.gameObject;
-			}
+			reflectiveWater = transform.gameObject;
 		}
+	}
 
-		// Token: 0x06001192 RID: 4498 RVA: 0x00077B47 File Offset: 0x00075F47
-		public new static void Register()
-		{
-		}
+	public new static void Register()
+	{
+	}
 
-		// Token: 0x06001193 RID: 4499 RVA: 0x00077B4C File Offset: 0x00075F4C
-		public static bool BlockWithinWater(Block block, bool checkDensity = false)
+	public static bool BlockWithinWater(Block block, bool checkDensity = false)
+	{
+		int instanceId = block.GetInstanceId();
+		if (blocksWithinWater != null && blocksWithinWater.Contains(block))
 		{
-			int instanceId = block.GetInstanceId();
-			if (BlockWater.blocksWithinWater != null && BlockWater.blocksWithinWater.Contains(block))
+			if (checkDensity && mainWater.waterDensity == 0f)
 			{
-				return !checkDensity || BlockWater.mainWater.waterDensity != 0f || !(block is BlockAnimatedCharacter);
-			}
-			for (int i = 0; i < BlockAbstractWater.waterCubes.Count; i++)
-			{
-				BlockWaterCube blockWaterCube = BlockAbstractWater.waterCubes[i];
-				if (blockWaterCube.blocksWithinWater != null && blockWaterCube.blocksWithinWater.Contains(instanceId))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		// Token: 0x06001194 RID: 4500 RVA: 0x00077BEC File Offset: 0x00075FEC
-		public static bool BlockWithinTaggedWater(Block block, string tag)
-		{
-			int instanceId = block.GetInstanceId();
-			for (int i = 0; i < BlockAbstractWater.waterCubes.Count; i++)
-			{
-				BlockWaterCube blockWaterCube = BlockAbstractWater.waterCubes[i];
-				HashSet<int> hashSet;
-				if (blockWaterCube.blocksWithinTaggedWater.TryGetValue(tag, out hashSet) && hashSet.Contains(instanceId))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		// Token: 0x06001195 RID: 4501 RVA: 0x00077C4C File Offset: 0x0007604C
-		public override void OnCreate()
-		{
-			this.TextureTo(base.GetTexture(0), base.GetTextureNormal(), true, 0, false);
-			this.UpdateSolidness();
-			if (this.go.GetComponent<Collider>() != null)
-			{
-				this.go.GetComponent<Collider>().isTrigger = false;
-			}
-			this.UpdateRenderState();
-		}
-
-		// Token: 0x06001196 RID: 4502 RVA: 0x00077CA3 File Offset: 0x000760A3
-		public override void OnReconstructed()
-		{
-			base.OnReconstructed();
-			this.UpdateSolidness();
-			this.TextureTo(Scarcity.GetNormalizedTexture(base.GetTexture(0)), Vector3.up, true, 0, true);
-		}
-
-		// Token: 0x06001197 RID: 4503 RVA: 0x00077CCC File Offset: 0x000760CC
-		private void UpdateSolidness()
-		{
-			string texture = base.GetTexture(0);
-			this.isSolid = this.IsSolidTexture(texture);
-			this.isReflective = this.IsReflectiveTexture(texture);
-			if (this.go.GetComponent<Collider>() != null)
-			{
-				this.go.GetComponent<Collider>().isTrigger = !this.isSolid;
-			}
-			int layer = (!this.isSolid) ? 13 : 4;
-			this.go.layer = layer;
-			if (this.goT.parent != null)
-			{
-				this.goT.parent.gameObject.layer = layer;
-			}
-			if (this.go.GetComponent<Collider>() is BoxCollider)
-			{
-				BoxCollider boxCollider = (BoxCollider)this.go.GetComponent<Collider>();
-				Vector3 scale = base.GetScale();
-				boxCollider.size = new Vector3(scale.x * 10f, scale.y, scale.z * 10f);
-			}
-			this.hasSlowWaves = (texture == "Texture Water Stream" || Blocksworld.renderingWater);
-		}
-
-		// Token: 0x06001198 RID: 4504 RVA: 0x00077DF0 File Offset: 0x000761F0
-		private void UpdateRenderState()
-		{
-			if (this.go.activeSelf && this.reflectiveWater != null)
-			{
-				this.go.GetComponent<MeshRenderer>().enabled = !Blocksworld.renderingWater;
-				this.reflectiveWater.SetActive(Blocksworld.renderingWater);
-			}
-		}
-
-		// Token: 0x06001199 RID: 4505 RVA: 0x00077E48 File Offset: 0x00076248
-		public override void Play()
-		{
-			base.Play();
-			if (BlockWater.mainWater != null)
-			{
-				BWLog.Warning("Possible error - multiple main water objects - this can cause problems with the blocks within list");
-			}
-			BlockWater.mainWater = this;
-			if (BlockWater.blocksWithinWater == null)
-			{
-				BlockWater.blocksWithinWater = new HashSet<Block>();
-			}
-			this.buoyancyMultiplier = 1f;
-			this.splashInfos.Clear();
-			this.playingSplashInfos.Clear();
-			BlockWater.blocksWithinWater.Clear();
-			this.blockInfos = null;
-			this.blockInfoList = null;
-			this.waterBounds = this.GetWaterBounds();
-			this.IgnoreRaycasts(false);
-			this.UpdateSolidness();
-			base.FindSplashAudioSources();
-			BlockWater.maxWaterLevel = Mathf.Max(-1E+07f, this.waterBounds.max.y);
-			this.origPosY = this.goT.position.y;
-			CollisionManager.AddIgnoreTriggerGO(this.go);
-			this.UpdateRenderState();
-		}
-
-		// Token: 0x0600119A RID: 4506 RVA: 0x00077F2D File Offset: 0x0007632D
-		public override void Play2()
-		{
-		}
-
-		// Token: 0x0600119B RID: 4507 RVA: 0x00077F30 File Offset: 0x00076330
-		public override void Stop(bool resetBlock = true)
-		{
-			BlockWater.maxWaterLevel = -1000000f;
-			BlockWater.mainWater = null;
-			BlockWater.blocksWithinWater = null;
-			this.IgnoreRaycasts(false);
-			this.go.GetComponent<Collider>().enabled = true;
-			this.UpdateSolidness();
-			this.blockInfos = null;
-			this.blockInfoList = null;
-			this.fogColorOverride = Color.white;
-			this.fogMultiplier = 1f;
-			base.Stop(resetBlock);
-			this.UpdateRenderState();
-		}
-
-		// Token: 0x0600119C RID: 4508 RVA: 0x00077FA2 File Offset: 0x000763A2
-		public override void ResetFrame()
-		{
-			this.streamVelocity.Set(0f, 0f, 0f);
-		}
-
-		// Token: 0x0600119D RID: 4509 RVA: 0x00077FC0 File Offset: 0x000763C0
-		public override Bounds GetWaterBounds()
-		{
-			if (this.go == null || this.go.GetComponent<Collider>() == null)
-			{
-				BWLog.Warning("GetWaterBounds called on block with no collider");
-				return default(Bounds);
-			}
-			Bounds bounds = this.go.GetComponent<Collider>().bounds;
-			if (this.isInfiniteOcean)
-			{
-				float num = 9999999f;
-				bounds.Expand(num);
-				bounds.center -= new Vector3(0f, num * 0.5f, 0f);
-			}
-			return bounds;
-		}
-
-		// Token: 0x0600119E RID: 4510 RVA: 0x0007805C File Offset: 0x0007645C
-		public override void Update()
-		{
-			base.Update();
-			if (Blocksworld.CurrentState != State.Play)
-			{
-				this.waterBounds = this.GetWaterBounds();
-			}
-			bool flag = this.waterBounds.Contains(Blocksworld.cameraPosition);
-			if (flag != this.cameraWasWithinWater)
-			{
-				base.UpdateUnderwaterLightColors(flag);
-				if (this.isLava)
-				{
-					Blocksworld.worldSky.go.GetComponent<Renderer>().enabled = (!flag && !Blocksworld.renderingSkybox);
-					Blocksworld.mainCamera.backgroundColor = new Color(1f, 0.5f, 0f);
-					Debug.Log("Water set camera background color to " + Blocksworld.mainCamera.backgroundColor);
-				}
-			}
-			bool flag2 = flag && this.isLava;
-			this.fogMultiplier = ((!flag2) ? 1f : 0.15f);
-			this.fogColorOverride = ((!flag2) ? Color.white : new Color(1f, 0.5f, 0f));
-			base.UpdateSounds(this.bubbleSoundWithin && flag);
-			this.cameraWasWithinWater = flag;
-			BlockAbstractWater.cameraWithinOcean = flag;
-		}
-
-		// Token: 0x0600119F RID: 4511 RVA: 0x00078190 File Offset: 0x00076590
-		public bool IsSolidTexture(string texture)
-		{
-			texture = Scarcity.GetNormalizedTexture(texture);
-			if (texture != null)
-			{
-				if (texture == "Water" || texture == "Texture Water Stream" || texture == "Texture Lava")
-				{
-					return false;
-				}
+				return !(block is BlockAnimatedCharacter);
 			}
 			return true;
 		}
-
-		// Token: 0x060011A0 RID: 4512 RVA: 0x000781E4 File Offset: 0x000765E4
-		public bool IsReflectiveTexture(string texture)
+		for (int i = 0; i < BlockAbstractWater.waterCubes.Count; i++)
 		{
-			texture = Scarcity.GetNormalizedTexture(texture);
-			if (texture != null)
+			BlockWaterCube blockWaterCube = BlockAbstractWater.waterCubes[i];
+			if (blockWaterCube.blocksWithinWater != null && blockWaterCube.blocksWithinWater.Contains(instanceId))
 			{
-				if (texture == "Water" || texture == "Texture Water Stream" || texture == "Ice Material")
-				{
-					return true;
-				}
+				return true;
 			}
+		}
+		return false;
+	}
+
+	public static bool BlockWithinTaggedWater(Block block, string tag)
+	{
+		int instanceId = block.GetInstanceId();
+		for (int i = 0; i < BlockAbstractWater.waterCubes.Count; i++)
+		{
+			BlockWaterCube blockWaterCube = BlockAbstractWater.waterCubes[i];
+			if (blockWaterCube.blocksWithinTaggedWater.TryGetValue(tag, out var value) && value.Contains(instanceId))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public override void OnCreate()
+	{
+		TextureTo(GetTexture(), GetTextureNormal(), permanent: true);
+		UpdateSolidness();
+		if (go.GetComponent<Collider>() != null)
+		{
+			go.GetComponent<Collider>().isTrigger = false;
+		}
+		UpdateRenderState();
+	}
+
+	public override void OnReconstructed()
+	{
+		base.OnReconstructed();
+		UpdateSolidness();
+		TextureTo(Scarcity.GetNormalizedTexture(GetTexture()), Vector3.up, permanent: true, 0, force: true);
+	}
+
+	private void UpdateSolidness()
+	{
+		string texture = GetTexture();
+		isSolid = IsSolidTexture(texture);
+		isReflective = IsReflectiveTexture(texture);
+		if (go.GetComponent<Collider>() != null)
+		{
+			go.GetComponent<Collider>().isTrigger = !isSolid;
+		}
+		int layer = ((!isSolid) ? 13 : 4);
+		go.layer = layer;
+		if (goT.parent != null)
+		{
+			goT.parent.gameObject.layer = layer;
+		}
+		if (go.GetComponent<Collider>() is BoxCollider)
+		{
+			BoxCollider boxCollider = (BoxCollider)go.GetComponent<Collider>();
+			Vector3 scale = GetScale();
+			boxCollider.size = new Vector3(scale.x * 10f, scale.y, scale.z * 10f);
+		}
+		hasSlowWaves = texture == "Texture Water Stream" || Blocksworld.renderingWater;
+	}
+
+	private void UpdateRenderState()
+	{
+		if (go.activeSelf && reflectiveWater != null)
+		{
+			go.GetComponent<MeshRenderer>().enabled = !Blocksworld.renderingWater;
+			reflectiveWater.SetActive(Blocksworld.renderingWater);
+		}
+	}
+
+	public override void Play()
+	{
+		base.Play();
+		if (mainWater != null)
+		{
+			BWLog.Warning("Possible error - multiple main water objects - this can cause problems with the blocks within list");
+		}
+		mainWater = this;
+		if (blocksWithinWater == null)
+		{
+			blocksWithinWater = new HashSet<Block>();
+		}
+		buoyancyMultiplier = 1f;
+		splashInfos.Clear();
+		playingSplashInfos.Clear();
+		blocksWithinWater.Clear();
+		blockInfos = null;
+		blockInfoList = null;
+		waterBounds = GetWaterBounds();
+		IgnoreRaycasts(value: false);
+		UpdateSolidness();
+		FindSplashAudioSources();
+		maxWaterLevel = Mathf.Max(-10000000f, waterBounds.max.y);
+		origPosY = goT.position.y;
+		CollisionManager.AddIgnoreTriggerGO(go);
+		UpdateRenderState();
+	}
+
+	public override void Play2()
+	{
+	}
+
+	public override void Stop(bool resetBlock = true)
+	{
+		maxWaterLevel = -1000000f;
+		mainWater = null;
+		blocksWithinWater = null;
+		IgnoreRaycasts(value: false);
+		go.GetComponent<Collider>().enabled = true;
+		UpdateSolidness();
+		blockInfos = null;
+		blockInfoList = null;
+		fogColorOverride = Color.white;
+		fogMultiplier = 1f;
+		base.Stop(resetBlock);
+		UpdateRenderState();
+	}
+
+	public override void ResetFrame()
+	{
+		streamVelocity.Set(0f, 0f, 0f);
+	}
+
+	public override Bounds GetWaterBounds()
+	{
+		if (go == null || go.GetComponent<Collider>() == null)
+		{
+			BWLog.Warning("GetWaterBounds called on block with no collider");
+			return default(Bounds);
+		}
+		Bounds bounds = go.GetComponent<Collider>().bounds;
+		if (isInfiniteOcean)
+		{
+			float num = 9999999f;
+			bounds.Expand(num);
+			bounds.center -= new Vector3(0f, num * 0.5f, 0f);
+		}
+		return bounds;
+	}
+
+	public override void Update()
+	{
+		base.Update();
+		if (Blocksworld.CurrentState != State.Play)
+		{
+			waterBounds = GetWaterBounds();
+		}
+		bool flag = waterBounds.Contains(Blocksworld.cameraPosition);
+		if (flag != cameraWasWithinWater)
+		{
+			UpdateUnderwaterLightColors(flag);
+			if (isLava)
+			{
+				Blocksworld.worldSky.go.GetComponent<Renderer>().enabled = !flag && !Blocksworld.renderingSkybox;
+				Blocksworld.mainCamera.backgroundColor = new Color(1f, 0.5f, 0f);
+				Debug.Log("Water set camera background color to " + Blocksworld.mainCamera.backgroundColor.ToString());
+			}
+		}
+		bool flag2 = flag && isLava;
+		fogMultiplier = ((!flag2) ? 1f : 0.15f);
+		fogColorOverride = ((!flag2) ? Color.white : new Color(1f, 0.5f, 0f));
+		UpdateSounds(bubbleSoundWithin && flag);
+		cameraWasWithinWater = flag;
+		BlockAbstractWater.cameraWithinOcean = flag;
+	}
+
+	public bool IsSolidTexture(string texture)
+	{
+		texture = Scarcity.GetNormalizedTexture(texture);
+		switch (texture)
+		{
+		case "Water":
+		case "Texture Water Stream":
+		case "Texture Lava":
+			return false;
+		default:
+			return true;
+		}
+	}
+
+	public bool IsReflectiveTexture(string texture)
+	{
+		texture = Scarcity.GetNormalizedTexture(texture);
+		switch (texture)
+		{
+		case "Water":
+		case "Texture Water Stream":
+		case "Ice Material":
+			return true;
+		default:
 			return false;
 		}
+	}
 
-		// Token: 0x060011A1 RID: 4513 RVA: 0x00078238 File Offset: 0x00076638
-		public static bool IsWaterTexture(string texture)
+	public static bool IsWaterTexture(string texture)
+	{
+		if (texture != null)
 		{
-			if (texture != null)
+			if (f__switch_map4 == null)
 			{
-				if (BlockWater.f__switch_map4 == null)
+				f__switch_map4 = new Dictionary<string, int>(19)
 				{
-					BlockWater.f__switch_map4 = new Dictionary<string, int>(19)
-					{
-						{
-							"Plain",
-							0
-						},
-						{
-							"Water",
-							0
-						},
-						{
-							"Ice Material",
-							0
-						},
-						{
-							"Ice Material_Terrain",
-							0
-						},
-						{
-							"Grass",
-							0
-						},
-						{
-							"Rubber Material",
-							0
-						},
-						{
-							"Rubber Material_Terrain",
-							0
-						},
-						{
-							"Rock",
-							0
-						},
-						{
-							"Sand",
-							0
-						},
-						{
-							"Texture Crater",
-							0
-						},
-						{
-							"Texture Crater_Terrain",
-							0
-						},
-						{
-							"Yellow Brick Road",
-							0
-						},
-						{
-							"Grass 2",
-							0
-						},
-						{
-							"Terrain Grid",
-							0
-						},
-						{
-							"Road Blank",
-							0
-						},
-						{
-							"Texture Water Stream",
-							0
-						},
-						{
-							"Texture Lava",
-							0
-						},
-						{
-							"Dust",
-							0
-						},
-						{
-							"Terrain Planet",
-							0
-						}
-					};
+					{ "Plain", 0 },
+					{ "Water", 0 },
+					{ "Ice Material", 0 },
+					{ "Ice Material_Terrain", 0 },
+					{ "Grass", 0 },
+					{ "Rubber Material", 0 },
+					{ "Rubber Material_Terrain", 0 },
+					{ "Rock", 0 },
+					{ "Sand", 0 },
+					{ "Texture Crater", 0 },
+					{ "Texture Crater_Terrain", 0 },
+					{ "Yellow Brick Road", 0 },
+					{ "Grass 2", 0 },
+					{ "Terrain Grid", 0 },
+					{ "Road Blank", 0 },
+					{ "Texture Water Stream", 0 },
+					{ "Texture Lava", 0 },
+					{ "Dust", 0 },
+					{ "Terrain Planet", 0 }
+				};
+			}
+			if (f__switch_map4.TryGetValue(texture, out var value) && value == 0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static bool IsBubblingWithin(string texture)
+	{
+		switch (texture)
+		{
+		case "Plain":
+		case "Water":
+		case "Texture Water Stream":
+		case "Texture Lava":
+		case "Ice Material":
+		case "Ice Material_Terrain":
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	public void SnapPosition()
+	{
+		if (doSnap)
+		{
+			Vector3 position = goT.position;
+			Vector3 position2 = new Vector3(Mathf.Round(position.x / snapper) * snapper, position.y, Mathf.Round(position.z / snapper) * snapper);
+			goT.position = position2;
+		}
+	}
+
+	private void UpdateReflectiveWaterProperties()
+	{
+		if (reflectiveWater != null)
+		{
+			Material material = reflectiveWater.GetComponent<Renderer>().material;
+			if (Blocksworld.colorDefinitions.TryGetValue(base.currentPaint, out var value))
+			{
+				material.SetColor("_RefrColor", value[0]);
+			}
+			Vector4 vector = Vector4.zero;
+			if (!isSolid)
+			{
+				vector = new Vector4(9f, 4.5f, -8f, -3.5f);
+			}
+			material.SetVector("WaveSpeed", vector);
+		}
+	}
+
+	public override TileResultCode PaintTo(string paint, bool permanent, int meshIndex = 0)
+	{
+		if (meshIndex != 0)
+		{
+			return TileResultCode.True;
+		}
+		TileResultCode result = base.PaintTo(paint, permanent, meshIndex);
+		if (isSolid)
+		{
+			Material sharedMaterial = go.GetComponent<Renderer>().sharedMaterial;
+			Color terrainColor = BlockTerrain.GetTerrainColor(paint);
+			if (terrainColor != Color.white)
+			{
+				sharedMaterial.SetColor("_Color", terrainColor);
+			}
+		}
+		UpdateReflectiveWaterProperties();
+		return result;
+	}
+
+	public override TileResultCode TextureTo(string texture, Vector3 normal, bool permanent, int meshIndex = 0, bool force = false)
+	{
+		if (meshIndex != 0)
+		{
+			return TileResultCode.True;
+		}
+		texture = Scarcity.GetNormalizedTexture(texture);
+		bubbleSoundWithin = IsBubblingWithin(texture);
+		bool flag = IsWaterTexture(texture);
+		if (texture == "Plain")
+		{
+			texture = "Water";
+		}
+		else if (flag && texture != "Water")
+		{
+			switch (Scarcity.GetNormalizedTexture(texture))
+			{
+			case "Rubber Material":
+			case "Texture Crater":
+				texture += "_Terrain";
+				break;
+			case "Ice Material":
+				texture = Scarcity.GetNormalizedTexture(texture) + "_Water";
+				break;
+			}
+		}
+		TileResultCode result = base.TextureTo(texture, normal, permanent, meshIndex, flag || force);
+		bool flag2 = hasSlowWaves;
+		UpdateSolidness();
+		isLava = texture == "Texture Lava";
+		doSnap = isSolid || isLava;
+		if (reflectiveWater != null)
+		{
+			if (flag2 != hasSlowWaves)
+			{
+				if (hasSlowWaves)
+				{
+					reflectiveWater.GetComponent<Renderer>().material = (Material)Resources.Load("Materials/BWWaterPro");
 				}
-				int num;
-				if (BlockWater.f__switch_map4.TryGetValue(texture, out num))
+				else
 				{
-					if (num == 0)
+					reflectiveWater.GetComponent<Renderer>().material = (Material)Resources.Load("Materials/BWWaterProStagnant");
+				}
+			}
+			UpdateReflectiveWaterProperties();
+		}
+		if (Blocksworld.CurrentState != State.Play)
+		{
+			go.GetComponent<Collider>().isTrigger = false;
+		}
+		if (bubbleSoundWithin)
+		{
+			GetBubbleClip();
+		}
+		return result;
+	}
+
+	public override void FixedUpdate()
+	{
+		base.FixedUpdate();
+		if (!isSolid)
+		{
+			UpdateWaterForces();
+		}
+	}
+
+	protected override void SetWaterLevelOffset(float newOffset)
+	{
+		base.SetWaterLevelOffset(newOffset);
+		Vector3 position = goT.position;
+		goT.position = new Vector3(position.x, origPosY + waterLevelOffset, position.z);
+		waterBounds = GetWaterBounds();
+		maxWaterLevel = waterBounds.max.y;
+	}
+
+	private void CreateBlockLists()
+	{
+		if (blockInfos != null)
+		{
+			return;
+		}
+		BlockAbstractWater.GatherAllBlocksWithWaterSensors();
+		blockInfos = new Dictionary<int, BlockWaterInfo>();
+		blockInfoList = new List<BlockWaterInfo>();
+		foreach (Block item in BWSceneManager.AllBlocks())
+		{
+			if (!(item is BlockAbstractWater) && !(item is BlockVolume) && !(item is BlockPosition) && !(item is BlockTerrain) && !(item is BlockSky) && !(item is BlockBillboard))
+			{
+				BlockWaterInfo blockWaterInfo = new BlockWaterInfo(item);
+				blockInfos[item.GetInstanceId()] = blockWaterInfo;
+				blockWaterInfo.interval = 1;
+				blockWaterInfo.isSimulating = true;
+				blockInfoList.Add(blockWaterInfo);
+			}
+		}
+		counter = 0;
+	}
+
+	private void UpdateWaterForces()
+	{
+		CreateBlockLists();
+		float magnitude = Physics.gravity.magnitude;
+		bool sfxEnabled = Sound.sfxEnabled;
+		float num = Blocksworld.fixedDeltaTime / 0.02f;
+		counter++;
+		Vector3 up = goT.up;
+		Bounds bounds = default(Bounds);
+		for (int num2 = blockInfoList.Count - 1; num2 >= 0; num2--)
+		{
+			BlockWaterInfo blockWaterInfo = blockInfoList[num2];
+			int interval = blockWaterInfo.interval;
+			if ((counter + blockWaterInfo.counterOffset) % interval == 0)
+			{
+				Block block = blockWaterInfo.block;
+				GameObject gameObject = block.go;
+				int instanceID = gameObject.GetInstanceID();
+				Transform transform = block.goT;
+				Vector3 position = transform.position;
+				bool flag = block is BlockAnimatedCharacter;
+				if (flag)
+				{
+					position += Vector3.up;
+				}
+				float maxExtent = blockWaterInfo.maxExtent;
+				float num3 = position.y - maxExtent - maxWaterLevel;
+				if (num3 > 0f)
+				{
+					blocksWithinWater.Remove(block);
+					if (splashInfos.TryGetValue(instanceID, out var value))
 					{
-						return true;
+						value.LeaveWater();
+						splashInfos.Remove(instanceID);
 					}
+					int interval2 = Mathf.Min(Mathf.RoundToInt(5f + num3 * 0.2f), 25);
+					blockWaterInfo.interval = interval2;
 				}
-			}
-			return false;
-		}
-
-		// Token: 0x060011A2 RID: 4514 RVA: 0x00078368 File Offset: 0x00076768
-		public static bool IsBubblingWithin(string texture)
-		{
-			if (texture != null)
-			{
-				if (texture == "Plain" || texture == "Water" || texture == "Texture Water Stream" || texture == "Texture Lava" || texture == "Ice Material" || texture == "Ice Material_Terrain")
+				else
 				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		// Token: 0x060011A3 RID: 4515 RVA: 0x000783E4 File Offset: 0x000767E4
-		public void SnapPosition()
-		{
-			if (this.doSnap)
-			{
-				Vector3 position = this.goT.position;
-				Vector3 position2 = new Vector3(Mathf.Round(position.x / this.snapper) * this.snapper, position.y, Mathf.Round(position.z / this.snapper) * this.snapper);
-				this.goT.position = position2;
-			}
-		}
-
-		// Token: 0x060011A4 RID: 4516 RVA: 0x00078458 File Offset: 0x00076858
-		private void UpdateReflectiveWaterProperties()
-		{
-			if (this.reflectiveWater != null)
-			{
-				Material material = this.reflectiveWater.GetComponent<Renderer>().material;
-				Color[] array;
-				if (Blocksworld.colorDefinitions.TryGetValue(base.currentPaint, out array))
-				{
-					material.SetColor("_RefrColor", array[0]);
-				}
-				Vector4 zero = Vector4.zero;
-				if (!this.isSolid)
-				{
-					zero = new Vector4(9f, 4.5f, -8f, -3.5f);
-				}
-				material.SetVector("WaveSpeed", zero);
-			}
-		}
-
-		// Token: 0x060011A5 RID: 4517 RVA: 0x000784F0 File Offset: 0x000768F0
-		public override TileResultCode PaintTo(string paint, bool permanent, int meshIndex = 0)
-		{
-			if (meshIndex != 0)
-			{
-				return TileResultCode.True;
-			}
-			TileResultCode result = base.PaintTo(paint, permanent, meshIndex);
-			if (this.isSolid)
-			{
-				Material sharedMaterial = this.go.GetComponent<Renderer>().sharedMaterial;
-				Color terrainColor = BlockTerrain.GetTerrainColor(paint);
-				if (terrainColor != Color.white)
-				{
-					sharedMaterial.SetColor("_Color", terrainColor);
-				}
-			}
-			this.UpdateReflectiveWaterProperties();
-			return result;
-		}
-
-		// Token: 0x060011A6 RID: 4518 RVA: 0x00078558 File Offset: 0x00076958
-		public override TileResultCode TextureTo(string texture, Vector3 normal, bool permanent, int meshIndex = 0, bool force = false)
-		{
-			if (meshIndex != 0)
-			{
-				return TileResultCode.True;
-			}
-			texture = Scarcity.GetNormalizedTexture(texture);
-			this.bubbleSoundWithin = BlockWater.IsBubblingWithin(texture);
-			bool flag = BlockWater.IsWaterTexture(texture);
-			if (texture == "Plain")
-			{
-				texture = "Water";
-			}
-			else if (flag && texture != "Water")
-			{
-				string normalizedTexture = Scarcity.GetNormalizedTexture(texture);
-				if (normalizedTexture != null)
-				{
-					if (!(normalizedTexture == "Ice Material"))
+					bool flag2 = position.y + maxExtent < maxWaterLevel;
+					if (flag2)
 					{
-						if (normalizedTexture == "Rubber Material" || normalizedTexture == "Texture Crater")
-						{
-							texture += "_Terrain";
-						}
+						bounds.center = position;
+						bounds.size = blockWaterInfo.scale;
 					}
 					else
 					{
-						texture = Scarcity.GetNormalizedTexture(texture) + "_Water";
+						Collider component = gameObject.GetComponent<Collider>();
+						bounds = ((!(component != null)) ? block.GetBounds() : component.bounds);
 					}
-				}
-			}
-			TileResultCode result = base.TextureTo(texture, normal, permanent, meshIndex, flag || force);
-			bool hasSlowWaves = this.hasSlowWaves;
-			this.UpdateSolidness();
-			this.isLava = (texture == "Texture Lava");
-			this.doSnap = (this.isSolid || this.isLava);
-			if (this.reflectiveWater != null)
-			{
-				if (hasSlowWaves != this.hasSlowWaves)
-				{
-					if (this.hasSlowWaves)
-					{
-						this.reflectiveWater.GetComponent<Renderer>().material = (Material)Resources.Load("Materials/BWWaterPro");
-					}
-					else
-					{
-						this.reflectiveWater.GetComponent<Renderer>().material = (Material)Resources.Load("Materials/BWWaterProStagnant");
-					}
-				}
-				this.UpdateReflectiveWaterProperties();
-			}
-			if (Blocksworld.CurrentState != State.Play)
-			{
-				this.go.GetComponent<Collider>().isTrigger = false;
-			}
-			if (this.bubbleSoundWithin)
-			{
-				base.GetBubbleClip();
-			}
-			return result;
-		}
-
-		// Token: 0x060011A7 RID: 4519 RVA: 0x00078714 File Offset: 0x00076B14
-		public override void FixedUpdate()
-		{
-			base.FixedUpdate();
-			if (!this.isSolid)
-			{
-				this.UpdateWaterForces();
-			}
-		}
-
-		// Token: 0x060011A8 RID: 4520 RVA: 0x00078730 File Offset: 0x00076B30
-		protected override void SetWaterLevelOffset(float newOffset)
-		{
-			base.SetWaterLevelOffset(newOffset);
-			Vector3 position = this.goT.position;
-			this.goT.position = new Vector3(position.x, this.origPosY + this.waterLevelOffset, position.z);
-			this.waterBounds = this.GetWaterBounds();
-			BlockWater.maxWaterLevel = this.waterBounds.max.y;
-		}
-
-		// Token: 0x060011A9 RID: 4521 RVA: 0x000787A0 File Offset: 0x00076BA0
-		private void CreateBlockLists()
-		{
-			if (this.blockInfos == null)
-			{
-				BlockAbstractWater.GatherAllBlocksWithWaterSensors();
-				this.blockInfos = new Dictionary<int, BlockWaterInfo>();
-				this.blockInfoList = new List<BlockWaterInfo>();
-				foreach (Block block in BWSceneManager.AllBlocks())
-				{
-					if (!(block is BlockAbstractWater) && !(block is BlockVolume) && !(block is BlockPosition) && !(block is BlockTerrain) && !(block is BlockSky) && !(block is BlockBillboard))
-					{
-						BlockWaterInfo blockWaterInfo = new BlockWaterInfo(block);
-						this.blockInfos[block.GetInstanceId()] = blockWaterInfo;
-						blockWaterInfo.interval = 1;
-						blockWaterInfo.isSimulating = true;
-						this.blockInfoList.Add(blockWaterInfo);
-					}
-				}
-				this.counter = 0;
-			}
-		}
-
-		// Token: 0x060011AA RID: 4522 RVA: 0x0007889C File Offset: 0x00076C9C
-		private void UpdateWaterForces()
-		{
-			this.CreateBlockLists();
-			float magnitude = Physics.gravity.magnitude;
-			bool sfxEnabled = Sound.sfxEnabled;
-			float num = Blocksworld.fixedDeltaTime / 0.02f;
-			this.counter++;
-			Vector3 up = this.goT.up;
-			Bounds bounds = default(Bounds);
-			for (int i = this.blockInfoList.Count - 1; i >= 0; i--)
-			{
-				BlockWaterInfo blockWaterInfo = this.blockInfoList[i];
-				int interval = blockWaterInfo.interval;
-				if ((this.counter + blockWaterInfo.counterOffset) % interval == 0)
-				{
-					Block block = blockWaterInfo.block;
-					GameObject go = block.go;
-					int instanceID = go.GetInstanceID();
-					Transform goT = block.goT;
-					Vector3 vector = goT.position;
-					bool flag = block is BlockAnimatedCharacter;
 					if (flag)
 					{
-						vector += Vector3.up;
+						bounds.center += Vector3.up;
 					}
-					float maxExtent = blockWaterInfo.maxExtent;
-					float num2 = vector.y - maxExtent - BlockWater.maxWaterLevel;
-					if (num2 > 0f)
+					bounds.center -= Vector3.up * WaterLevelOffset(position);
+					blockWaterInfo.checkCount++;
+					if (flag2 || waterBounds.Intersects(bounds))
 					{
-						BlockWater.blocksWithinWater.Remove(block);
-						WaterSplashInfo waterSplashInfo;
-						if (this.splashInfos.TryGetValue(instanceID, out waterSplashInfo))
+						Rigidbody rb = block.chunk.rb;
+						if (rb == null)
 						{
-							waterSplashInfo.LeaveWater();
-							this.splashInfos.Remove(instanceID);
+							if (!blockWaterInfo.hasWaterSensor)
+							{
+								blockInfoList.RemoveAt(num2);
+								blockWaterInfo.isSimulating = false;
+							}
+							else
+							{
+								blockWaterInfo.interval = 5;
+							}
+							blocksWithinWater.Add(block);
 						}
-						int interval2 = Mathf.Min(Mathf.RoundToInt(5f + num2 * 0.2f), 25);
-						blockWaterInfo.interval = interval2;
-					}
-					else
-					{
-						bool flag2 = vector.y + maxExtent < BlockWater.maxWaterLevel;
-						if (flag2)
+						else if (rb.isKinematic)
 						{
-							bounds.center = vector;
-							bounds.size = blockWaterInfo.scale;
+							if (!blockWaterInfo.hasWaterSensor)
+							{
+								blockInfoList.RemoveAt(num2);
+								blockWaterInfo.isSimulating = false;
+							}
+							else
+							{
+								blockWaterInfo.interval = 5;
+							}
+							blocksWithinWater.Add(block);
 						}
 						else
 						{
-							Collider component = go.GetComponent<Collider>();
-							if (component != null)
+							blockWaterInfo.interval = 1;
+							Vector3 velocity = rb.velocity;
+							Vector3 worldCenterOfMass = rb.worldCenterOfMass;
+							float num4 = blockWaterInfo.mass;
+							Vector3 scale = blockWaterInfo.scale;
+							float num5 = scale.x * scale.y * scale.z;
+							float num6 = num4 / num5;
+							if ((double)num6 < 0.2501)
 							{
-								bounds = component.bounds;
+								num5 *= 0.5f;
+							}
+							WaterSplashInfo value2;
+							bool flag3 = splashInfos.TryGetValue(instanceID, out value2);
+							if (!blocksWithinWater.Contains(block) || !flag3)
+							{
+								value2 = new WaterSplashInfo(block);
+								splashInfos[instanceID] = value2;
+								value2.EnterWater();
 							}
 							else
 							{
-								bounds = block.GetBounds();
+								value2 = splashInfos[instanceID];
 							}
-						}
-						if (flag)
-						{
-							bounds.center += Vector3.up;
-						}
-						bounds.center -= Vector3.up * base.WaterLevelOffset(vector);
-						blockWaterInfo.checkCount++;
-						if (flag2 || this.waterBounds.Intersects(bounds))
-						{
-							Rigidbody rb = block.chunk.rb;
-							if (rb == null)
+							value2.Update();
+							blocksWithinWater.Add(block);
+							Bounds bounds2 = bounds;
+							float num7;
+							if (flag2)
 							{
-								if (!blockWaterInfo.hasWaterSensor)
-								{
-									this.blockInfoList.RemoveAt(i);
-									blockWaterInfo.isSimulating = false;
-								}
-								else
-								{
-									blockWaterInfo.interval = 5;
-								}
-								BlockWater.blocksWithinWater.Add(block);
-							}
-							else if (rb.isKinematic)
-							{
-								if (!blockWaterInfo.hasWaterSensor)
-								{
-									this.blockInfoList.RemoveAt(i);
-									blockWaterInfo.isSimulating = false;
-								}
-								else
-								{
-									blockWaterInfo.interval = 5;
-								}
-								BlockWater.blocksWithinWater.Add(block);
+								num7 = num5;
 							}
 							else
 							{
-								blockWaterInfo.interval = 1;
-								Vector3 velocity = rb.velocity;
-								Vector3 worldCenterOfMass = rb.worldCenterOfMass;
-								float num3 = blockWaterInfo.mass;
-								Vector3 scale = blockWaterInfo.scale;
-								float num4 = scale.x * scale.y * scale.z;
-								float num5 = num3 / num4;
-								if ((double)num5 < 0.2501)
+								Vector3 vector = bounds.size;
+								float num8 = Mathf.Max(0.5f, vector.x * vector.y * vector.z);
+								float num9 = num5 / num8;
+								bounds2.SetMinMax(Vector3.Max(bounds.min, waterBounds.min), Vector3.Min(bounds.max, waterBounds.max));
+								Vector3 vector2 = bounds2.size;
+								float num10 = vector2.x * vector2.y * vector2.z;
+								num7 = num10 * num9;
+							}
+							Vector3 vector3 = up * (num7 * magnitude * waterDensity);
+							Vector3 center = bounds2.center;
+							Vector3 rhs = center - worldCenterOfMass;
+							Vector3 vector4 = velocity + Vector3.Cross(rb.angularVelocity, rhs);
+							Vector3 vector5 = vector4 - streamVelocity;
+							Vector3 vector6 = -vector5 * (num7 * waterFriction);
+							float a = ((!flag) ? 450f : 0f);
+							vector6 = vector6.normalized * Mathf.Min(a, vector6.magnitude);
+							Vector3 vector7 = vector3 + vector6 + block.GetWaterForce(num7 / num5, vector5, this);
+							if (value2.counter < 10 && sfxEnabled)
+							{
+								value2.forceSum += vector7.magnitude;
+								if (value2.forceSum > 40f)
 								{
-									num4 *= 0.5f;
-								}
-								WaterSplashInfo waterSplashInfo2;
-								bool flag3 = this.splashInfos.TryGetValue(instanceID, out waterSplashInfo2);
-								if (!BlockWater.blocksWithinWater.Contains(block) || !flag3)
-								{
-									waterSplashInfo2 = new WaterSplashInfo(block);
-									this.splashInfos[instanceID] = waterSplashInfo2;
-									waterSplashInfo2.EnterWater();
-								}
-								else
-								{
-									waterSplashInfo2 = this.splashInfos[instanceID];
-								}
-								waterSplashInfo2.Update();
-								BlockWater.blocksWithinWater.Add(block);
-								Bounds bounds2 = bounds;
-								float num6;
-								if (flag2)
-								{
-									num6 = num4;
-								}
-								else
-								{
-									Vector3 size = bounds.size;
-									float num7 = Mathf.Max(0.5f, size.x * size.y * size.z);
-									float num8 = num4 / num7;
-									bounds2.SetMinMax(Vector3.Max(bounds.min, this.waterBounds.min), Vector3.Min(bounds.max, this.waterBounds.max));
-									Vector3 size2 = bounds2.size;
-									float num9 = size2.x * size2.y * size2.z;
-									num6 = num9 * num8;
-								}
-								Vector3 a = up * (num6 * magnitude * this.waterDensity);
-								Vector3 center = bounds2.center;
-								Vector3 rhs = center - worldCenterOfMass;
-								Vector3 a2 = velocity + Vector3.Cross(rb.angularVelocity, rhs);
-								Vector3 vector2 = a2 - this.streamVelocity;
-								Vector3 b = -vector2 * (num6 * this.waterFriction);
-								float a3 = (!flag) ? 450f : 0f;
-								b = b.normalized * Mathf.Min(a3, b.magnitude);
-								Vector3 a4 = a + b + block.GetWaterForce(num6 / num4, vector2, this);
-								if (waterSplashInfo2.counter < 10 && sfxEnabled)
-								{
-									waterSplashInfo2.forceSum += a4.magnitude;
-									if (waterSplashInfo2.forceSum > 40f)
+									value2.counter = 1000;
+									foreach (GameObject splashAudioSource in BlockAbstractWater.splashAudioSources)
 									{
-										waterSplashInfo2.counter = 1000;
-										foreach (GameObject gameObject in BlockAbstractWater.splashAudioSources)
+										AudioSource component2 = splashAudioSource.GetComponent<AudioSource>();
+										if (!component2.isPlaying)
 										{
-											AudioSource component2 = gameObject.GetComponent<AudioSource>();
-											if (!component2.isPlaying)
-											{
-												gameObject.transform.position = bounds2.max + Vector3.up;
-												float volume = Mathf.Clamp((waterSplashInfo2.forceSum - 30f) * 0.01f, 0f, 1f);
-												component2.volume = volume;
-												component2.Play();
-												break;
-											}
+											splashAudioSource.transform.position = bounds2.max + Vector3.up;
+											float volume = Mathf.Clamp((value2.forceSum - 30f) * 0.01f, 0f, 1f);
+											component2.volume = volume;
+											component2.Play();
+											break;
 										}
 									}
 								}
-								rb.AddForceAtPosition(a4 * (block.buoyancyMultiplier * this.buoyancyMultiplier), center, ForceMode.Force);
-								float num10 = num6 * -0.6f;
-								Vector3 a5 = num10 * this.waterFriction * rb.angularVelocity;
-								float a6 = (!flag) ? 100f : 0f;
-								a5 = a5.normalized * Mathf.Min(a6, a5.magnitude);
-								rb.AddTorque(a5 * block.buoyancyMultiplier, ForceMode.Force);
-								if (num * b.magnitude * 0.01f > UnityEngine.Random.value)
-								{
-									Vector3 size3 = bounds2.size;
-									Vector3 position = center - size3 * 0.5f + new Vector3(UnityEngine.Random.value * size3.x, UnityEngine.Random.value * size3.y, UnityEngine.Random.value * size3.y);
-									float lifetime = 0.5f + UnityEngine.Random.value * 0.5f;
-									this.bubblePs.Emit(position, a2 * 0.1f, 0.1f + UnityEngine.Random.value * 0.15f, lifetime, BlockWater.bubbleColor);
-								}
+							}
+							rb.AddForceAtPosition(vector7 * (block.buoyancyMultiplier * buoyancyMultiplier), center, ForceMode.Force);
+							float num11 = num7 * -0.6f;
+							Vector3 vector8 = num11 * waterFriction * rb.angularVelocity;
+							float a2 = ((!flag) ? 100f : 0f);
+							vector8 = vector8.normalized * Mathf.Min(a2, vector8.magnitude);
+							rb.AddTorque(vector8 * block.buoyancyMultiplier, ForceMode.Force);
+							if (num * vector6.magnitude * 0.01f > Random.value)
+							{
+								Vector3 vector9 = bounds2.size;
+								Vector3 position2 = center - vector9 * 0.5f + new Vector3(Random.value * vector9.x, Random.value * vector9.y, Random.value * vector9.y);
+								float lifetime = 0.5f + Random.value * 0.5f;
+								bubblePs.Emit(position2, vector4 * 0.1f, 0.1f + Random.value * 0.15f, lifetime, bubbleColor);
 							}
 						}
-						else
+					}
+					else
+					{
+						blocksWithinWater.Remove(block);
+						if (splashInfos.TryGetValue(instanceID, out var value3))
 						{
-							BlockWater.blocksWithinWater.Remove(block);
-							WaterSplashInfo waterSplashInfo3;
-							if (this.splashInfos.TryGetValue(instanceID, out waterSplashInfo3))
+							value3.LeaveWater();
+							splashInfos.Remove(instanceID);
+						}
+						blockWaterInfo.interval = Mathf.RoundToInt(Mathf.Max(5f + num3 * 0.2f, 2f));
+						if (!blockWaterInfo.hasWaterSensor && blockWaterInfo.checkCount == 1)
+						{
+							Transform parent = transform.parent;
+							if (parent != null)
 							{
-								waterSplashInfo3.LeaveWater();
-								this.splashInfos.Remove(instanceID);
-							}
-							blockWaterInfo.interval = Mathf.RoundToInt(Mathf.Max(5f + num2 * 0.2f, 2f));
-							if (!blockWaterInfo.hasWaterSensor && blockWaterInfo.checkCount == 1)
-							{
-								Transform parent = goT.parent;
-								if (parent != null)
+								Rigidbody component3 = parent.GetComponent<Rigidbody>();
+								if (component3 == null)
 								{
-									Rigidbody component3 = parent.GetComponent<Rigidbody>();
-									if (component3 == null)
-									{
-										this.blockInfoList.RemoveAt(i);
-										blockWaterInfo.isSimulating = false;
-									}
+									blockInfoList.RemoveAt(num2);
+									blockWaterInfo.isSimulating = false;
 								}
 							}
 						}
@@ -722,114 +664,56 @@ namespace Blocks
 				}
 			}
 		}
+	}
 
-		// Token: 0x060011AB RID: 4523 RVA: 0x000790B8 File Offset: 0x000774B8
-		public override void RemovedPlayBlock(Block b)
+	public override void RemovedPlayBlock(Block b)
+	{
+		CreateBlockLists();
+		if (blockInfos.TryGetValue(b.GetInstanceId(), out var value))
 		{
-			this.CreateBlockLists();
-			BlockWaterInfo blockWaterInfo;
-			if (this.blockInfos.TryGetValue(b.GetInstanceId(), out blockWaterInfo))
+			blockInfoList.Remove(value);
+			value.isSimulating = false;
+		}
+	}
+
+	public void AddBlockToSimulation(Block b)
+	{
+		CreateBlockLists();
+		int instanceId = b.GetInstanceId();
+		if (blockInfos.TryGetValue(instanceId, out var value))
+		{
+			if (!value.isSimulating)
 			{
-				this.blockInfoList.Remove(blockWaterInfo);
-				blockWaterInfo.isSimulating = false;
+				blockInfoList.Add(value);
 			}
+			blocksWithinWater.Remove(b);
+			splashInfos.Remove(instanceId);
+			value.isSimulating = true;
+			value.interval = 1;
 		}
+	}
 
-		// Token: 0x060011AC RID: 4524 RVA: 0x000790F8 File Offset: 0x000774F8
-		public void AddBlockToSimulation(Block b)
+	public bool SimulatesBlock(Block b)
+	{
+		if (blockInfos != null && blockInfos.TryGetValue(b.GetInstanceId(), out var value))
 		{
-			this.CreateBlockLists();
-			int instanceId = b.GetInstanceId();
-			BlockWaterInfo blockWaterInfo;
-			if (this.blockInfos.TryGetValue(instanceId, out blockWaterInfo))
-			{
-				if (!blockWaterInfo.isSimulating)
-				{
-					this.blockInfoList.Add(blockWaterInfo);
-				}
-				BlockWater.blocksWithinWater.Remove(b);
-				this.splashInfos.Remove(instanceId);
-				blockWaterInfo.isSimulating = true;
-				blockWaterInfo.interval = 1;
-			}
+			return value.isSimulating;
 		}
+		return true;
+	}
 
-		// Token: 0x060011AD RID: 4525 RVA: 0x00079164 File Offset: 0x00077564
-		public bool SimulatesBlock(Block b)
-		{
-			BlockWaterInfo blockWaterInfo;
-			return this.blockInfos == null || !this.blockInfos.TryGetValue(b.GetInstanceId(), out blockWaterInfo) || blockWaterInfo.isSimulating;
-		}
+	public override bool HasDynamicalLight()
+	{
+		return true;
+	}
 
-		// Token: 0x060011AE RID: 4526 RVA: 0x0007919C File Offset: 0x0007759C
-		public override bool HasDynamicalLight()
-		{
-			return true;
-		}
+	public override Color GetFogColorOverride()
+	{
+		return fogColorOverride;
+	}
 
-		// Token: 0x060011AF RID: 4527 RVA: 0x0007919F File Offset: 0x0007759F
-		public override Color GetFogColorOverride()
-		{
-			return this.fogColorOverride;
-		}
-
-		// Token: 0x060011B0 RID: 4528 RVA: 0x000791A7 File Offset: 0x000775A7
-		public override float GetFogMultiplier()
-		{
-			return this.fogMultiplier;
-		}
-
-        private static Dictionary<string, int> f__switch_map4;
-
-        // Token: 0x04000DE0 RID: 3552
-        private Dictionary<int, BlockWaterInfo> blockInfos;
-
-		// Token: 0x04000DE1 RID: 3553
-		private List<BlockWaterInfo> blockInfoList;
-
-		// Token: 0x04000DE2 RID: 3554
-		private int counter;
-
-		// Token: 0x04000DE3 RID: 3555
-		private float mass;
-
-		// Token: 0x04000DE4 RID: 3556
-		protected static BlockWater mainWater = null;
-
-		// Token: 0x04000DE5 RID: 3557
-		public static HashSet<Block> blocksWithinWater;
-
-		// Token: 0x04000DE6 RID: 3558
-		private static float maxWaterLevel = -1000000f;
-
-		// Token: 0x04000DE7 RID: 3559
-		private float origPosY;
-
-		// Token: 0x04000DE8 RID: 3560
-		private bool isInfiniteOcean = true;
-
-		// Token: 0x04000DE9 RID: 3561
-		private Bounds waterBounds = default(Bounds);
-
-		// Token: 0x04000DEA RID: 3562
-		public bool isReflective = true;
-
-		// Token: 0x04000DEB RID: 3563
-		private GameObject reflectiveWater;
-
-		// Token: 0x04000DEC RID: 3564
-		private float fogMultiplier = 1f;
-
-		// Token: 0x04000DED RID: 3565
-		private Color fogColorOverride = Color.white;
-
-		// Token: 0x04000DEE RID: 3566
-		private static Color32 bubbleColor = Color.white;
-
-		// Token: 0x04000DEF RID: 3567
-		private bool doSnap;
-
-		// Token: 0x04000DF0 RID: 3568
-		public float snapper = 80f;
+	public override float GetFogMultiplier()
+	{
+		return fogMultiplier;
 	}
 }

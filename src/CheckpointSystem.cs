@@ -1,99 +1,83 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x02000111 RID: 273
 public class CheckpointSystem
 {
-	// Token: 0x0600133C RID: 4924 RVA: 0x000844A5 File Offset: 0x000828A5
+	private static Dictionary<int, List<Block>> checkpointBlocks = new Dictionary<int, List<Block>>();
+
+	private static Dictionary<int, Block> activeCheckpoints = new Dictionary<int, Block>();
+
+	private static Dictionary<int, Block> spawnPoints = new Dictionary<int, Block>();
+
+	private static Dictionary<int, HashSet<Block>> activatedCheckpoints = new Dictionary<int, HashSet<Block>>();
+
 	public static void Clear()
 	{
-		CheckpointSystem.checkpointBlocks.Clear();
-		CheckpointSystem.activeCheckpoints.Clear();
-		CheckpointSystem.spawnPoints.Clear();
-		CheckpointSystem.activatedCheckpoints.Clear();
+		checkpointBlocks.Clear();
+		activeCheckpoints.Clear();
+		spawnPoints.Clear();
+		activatedCheckpoints.Clear();
 	}
 
-	// Token: 0x0600133D RID: 4925 RVA: 0x000844CF File Offset: 0x000828CF
 	public static void SetSpawnPoint(Block block, int playerIndex)
 	{
-		CheckpointSystem.spawnPoints[playerIndex] = block;
+		spawnPoints[playerIndex] = block;
 	}
 
-	// Token: 0x0600133E RID: 4926 RVA: 0x000844E0 File Offset: 0x000828E0
 	public static void ClearActivatedCheckpoints(int playerIndex)
 	{
-		HashSet<Block> hashSet;
-		if (CheckpointSystem.activatedCheckpoints.TryGetValue(playerIndex, out hashSet))
+		if (activatedCheckpoints.TryGetValue(playerIndex, out var value))
 		{
-			hashSet.Clear();
+			value.Clear();
 		}
-		CheckpointSystem.activeCheckpoints.Remove(playerIndex);
+		activeCheckpoints.Remove(playerIndex);
 	}
 
-	// Token: 0x0600133F RID: 4927 RVA: 0x00084514 File Offset: 0x00082914
 	public static void SetActiveCheckPoint(Block block, int playerIndex, bool allowOld = true)
 	{
 		if (allowOld)
 		{
-			CheckpointSystem.activeCheckpoints[playerIndex] = block;
+			activeCheckpoints[playerIndex] = block;
+			return;
+		}
+		HashSet<Block> hashSet;
+		if (activatedCheckpoints.ContainsKey(playerIndex))
+		{
+			hashSet = activatedCheckpoints[playerIndex];
 		}
 		else
 		{
-			HashSet<Block> hashSet;
-			if (CheckpointSystem.activatedCheckpoints.ContainsKey(playerIndex))
-			{
-				hashSet = CheckpointSystem.activatedCheckpoints[playerIndex];
-			}
-			else
-			{
-				hashSet = new HashSet<Block>();
-				CheckpointSystem.activatedCheckpoints[playerIndex] = hashSet;
-			}
-			if (!hashSet.Contains(block))
-			{
-				hashSet.Add(block);
-				CheckpointSystem.activeCheckpoints[playerIndex] = block;
-			}
+			hashSet = new HashSet<Block>();
+			activatedCheckpoints[playerIndex] = hashSet;
+		}
+		if (!hashSet.Contains(block))
+		{
+			hashSet.Add(block);
+			activeCheckpoints[playerIndex] = block;
 		}
 	}
 
-	// Token: 0x06001340 RID: 4928 RVA: 0x0008458C File Offset: 0x0008298C
 	private static void TeleportBlockToBlock(Block toTeleport, Block target)
 	{
-		Vector3 targetPos = target.goT.position;
-		targetPos = toTeleport.GetSafeTeleportToPosition(targetPos);
-		toTeleport.TeleportTo(targetPos, false, false, false);
+		Vector3 position = target.goT.position;
+		position = toTeleport.GetSafeTeleportToPosition(position);
+		toTeleport.TeleportTo(position);
 	}
 
-	// Token: 0x06001341 RID: 4929 RVA: 0x000845B8 File Offset: 0x000829B8
 	public static void Spawn(Block toSpawn, int playerIndex)
 	{
-		Block target;
-		if (CheckpointSystem.activeCheckpoints.TryGetValue(playerIndex, out target))
+		if (activeCheckpoints.TryGetValue(playerIndex, out var value))
 		{
-			CheckpointSystem.TeleportBlockToBlock(toSpawn, target);
+			TeleportBlockToBlock(toSpawn, value);
 		}
-		else if (CheckpointSystem.spawnPoints.TryGetValue(playerIndex, out target))
+		else if (spawnPoints.TryGetValue(playerIndex, out value))
 		{
-			CheckpointSystem.TeleportBlockToBlock(toSpawn, target);
+			TeleportBlockToBlock(toSpawn, value);
 		}
 		else
 		{
 			BWLog.Info("No spawnpoint and no checkpoints found for player index " + playerIndex);
 		}
 	}
-
-	// Token: 0x04000F27 RID: 3879
-	private static Dictionary<int, List<Block>> checkpointBlocks = new Dictionary<int, List<Block>>();
-
-	// Token: 0x04000F28 RID: 3880
-	private static Dictionary<int, Block> activeCheckpoints = new Dictionary<int, Block>();
-
-	// Token: 0x04000F29 RID: 3881
-	private static Dictionary<int, Block> spawnPoints = new Dictionary<int, Block>();
-
-	// Token: 0x04000F2A RID: 3882
-	private static Dictionary<int, HashSet<Block>> activatedCheckpoints = new Dictionary<int, HashSet<Block>>();
 }

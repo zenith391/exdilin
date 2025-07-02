@@ -1,50 +1,50 @@
-﻿using System;
 using System.Collections.Generic;
 
-// Token: 0x020003F0 RID: 1008
 public class UIDataSourceShoppingCart : UIDataSource
 {
-	// Token: 0x06002C5F RID: 11359 RVA: 0x0013E644 File Offset: 0x0013CA44
-	public UIDataSourceShoppingCart(UIDataManager manager, bool blocks, bool models) : base(manager)
+	private bool includeBlocks;
+
+	private bool includeModels;
+
+	public UIDataSourceShoppingCart(UIDataManager manager, bool blocks, bool models)
+		: base(manager)
 	{
-		this.includeBlocks = blocks;
-		this.includeModels = models;
-		BWShoppingCartEvents.AddShoppingCartDidLoadListener(new ShoppingCartEventHandler(this.OnShoppingCartUpdate));
-		BWShoppingCartEvents.AddShoppingCartDidClearListener(new ShoppingCartEventHandler(this.OnShoppingCartUpdate));
-		BWShoppingCartEvents.AddShoppingCartDidAddItemListener(new ShoppingCartItemEventHandler(this.OnShoppingCartItemUpdate));
-		BWShoppingCartEvents.AddShoppingCartDidRemoveItemListener(new ShoppingCartItemEventHandler(this.OnShoppingCartRemoveItem));
-		BWShoppingCartEvents.AddShoppingCartDidUpdateItemListener(new ShoppingCartItemEventHandler(this.OnShoppingCartItemUpdate));
+		includeBlocks = blocks;
+		includeModels = models;
+		BWShoppingCartEvents.AddShoppingCartDidLoadListener(OnShoppingCartUpdate);
+		BWShoppingCartEvents.AddShoppingCartDidClearListener(OnShoppingCartUpdate);
+		BWShoppingCartEvents.AddShoppingCartDidAddItemListener(OnShoppingCartItemUpdate);
+		BWShoppingCartEvents.AddShoppingCartDidRemoveItemListener(OnShoppingCartRemoveItem);
+		BWShoppingCartEvents.AddShoppingCartDidUpdateItemListener(OnShoppingCartItemUpdate);
 	}
 
-	// Token: 0x06002C60 RID: 11360 RVA: 0x0013E6BB File Offset: 0x0013CABB
 	private void OnShoppingCartUpdate(BWShoppingCart shoppingCart)
 	{
-		this.Refresh();
+		Refresh();
 	}
 
-	// Token: 0x06002C61 RID: 11361 RVA: 0x0013E6C4 File Offset: 0x0013CAC4
 	private void OnShoppingCartItemUpdate(BWShoppingCart shoppingCart, int index)
 	{
 		if (base.Keys == null || index >= shoppingCart.contents.Count)
 		{
-			this.Refresh();
+			Refresh();
 			return;
 		}
-		BWShoppingCartItem bwshoppingCartItem = shoppingCart.contents[index];
+		BWShoppingCartItem bWShoppingCartItem = shoppingCart.contents[index];
 		string text = null;
 		Dictionary<string, string> dictionary = null;
 		base.Info["totalPrice"] = shoppingCart.TotalPrice().ToString();
-		if (bwshoppingCartItem is BWShoppingCartItemBlockPack && this.includeBlocks)
+		if (bWShoppingCartItem is BWShoppingCartItemBlockPack && includeBlocks)
 		{
-			BWShoppingCartItemBlockPack bwshoppingCartItemBlockPack = bwshoppingCartItem as BWShoppingCartItemBlockPack;
-			text = bwshoppingCartItemBlockPack.blockItemID.ToString();
-			dictionary = bwshoppingCartItemBlockPack.AttributesForMenuUI();
+			BWShoppingCartItemBlockPack bWShoppingCartItemBlockPack = bWShoppingCartItem as BWShoppingCartItemBlockPack;
+			text = bWShoppingCartItemBlockPack.blockItemID.ToString();
+			dictionary = bWShoppingCartItemBlockPack.AttributesForMenuUI();
 		}
-		else if (bwshoppingCartItem is BWShoppingCartItemModel && this.includeModels)
+		else if (bWShoppingCartItem is BWShoppingCartItemModel && includeModels)
 		{
-			BWShoppingCartItemModel bwshoppingCartItemModel = bwshoppingCartItem as BWShoppingCartItemModel;
-			text = bwshoppingCartItemModel.modelID;
-			dictionary = bwshoppingCartItemModel.AttributesForMenuUI();
+			BWShoppingCartItemModel bWShoppingCartItemModel = bWShoppingCartItem as BWShoppingCartItemModel;
+			text = bWShoppingCartItemModel.modelID;
+			dictionary = bWShoppingCartItemModel.AttributesForMenuUI();
 		}
 		if (text != null && dictionary != null)
 		{
@@ -53,81 +53,70 @@ public class UIDataSourceShoppingCart : UIDataSource
 				base.Keys.Add(text);
 			}
 			base.Data[text] = dictionary;
-			base.NotifyListeners(new List<string>
-			{
-				text
-			});
+			NotifyListeners(new List<string> { text });
 		}
 		else
 		{
-			this.Refresh();
+			Refresh();
 		}
 	}
 
-	// Token: 0x06002C62 RID: 11362 RVA: 0x0013E7F0 File Offset: 0x0013CBF0
 	private void OnShoppingCartRemoveItem(BWShoppingCart shoppingCart, int index)
 	{
 		if (base.Keys == null || index >= shoppingCart.contents.Count)
 		{
-			this.Refresh();
+			Refresh();
 			return;
 		}
-		BWShoppingCartItem bwshoppingCartItem = shoppingCart.contents[index];
+		BWShoppingCartItem bWShoppingCartItem = shoppingCart.contents[index];
 		string text = null;
-		if (bwshoppingCartItem is BWShoppingCartItemBlockPack && this.includeBlocks)
+		if (bWShoppingCartItem is BWShoppingCartItemBlockPack && includeBlocks)
 		{
-			BWShoppingCartItemBlockPack bwshoppingCartItemBlockPack = bwshoppingCartItem as BWShoppingCartItemBlockPack;
-			text = bwshoppingCartItemBlockPack.blockItemID.ToString();
+			BWShoppingCartItemBlockPack bWShoppingCartItemBlockPack = bWShoppingCartItem as BWShoppingCartItemBlockPack;
+			text = bWShoppingCartItemBlockPack.blockItemID.ToString();
 		}
-		else if (bwshoppingCartItem is BWShoppingCartItemModel && this.includeModels)
+		else if (bWShoppingCartItem is BWShoppingCartItemModel && includeModels)
 		{
-			BWShoppingCartItemModel bwshoppingCartItemModel = bwshoppingCartItem as BWShoppingCartItemModel;
-			text = bwshoppingCartItemModel.modelID;
+			BWShoppingCartItemModel bWShoppingCartItemModel = bWShoppingCartItem as BWShoppingCartItemModel;
+			text = bWShoppingCartItemModel.modelID;
 		}
 		if (!string.IsNullOrEmpty(text) && base.Keys.Contains(text))
 		{
 			base.Info["totalPrice"] = shoppingCart.TotalPrice().ToString();
 			base.Keys.Remove(text);
 			base.Data.Remove(text);
-			base.NotifyListeners();
+			NotifyListeners();
 		}
 		else
 		{
-			this.Refresh();
+			Refresh();
 		}
 	}
 
-	// Token: 0x06002C63 RID: 11363 RVA: 0x0013E8F4 File Offset: 0x0013CCF4
 	public override void Refresh()
 	{
-		base.ClearData();
+		ClearData();
 		List<BWShoppingCartItem> contents = BWStandalone.ShoppingCart.contents;
 		for (int i = 0; i < contents.Count; i++)
 		{
-			BWShoppingCartItem bwshoppingCartItem = contents[i];
-			if (this.includeBlocks && bwshoppingCartItem is BWShoppingCartItemBlockPack)
+			BWShoppingCartItem bWShoppingCartItem = contents[i];
+			if (includeBlocks && bWShoppingCartItem is BWShoppingCartItemBlockPack)
 			{
-				BWShoppingCartItemBlockPack bwshoppingCartItemBlockPack = bwshoppingCartItem as BWShoppingCartItemBlockPack;
-				string text = bwshoppingCartItemBlockPack.blockItemID.ToString();
+				BWShoppingCartItemBlockPack bWShoppingCartItemBlockPack = bWShoppingCartItem as BWShoppingCartItemBlockPack;
+				string text = bWShoppingCartItemBlockPack.blockItemID.ToString();
 				base.Keys.Add(text);
-				base.Data.Add(text, bwshoppingCartItemBlockPack.AttributesForMenuUI());
+				base.Data.Add(text, bWShoppingCartItemBlockPack.AttributesForMenuUI());
 			}
-			else if (this.includeModels && bwshoppingCartItem is BWShoppingCartItemModel)
+			else if (includeModels && bWShoppingCartItem is BWShoppingCartItemModel)
 			{
-				BWShoppingCartItemModel bwshoppingCartItemModel = bwshoppingCartItem as BWShoppingCartItemModel;
-				string modelID = bwshoppingCartItemModel.modelID;
+				BWShoppingCartItemModel bWShoppingCartItemModel = bWShoppingCartItem as BWShoppingCartItemModel;
+				string modelID = bWShoppingCartItemModel.modelID;
 				base.Keys.Add(modelID);
-				base.Data.Add(modelID, bwshoppingCartItemModel.AttributesForMenuUI());
+				base.Data.Add(modelID, bWShoppingCartItemModel.AttributesForMenuUI());
 			}
 		}
 		base.Info.Add("totalPrice", BWStandalone.ShoppingCart.TotalPrice().ToString());
-		base.loadState = UIDataSource.LoadState.Loaded;
-		base.NotifyListeners();
+		base.loadState = LoadState.Loaded;
+		NotifyListeners();
 	}
-
-	// Token: 0x04002539 RID: 9529
-	private bool includeBlocks;
-
-	// Token: 0x0400253A RID: 9530
-	private bool includeModels;
 }

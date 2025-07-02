@@ -1,110 +1,112 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using SimpleJSON;
 using UnityEngine;
 
-// Token: 0x0200027E RID: 638
 public class UserAvatarSubstitution : BlockSubstitution
 {
-	// Token: 0x06001DE4 RID: 7652 RVA: 0x000D5301 File Offset: 0x000D3701
+	private Block placementCharacterBlock;
+
+	private IBlockster placementBlockster;
+
+	private List<Block> avatarBlocks;
+
+	private Block avatarCharacter;
+
+	private List<Vector3> avatarBlockOffsets;
+
 	public UserAvatarSubstitution(BlockCharacter block)
 	{
-		this.placementCharacterBlock = block;
-		this.placementBlockster = block;
+		placementCharacterBlock = block;
+		placementBlockster = block;
 	}
 
-	// Token: 0x06001DE5 RID: 7653 RVA: 0x000D5317 File Offset: 0x000D3717
 	public UserAvatarSubstitution(BlockAnimatedCharacter block)
 	{
-		this.placementCharacterBlock = block;
-		this.placementBlockster = block;
+		placementCharacterBlock = block;
+		placementBlockster = block;
 	}
 
-	// Token: 0x06001DE6 RID: 7654 RVA: 0x000D5330 File Offset: 0x000D3730
 	public override void ApplySubstitute()
 	{
-		if (this.placementCharacterBlock == null)
+		if (placementCharacterBlock == null)
 		{
 			return;
 		}
-		this.CreateAvatarBlocks();
-		this.placementBlockster.IBlockster_FindAttachments();
+		CreateAvatarBlocks();
+		placementBlockster.IBlockster_FindAttachments();
 		Block block = null;
 		Block block2 = null;
 		Block block3 = null;
 		Block block4 = null;
 		Block block5 = null;
-		IBlockster blockster = (IBlockster)this.avatarCharacter;
+		IBlockster blockster = (IBlockster)avatarCharacter;
 		blockster.IBlockster_FindAttachments();
 		block = blockster.IBlockster_BottomAttachment();
-		if (UserAvatarSubstitution.BlockIsCharacter(block))
+		if (BlockIsCharacter(block))
 		{
 			block = null;
 		}
 		block2 = blockster.IBlockster_FrontAttachment();
-		if (UserAvatarSubstitution.BlockIsCharacter(block2))
+		if (BlockIsCharacter(block2))
 		{
 			block2 = null;
 		}
 		block3 = blockster.IBlockster_LeftHandAttachement();
-		if (UserAvatarSubstitution.BlockIsCharacter(block3))
+		if (BlockIsCharacter(block3))
 		{
 			block3 = null;
 		}
 		block4 = blockster.IBlockster_RightHandAttachment();
-		if (UserAvatarSubstitution.BlockIsCharacter(block4))
+		if (BlockIsCharacter(block4))
 		{
 			block4 = null;
 		}
 		block5 = blockster.IBlockster_BackAttachment();
-		if (UserAvatarSubstitution.BlockIsCharacter(block5))
+		if (BlockIsCharacter(block5))
 		{
 			block5 = null;
 		}
-		Vector3 position = this.placementCharacterBlock.GetPosition();
-		Quaternion rhs = Quaternion.Inverse(this.avatarCharacter.GetRotation());
-		for (int i = this.avatarBlocks.Count - 1; i >= 0; i--)
+		Vector3 position = placementCharacterBlock.GetPosition();
+		Quaternion quaternion = Quaternion.Inverse(avatarCharacter.GetRotation());
+		for (int num = avatarBlocks.Count - 1; num >= 0; num--)
 		{
-			Block block6 = this.avatarBlocks[i];
-			block6.RotateTo(this.placementCharacterBlock.GetRotation() * rhs * block6.GetRotation());
-			block6.MoveTo(this.placementCharacterBlock.goT.TransformPoint(this.avatarBlockOffsets[i]));
+			Block block6 = avatarBlocks[num];
+			block6.RotateTo(placementCharacterBlock.GetRotation() * quaternion * block6.GetRotation());
+			block6.MoveTo(placementCharacterBlock.goT.TransformPoint(avatarBlockOffsets[num]));
 		}
-		List<Block> list = this.avatarBlocks.FindAll((Block b) => b.ContainsGroupTile());
+		List<Block> list = avatarBlocks.FindAll((Block b) => b.ContainsGroupTile());
 		list.ForEach(delegate(Block b)
 		{
 			b.OnBlockGroupReconstructed();
 		});
-		for (int j = this.avatarBlocks.Count - 1; j >= 0; j--)
+		for (int num2 = avatarBlocks.Count - 1; num2 >= 0; num2--)
 		{
-			Block block7 = this.avatarBlocks[j];
+			Block block7 = avatarBlocks[num2];
 			bool flag = false;
-			if (block7 != this.avatarCharacter)
+			if (block7 != avatarCharacter)
 			{
-				Block block8 = this.placementBlockster.IBlockster_BottomAttachment();
-				Block block9 = this.placementBlockster.IBlockster_LeftHandAttachement();
-				Block block10 = this.placementBlockster.IBlockster_RightHandAttachment();
-				Block block11 = this.placementBlockster.IBlockster_BackAttachment();
-				flag |= (block7 == block && block8 != null);
-				flag |= (block7 == block2);
-				flag |= (block7 == block3 && block9 != null);
-				flag |= (block7 == block4 && block10 != null);
-				flag |= (block7 == block5 && block11 != null);
+				Block block8 = placementBlockster.IBlockster_BottomAttachment();
+				Block block9 = placementBlockster.IBlockster_LeftHandAttachement();
+				Block block10 = placementBlockster.IBlockster_RightHandAttachment();
+				Block block11 = placementBlockster.IBlockster_BackAttachment();
+				flag = flag || (block7 == block && block8 != null);
+				flag = flag || block7 == block2;
+				flag = flag || (block7 == block3 && block9 != null);
+				flag = flag || (block7 == block4 && block10 != null);
+				flag = flag || (block7 == block5 && block11 != null);
 				if (!flag)
 				{
-					foreach (Block block12 in this.placementCharacterBlock.connections)
+					foreach (Block connection in placementCharacterBlock.connections)
 					{
-						if (!(block12 is BlockCharacter))
+						if (!(connection is BlockCharacter) && (CollisionTest.MultiMeshMeshTest(block7.glueMeshes, connection.glueMeshes, draw: true) || CollisionTest.MultiMeshMeshTest(block7.jointMeshes, connection.jointMeshes, draw: true)))
 						{
-							if (CollisionTest.MultiMeshMeshTest(block7.glueMeshes, block12.glueMeshes, true) || CollisionTest.MultiMeshMeshTest(block7.jointMeshes, block12.jointMeshes, true))
-							{
-								flag = true;
-								break;
-							}
+							flag = true;
+							break;
 						}
 					}
 				}
-				if (!flag && block7.IsColliding(0f, null))
+				if (!flag && block7.IsColliding())
 				{
 					flag = true;
 				}
@@ -115,18 +117,18 @@ public class UserAvatarSubstitution : BlockSubstitution
 			}
 			else
 			{
-				this.avatarBlocks.RemoveAt(j);
+				avatarBlocks.RemoveAt(num2);
 				block7.Deactivate();
 				block7.Destroy();
 			}
 		}
-		foreach (Block block13 in this.avatarBlocks)
+		foreach (Block avatarBlock in avatarBlocks)
 		{
-			block13.tiles.RemoveRange(2, block13.tiles.Count - 2);
-			block13.tiles[1] = Block.EmptyTileRow();
+			avatarBlock.tiles.RemoveRange(2, avatarBlock.tiles.Count - 2);
+			avatarBlock.tiles[1] = Block.EmptyTileRow();
 		}
-		List<List<Tile>> list2 = Blocksworld.CloneBlockTiles(this.placementCharacterBlock, true, true);
-		if (this.avatarCharacter is BlockAnimatedCharacter)
+		List<List<Tile>> list2 = Blocksworld.CloneBlockTiles(placementCharacterBlock, excludeFirstRow: true, ignoreLockedGroupTiles: true);
+		if (avatarCharacter is BlockAnimatedCharacter)
 		{
 			ProfileBlocksterUtils.ConvertToAnimated(list2);
 		}
@@ -134,191 +136,179 @@ public class UserAvatarSubstitution : BlockSubstitution
 		{
 			ProfileBlocksterUtils.ConvertToNonAnimated(list2);
 		}
-		this.avatarCharacter.tiles.AddRange(list2);
-		this.placementCharacterBlock.Deactivate();
-		BWSceneManager.RemoveBlock(this.placementCharacterBlock);
+		avatarCharacter.tiles.AddRange(list2);
+		placementCharacterBlock.Deactivate();
+		BWSceneManager.RemoveBlock(placementCharacterBlock);
 		Block.ClearConnectedCache();
-		ConnectednessGraph.Update(this.avatarBlocks);
-		List<Block> list3 = ConnectednessGraph.ConnectedComponent(this.avatarCharacter, 3, null, true);
+		ConnectednessGraph.Update(avatarBlocks);
+		List<Block> list3 = ConnectednessGraph.ConnectedComponent(avatarCharacter, 3);
 		Util.AddGroupedTilesToBlockList(list3);
-		for (int k = this.avatarBlocks.Count - 1; k >= 0; k--)
+		for (int num3 = avatarBlocks.Count - 1; num3 >= 0; num3--)
 		{
-			Block block14 = this.avatarBlocks[k];
-			if (!list3.Contains(block14))
+			Block block12 = avatarBlocks[num3];
+			if (!list3.Contains(block12))
 			{
-				BWSceneManager.RemoveBlock(block14);
-				this.avatarBlocks.RemoveAt(k);
-				block14.Destroy();
+				BWSceneManager.RemoveBlock(block12);
+				avatarBlocks.RemoveAt(num3);
+				block12.Destroy();
 			}
 		}
 	}
 
-	// Token: 0x06001DE7 RID: 7655 RVA: 0x000D57E8 File Offset: 0x000D3BE8
 	private static bool BlockIsCharacter(Block b)
 	{
-		return b != null && (b is BlockCharacter || b is BlockAnimatedCharacter);
+		if (b != null)
+		{
+			if (!(b is BlockCharacter))
+			{
+				return b is BlockAnimatedCharacter;
+			}
+			return true;
+		}
+		return false;
 	}
 
-	// Token: 0x06001DE8 RID: 7656 RVA: 0x000D580C File Offset: 0x000D3C0C
 	private static bool BlockIsUnique(Block b)
 	{
 		string key = (string)b.tiles[0][1].gaf.Args[0];
 		return Blocksworld.GetUniqueBlockMap().ContainsKey(key);
 	}
 
-	// Token: 0x06001DE9 RID: 7657 RVA: 0x000D5848 File Offset: 0x000D3C48
 	public override void RestoreOriginal()
 	{
-		foreach (Block block in this.avatarBlocks)
+		foreach (Block avatarBlock in avatarBlocks)
 		{
-			block.Deactivate();
-			BWSceneManager.RemoveBlock(block);
-			block.Destroy();
+			avatarBlock.Deactivate();
+			BWSceneManager.RemoveBlock(avatarBlock);
+			avatarBlock.Destroy();
 		}
-		this.placementCharacterBlock.Activate();
-		BWSceneManager.AddBlock(this.placementCharacterBlock);
-		this.avatarBlocks.Clear();
-		this.avatarCharacter = null;
-		this.avatarBlockOffsets.Clear();
+		placementCharacterBlock.Activate();
+		BWSceneManager.AddBlock(placementCharacterBlock);
+		avatarBlocks.Clear();
+		avatarCharacter = null;
+		avatarBlockOffsets.Clear();
 		Block.ClearConnectedCache();
-		ConnectednessGraph.Update(this.placementCharacterBlock);
+		ConnectednessGraph.Update(placementCharacterBlock);
 	}
 
-	// Token: 0x06001DEA RID: 7658 RVA: 0x000D58F4 File Offset: 0x000D3CF4
 	private void CreateAvatarBlocks()
 	{
 		string currentUserAvatarSource = WorldSession.current.GetCurrentUserAvatarSource();
-		this.avatarBlocks = this.LoadCharacterFromJson(currentUserAvatarSource);
-		Vector3 b2 = new Vector3(51f, 2.5f, 28f);
+		avatarBlocks = LoadCharacterFromJson(currentUserAvatarSource);
+		Vector3 vector = new Vector3(51f, 2.5f, 28f);
 		float num = float.MaxValue;
 		Block block = null;
 		List<Block> list = new List<Block>();
-		foreach (Block block2 in this.avatarBlocks)
+		foreach (Block avatarBlock in avatarBlocks)
 		{
-			if (block2 is BlockCharacter || block2 is BlockAnimatedCharacter)
+			if (avatarBlock is BlockCharacter || avatarBlock is BlockAnimatedCharacter)
 			{
-				list.Add(block2);
-				float sqrMagnitude = (block2.GetPosition() - b2).sqrMagnitude;
+				list.Add(avatarBlock);
+				float sqrMagnitude = (avatarBlock.GetPosition() - vector).sqrMagnitude;
 				if (sqrMagnitude < num)
 				{
 					num = sqrMagnitude;
-					block = block2;
+					block = avatarBlock;
 				}
 			}
 		}
-		this.avatarCharacter = block;
-		foreach (Block block3 in list)
+		avatarCharacter = block;
+		foreach (Block item2 in list)
 		{
-			if (block3 != this.avatarCharacter)
+			if (item2 != avatarCharacter)
 			{
-				this.avatarBlocks.Remove(block3);
+				avatarBlocks.Remove(item2);
+				item2.Destroy();
+			}
+		}
+		for (int num2 = avatarBlocks.Count - 1; num2 >= 0; num2--)
+		{
+			Block block2 = avatarBlocks[num2];
+			if (BlockIsUnique(block2))
+			{
+				avatarBlocks.RemoveAt(num2);
+				block2.Destroy();
+			}
+		}
+		foreach (Block avatarBlock2 in avatarBlocks)
+		{
+			for (int num3 = avatarBlock2.connections.Count - 1; num3 >= 0; num3--)
+			{
+				if (!avatarBlocks.Contains(avatarBlock2.connections[num3]))
+				{
+					avatarBlock2.connections.RemoveAt(num3);
+					avatarBlock2.connectionTypes.RemoveAt(num3);
+				}
+			}
+		}
+		List<Block> blocks = avatarBlocks.FindAll((Block b) => b.ContainsGroupTile());
+		BlockGroups.GatherBlockGroups(blocks);
+		List<Block> list2 = ConnectednessGraph.ConnectedComponent(avatarCharacter, 3);
+		Util.AddGroupedTilesToBlockList(list2);
+		for (int num4 = avatarBlocks.Count - 1; num4 >= 0; num4--)
+		{
+			Block block3 = avatarBlocks[num4];
+			if (!list2.Contains(block3))
+			{
+				avatarBlocks.RemoveAt(num4);
 				block3.Destroy();
 			}
 		}
-		for (int i = this.avatarBlocks.Count - 1; i >= 0; i--)
+		avatarBlockOffsets = new List<Vector3>();
+		for (int num5 = 0; num5 < avatarBlocks.Count; num5++)
 		{
-			Block block4 = this.avatarBlocks[i];
-			if (UserAvatarSubstitution.BlockIsUnique(block4))
-			{
-				this.avatarBlocks.RemoveAt(i);
-				block4.Destroy();
-			}
-		}
-		foreach (Block block5 in this.avatarBlocks)
-		{
-			for (int j = block5.connections.Count - 1; j >= 0; j--)
-			{
-				if (!this.avatarBlocks.Contains(block5.connections[j]))
-				{
-					block5.connections.RemoveAt(j);
-					block5.connectionTypes.RemoveAt(j);
-				}
-			}
-		}
-		List<Block> blocks = this.avatarBlocks.FindAll((Block b) => b.ContainsGroupTile());
-		BlockGroups.GatherBlockGroups(blocks);
-		List<Block> list2 = ConnectednessGraph.ConnectedComponent(this.avatarCharacter, 3, null, true);
-		Util.AddGroupedTilesToBlockList(list2);
-		for (int k = this.avatarBlocks.Count - 1; k >= 0; k--)
-		{
-			Block block6 = this.avatarBlocks[k];
-			if (!list2.Contains(block6))
-			{
-				this.avatarBlocks.RemoveAt(k);
-				block6.Destroy();
-			}
-		}
-		this.avatarBlockOffsets = new List<Vector3>();
-		for (int l = 0; l < this.avatarBlocks.Count; l++)
-		{
-			Block block7 = this.avatarBlocks[l];
-			Vector3 item = this.avatarCharacter.goT.InverseTransformPoint(block7.GetPosition());
-			this.avatarBlockOffsets.Add(item);
+			Block block4 = avatarBlocks[num5];
+			Vector3 item = avatarCharacter.goT.InverseTransformPoint(block4.GetPosition());
+			avatarBlockOffsets.Add(item);
 		}
 	}
 
-	// Token: 0x06001DEB RID: 7659 RVA: 0x000D5C2C File Offset: 0x000D402C
 	private List<Block> LoadCharacterFromJson(string avatarSourceJsonStr)
 	{
-		JObject jobject = JSONDecoder.Decode(avatarSourceJsonStr);
-		if (jobject == null || !jobject.ContainsKey("avatar"))
+		JObject jObject = JSONDecoder.Decode(avatarSourceJsonStr);
+		if (jObject == null || !jObject.ContainsKey("avatar"))
 		{
 			Debug.Log("Failed to parse avatar json");
 			return null;
 		}
-		List<JObject> arrayValue = jobject["avatar"].ArrayValue;
+		List<JObject> arrayValue = jObject["avatar"].ArrayValue;
 		List<Block> list = new List<Block>();
-		foreach (JObject obj in arrayValue)
+		foreach (JObject item2 in arrayValue)
 		{
-			List<List<Tile>> list2 = Blocksworld.bw.LoadJSONTiles(Blocksworld.GetTileRows(obj));
+			List<List<Tile>> list2 = Blocksworld.bw.LoadJSONTiles(Blocksworld.GetTileRows(item2));
 			string text = (string)list2[0][1].gaf.Args[0];
 			if (text == "Character Avatar")
 			{
 				text = "Character Male";
 				list2[0][1].gaf.Args[0] = text;
 			}
-			Block item = Block.NewBlock(list2, false, false);
+			Block item = Block.NewBlock(list2);
 			list.Add(item);
 		}
 		int num = 0;
-		if (jobject.ContainsKey("connections"))
+		if (jObject.ContainsKey("connections"))
 		{
-			foreach (JObject jobject2 in jobject["connections"].ArrayValue)
+			foreach (JObject item3 in jObject["connections"].ArrayValue)
 			{
-				foreach (JObject obj2 in jobject2.ArrayValue)
+				foreach (JObject item4 in item3.ArrayValue)
 				{
-					list[num].connections.Add(list[(int)obj2]);
+					list[num].connections.Add(list[(int)item4]);
 				}
 				num++;
 			}
 		}
-		if (jobject.ContainsKey("connectionTypes"))
+		if (jObject.ContainsKey("connectionTypes"))
 		{
 			num = 0;
-			foreach (JObject jobject3 in jobject["connectionTypes"].ArrayValue)
+			foreach (JObject item5 in jObject["connectionTypes"].ArrayValue)
 			{
-				foreach (JObject obj3 in jobject3.ArrayValue)
+				foreach (JObject item6 in item5.ArrayValue)
 				{
-					list[num].connectionTypes.Add((int)obj3);
+					list[num].connectionTypes.Add((int)item6);
 				}
 				num++;
 			}
 		}
 		return list;
 	}
-
-	// Token: 0x0400183C RID: 6204
-	private Block placementCharacterBlock;
-
-	// Token: 0x0400183D RID: 6205
-	private IBlockster placementBlockster;
-
-	// Token: 0x0400183E RID: 6206
-	private List<Block> avatarBlocks;
-
-	// Token: 0x0400183F RID: 6207
-	private Block avatarCharacter;
-
-	// Token: 0x04001840 RID: 6208
-	private List<Vector3> avatarBlockOffsets;
 }

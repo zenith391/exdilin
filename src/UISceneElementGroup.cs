@@ -1,178 +1,159 @@
-﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Token: 0x02000430 RID: 1072
 public class UISceneElementGroup : UISceneElement
 {
-	// Token: 0x06002E37 RID: 11831 RVA: 0x0014943C File Offset: 0x0014783C
+	public UISceneElement childElementPrefab;
+
+	public RectTransform contentParent;
+
+	public GameObject noContentsView;
+
+	public int insertAtIndexStart = -1;
+
+	public string childDataType = string.Empty;
+
+	public string childDataSubtype = string.Empty;
+
+	public bool overwriteChildDataType;
+
+	public bool overwriteChildDataSubtype;
+
+	private List<UISceneElement> childElements;
+
+	private bool layoutComplete;
+
+	private bool childContentLoaded;
+
 	protected override void LoadContentFromDataSource()
 	{
-		if (!this.layoutComplete)
+		if (!layoutComplete)
 		{
-			this.Layout();
+			Layout();
 		}
 	}
 
-	// Token: 0x06002E38 RID: 11832 RVA: 0x00149450 File Offset: 0x00147850
 	private void Awake()
 	{
-		if (this.childElementPrefab.gameObject.scene.name != null)
+		if (childElementPrefab.gameObject.scene.name != null)
 		{
-			this.childElementPrefab.gameObject.SetActive(false);
+			childElementPrefab.gameObject.SetActive(value: false);
 		}
-		if (this.noContentsView != null)
+		if (noContentsView != null)
 		{
-			this.noContentsView.SetActive(false);
+			noContentsView.SetActive(value: false);
 		}
 	}
 
-	// Token: 0x06002E39 RID: 11833 RVA: 0x001494A8 File Offset: 0x001478A8
 	private void Layout()
 	{
-		if (!this.dataSource.IsDataLoaded())
+		if (dataSource.IsDataLoaded())
 		{
-			return;
+			StartCoroutine(LayoutCoroutine());
 		}
-		base.StartCoroutine(this.LayoutCoroutine());
 	}
 
-	// Token: 0x06002E3A RID: 11834 RVA: 0x001494C8 File Offset: 0x001478C8
 	private IEnumerator LayoutCoroutine()
 	{
-		this.childContentLoaded = false;
+		childContentLoaded = false;
 		yield return null;
-		this.childElements = new List<UISceneElement>();
-		int insertAtIndex = base.transform.GetSiblingIndex();
-		for (int j = 0; j < this.dataSource.Keys.Count; j++)
+		childElements = new List<UISceneElement>();
+		int num = base.transform.GetSiblingIndex();
+		for (int i = 0; i < dataSource.Keys.Count; i++)
 		{
-			string text = this.dataSource.Keys[j];
-			string text2 = this.childDataType;
-			string text3 = this.childDataSubtype;
-			if (this.overwriteChildDataType)
+			string text = dataSource.Keys[i];
+			string text2 = childDataType;
+			string text3 = childDataSubtype;
+			if (overwriteChildDataType)
 			{
 				text2 = text;
 			}
-			if (this.overwriteChildDataSubtype)
+			if (overwriteChildDataSubtype)
 			{
 				text3 = text;
 			}
-			UISceneElement uisceneElement = UnityEngine.Object.Instantiate<UISceneElement>(this.childElementPrefab);
-			RectTransform rectTransform = (RectTransform)uisceneElement.transform;
-			uisceneElement.gameObject.SetActive(true);
-			GameObject gameObject = uisceneElement.gameObject;
+			UISceneElement uISceneElement = Object.Instantiate(childElementPrefab);
+			RectTransform rectTransform = (RectTransform)uISceneElement.transform;
+			uISceneElement.gameObject.SetActive(value: true);
+			GameObject gameObject = uISceneElement.gameObject;
 			gameObject.name = gameObject.name + text2 + "_" + text3;
-			rectTransform.SetParent(this.contentParent, false);
-			if (insertAtIndex >= 0 && insertAtIndex < this.contentParent.childCount)
+			rectTransform.SetParent(contentParent, worldPositionStays: false);
+			if (num >= 0 && num < contentParent.childCount)
 			{
-				rectTransform.SetSiblingIndex(insertAtIndex);
-				insertAtIndex++;
+				rectTransform.SetSiblingIndex(num);
+				num++;
 			}
-			uisceneElement.dataType = text2;
-			uisceneElement.dataSubtype = text3;
-			this.childElements.Add(uisceneElement);
+			uISceneElement.dataType = text2;
+			uISceneElement.dataSubtype = text3;
+			childElements.Add(uISceneElement);
 		}
 		UISceneElement lastChildElement = null;
-		for (int i = 0; i < this.childElements.Count; i++)
+		for (int j = 0; j < childElements.Count; j++)
 		{
-			string key = this.dataSource.Keys[i];
-			UISceneElement childElement = this.childElements[i];
-			childElement.Init();
-			UIPanelContents mainPanel = childElement.GetComponent<UIPanelContents>();
-			if (mainPanel != null)
+			string itemId = dataSource.Keys[j];
+			UISceneElement uISceneElement2 = childElements[j];
+			uISceneElement2.Init();
+			UIPanelContents component = uISceneElement2.GetComponent<UIPanelContents>();
+			if (component != null)
 			{
-				mainPanel.SetupPanel(this.dataSource, this.imageManager, key);
+				component.SetupPanel(dataSource, imageManager, itemId);
 			}
-			childElement.LoadContent(this.dataManager, this.imageManager);
-			if (i == 0 && this.previousElement != null)
+			uISceneElement2.LoadContent(dataManager, imageManager);
+			if (j == 0 && previousElement != null)
 			{
-				this.previousElement.nextElement = childElement;
-				childElement.previousElement = this.previousElement;
+				previousElement.nextElement = uISceneElement2;
+				uISceneElement2.previousElement = previousElement;
 			}
-			if (i > 0)
+			if (j > 0)
 			{
-				childElement.previousElement = lastChildElement;
-				lastChildElement.nextElement = childElement;
+				uISceneElement2.previousElement = lastChildElement;
+				lastChildElement.nextElement = uISceneElement2;
 			}
-			childElement.deleteOnSceneRefresh = true;
-			lastChildElement = childElement;
+			uISceneElement2.deleteOnSceneRefresh = true;
+			lastChildElement = uISceneElement2;
 			yield return null;
 		}
 		if (lastChildElement != null)
 		{
-			lastChildElement.nextElement = this.nextElement;
+			lastChildElement.nextElement = nextElement;
 		}
-		this.layoutComplete = true;
-		while (!this.childContentLoaded)
+		layoutComplete = true;
+		while (!childContentLoaded)
 		{
-			this.childContentLoaded = this.childElements.TrueForAll((UISceneElement e) => e.ContentLoaded());
+			childContentLoaded = childElements.TrueForAll((UISceneElement e) => e.ContentLoaded());
 		}
-		bool empty = this.childElements.TrueForAll((UISceneElement e) => !e.gameObject.activeSelf);
-		if (empty && this.noContentsView != null)
+		if (childElements.TrueForAll((UISceneElement e) => !e.gameObject.activeSelf) && noContentsView != null)
 		{
-			this.noContentsView.SetActive(true);
+			noContentsView.SetActive(value: true);
 		}
-		yield break;
 	}
 
-	// Token: 0x06002E3B RID: 11835 RVA: 0x001494E3 File Offset: 0x001478E3
 	public override bool ContentLoaded()
 	{
-		return base.ContentLoaded() && this.layoutComplete;
+		if (base.ContentLoaded())
+		{
+			return layoutComplete;
+		}
+		return false;
 	}
 
-	// Token: 0x06002E3C RID: 11836 RVA: 0x001494FC File Offset: 0x001478FC
 	public override void ClearSelection()
 	{
-		foreach (UISceneElement uisceneElement in this.childElements)
+		foreach (UISceneElement childElement in childElements)
 		{
-			uisceneElement.ClearSelection();
+			childElement.ClearSelection();
 		}
 	}
 
-	// Token: 0x06002E3D RID: 11837 RVA: 0x00149558 File Offset: 0x00147958
 	public override void UnloadContent()
 	{
-		this.layoutComplete = false;
-		this.childContentLoaded = false;
-		this.childElements.Clear();
-		if (this.noContentsView != null)
+		layoutComplete = false;
+		childContentLoaded = false;
+		childElements.Clear();
+		if (noContentsView != null)
 		{
-			this.noContentsView.SetActive(false);
+			noContentsView.SetActive(value: false);
 		}
 	}
-
-	// Token: 0x040026B2 RID: 9906
-	public UISceneElement childElementPrefab;
-
-	// Token: 0x040026B3 RID: 9907
-	public RectTransform contentParent;
-
-	// Token: 0x040026B4 RID: 9908
-	public GameObject noContentsView;
-
-	// Token: 0x040026B5 RID: 9909
-	public int insertAtIndexStart = -1;
-
-	// Token: 0x040026B6 RID: 9910
-	public string childDataType = string.Empty;
-
-	// Token: 0x040026B7 RID: 9911
-	public string childDataSubtype = string.Empty;
-
-	// Token: 0x040026B8 RID: 9912
-	public bool overwriteChildDataType;
-
-	// Token: 0x040026B9 RID: 9913
-	public bool overwriteChildDataSubtype;
-
-	// Token: 0x040026BA RID: 9914
-	private List<UISceneElement> childElements;
-
-	// Token: 0x040026BB RID: 9915
-	private bool layoutComplete;
-
-	// Token: 0x040026BC RID: 9916
-	private bool childContentLoaded;
 }

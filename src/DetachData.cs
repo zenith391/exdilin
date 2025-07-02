@@ -1,147 +1,179 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x02000138 RID: 312
 public class DetachData
 {
-	// Token: 0x0600143B RID: 5179 RVA: 0x0008D234 File Offset: 0x0008B634
+	public HashSet<Block> blocksToExclude = new HashSet<Block>();
+
+	public HashSet<Block> onlyInclude;
+
+	public HashSet<Block> hitByExplosion;
+
+	public Collider[] colliders;
+
+	public HashSet<Block> detachBlocks;
+
+	public HashSet<Block> blocksWithinMaxRadius;
+
+	public HashSet<Chunk> detachChunks;
+
+	public HashSet<Chunk> forceChunks;
+
+	public Dictionary<Chunk, List<Block>> chunkBlockRemoves;
+
+	public string onlyBlocksWithTag;
+
+	public bool informExploded;
+
+	public bool detachWithoutBreak;
+
+	public bool detachWithoutForce;
+
+	public bool done;
+
+	public AbstractDetachCommand detachForceGiver;
+
+	public int forceCounter;
+
+	public float forceDuration = 1f;
+
+	public float explosionTime;
+
+	public Vector3 position;
+
+	public Block forceDetachBlock;
+
 	public void GatherColliders(Vector3 position, float maxRadius)
 	{
-		this.colliders = Physics.OverlapSphere(position, maxRadius);
-		if (this.colliders.Length == 0)
+		colliders = Physics.OverlapSphere(position, maxRadius);
+		if (colliders.Length == 0)
 		{
-			this.done = true;
+			done = true;
 		}
 		this.position = position;
 	}
 
-	// Token: 0x0600143C RID: 5180 RVA: 0x0008D260 File Offset: 0x0008B660
 	public void GatherBlocks()
 	{
-		this.blocksWithinMaxRadius = new HashSet<Block>();
-		this.detachBlocks = new HashSet<Block>();
-		bool flag = !string.IsNullOrEmpty(this.onlyBlocksWithTag);
-		for (int i = 0; i < this.colliders.Length; i++)
+		blocksWithinMaxRadius = new HashSet<Block>();
+		detachBlocks = new HashSet<Block>();
+		bool flag = !string.IsNullOrEmpty(onlyBlocksWithTag);
+		for (int i = 0; i < colliders.Length; i++)
 		{
-			Collider collider = this.colliders[i];
-			if (!(collider == null))
+			Collider collider = colliders[i];
+			if (collider == null)
 			{
-				Block block = BWSceneManager.FindBlock(collider.gameObject, false);
-				if (block != null)
+				continue;
+			}
+			Block block = BWSceneManager.FindBlock(collider.gameObject);
+			if (block == null || (collider.isTrigger && !(block is BlockVolumeBlock)) || (onlyInclude != null && !onlyInclude.Contains(block)))
+			{
+				continue;
+			}
+			if (flag)
+			{
+				bool flag2 = false;
+				if (TagManager.blockTags.ContainsKey(block))
 				{
-					if (!collider.isTrigger || block is BlockVolumeBlock)
+					flag2 = TagManager.blockTags[block].Contains(onlyBlocksWithTag);
+				}
+				if (!flag2 && TagManager.registeredBlocks.ContainsKey(onlyBlocksWithTag))
+				{
+					if (block.chunk.blocks.Count < TagManager.registeredBlocks[onlyBlocksWithTag].Count)
 					{
-						if (this.onlyInclude == null || this.onlyInclude.Contains(block))
+						for (int j = 0; j < block.chunk.blocks.Count; j++)
 						{
-							if (flag)
+							if (flag2)
 							{
-								bool flag2 = false;
-								if (TagManager.blockTags.ContainsKey(block))
-								{
-									flag2 = TagManager.blockTags[block].Contains(this.onlyBlocksWithTag);
-								}
-								if (!flag2 && TagManager.registeredBlocks.ContainsKey(this.onlyBlocksWithTag))
-								{
-									bool flag3 = block.chunk.blocks.Count < TagManager.registeredBlocks[this.onlyBlocksWithTag].Count;
-									if (flag3)
-									{
-										int num = 0;
-										while (num < block.chunk.blocks.Count && !flag2)
-										{
-											Block key = block.chunk.blocks[num];
-											flag2 = (TagManager.blockTags.ContainsKey(key) && TagManager.blockTags[key].Contains(this.onlyBlocksWithTag));
-											num++;
-										}
-									}
-									else
-									{
-										List<Block> list = TagManager.registeredBlocks[this.onlyBlocksWithTag];
-										int num2 = 0;
-										while (num2 < list.Count && !flag2)
-										{
-											flag2 = (list[num2].modelBlock == block.modelBlock);
-											num2++;
-										}
-									}
-								}
-								if (!flag2)
-								{
-									goto IL_251;
-								}
+								break;
 							}
-							if (block != null && !block.isTerrain)
+							Block key = block.chunk.blocks[j];
+							flag2 = TagManager.blockTags.ContainsKey(key) && TagManager.blockTags[key].Contains(onlyBlocksWithTag);
+						}
+					}
+					else
+					{
+						List<Block> list = TagManager.registeredBlocks[onlyBlocksWithTag];
+						for (int k = 0; k < list.Count; k++)
+						{
+							if (flag2)
 							{
-								if ((!block.broken || this.forceDetachBlock == block) && !this.blocksToExclude.Contains(block) && !Invincibility.IsInvincible(block) && this.detachForceGiver.DetachBlock(block))
-								{
-									this.detachBlocks.Add(block);
-								}
-								this.blocksWithinMaxRadius.Add(block);
+								break;
 							}
+							flag2 = list[k].modelBlock == block.modelBlock;
 						}
 					}
 				}
+				if (!flag2)
+				{
+					continue;
+				}
 			}
-			IL_251:;
+			if (block != null && !block.isTerrain)
+			{
+				if ((!block.broken || forceDetachBlock == block) && !blocksToExclude.Contains(block) && !Invincibility.IsInvincible(block) && detachForceGiver.DetachBlock(block))
+				{
+					detachBlocks.Add(block);
+				}
+				blocksWithinMaxRadius.Add(block);
+			}
 		}
-		if (this.hitByExplosion != null && this.hitByExplosion.Count == 0)
+		if (hitByExplosion != null && hitByExplosion.Count == 0)
 		{
-			this.hitByExplosion.UnionWith(this.blocksWithinMaxRadius);
+			hitByExplosion.UnionWith(blocksWithinMaxRadius);
 		}
-		if (this.blocksWithinMaxRadius.Count == 0)
+		if (blocksWithinMaxRadius.Count == 0)
 		{
-			this.done = true;
+			done = true;
 		}
 	}
 
-	// Token: 0x0600143D RID: 5181 RVA: 0x0008D514 File Offset: 0x0008B914
 	public void ComputeChunks()
 	{
-		this.detachChunks = new HashSet<Chunk>();
-		this.chunkBlockRemoves = new Dictionary<Chunk, List<Block>>();
-		this.forceChunks = new HashSet<Chunk>();
-		foreach (Block block in this.detachBlocks)
+		detachChunks = new HashSet<Chunk>();
+		chunkBlockRemoves = new Dictionary<Chunk, List<Block>>();
+		forceChunks = new HashSet<Chunk>();
+		foreach (Block detachBlock in detachBlocks)
 		{
-			Chunk chunk = block.chunk;
-			if ((!block.broken || block == this.forceDetachBlock) && block.BreakByDetachExplosion() && chunk.go != null)
+			Chunk chunk = detachBlock.chunk;
+			if ((!detachBlock.broken || detachBlock == forceDetachBlock) && detachBlock.BreakByDetachExplosion() && chunk.go != null)
 			{
-				this.detachChunks.Add(chunk);
-				List<Block> list;
-				if (!this.chunkBlockRemoves.TryGetValue(chunk, out list))
+				detachChunks.Add(chunk);
+				if (!chunkBlockRemoves.TryGetValue(chunk, out var value))
 				{
-					list = new List<Block>();
-					this.chunkBlockRemoves[chunk] = list;
+					value = new List<Block>();
+					chunkBlockRemoves[chunk] = value;
 				}
-				list.Add(block);
+				value.Add(detachBlock);
 			}
 		}
-		if (this.blocksWithinMaxRadius != null && !this.detachWithoutForce)
+		if (blocksWithinMaxRadius != null && !detachWithoutForce)
 		{
-			foreach (Block block2 in this.blocksWithinMaxRadius)
+			foreach (Block item4 in blocksWithinMaxRadius)
 			{
-				Chunk chunk2 = block2.chunk;
-				if (!this.detachChunks.Contains(chunk2) && !this.forceChunks.Contains(chunk2) && chunk2.go != null)
+				Chunk chunk2 = item4.chunk;
+				if (!detachChunks.Contains(chunk2) && !forceChunks.Contains(chunk2) && chunk2.go != null)
 				{
 					Rigidbody rb = chunk2.rb;
 					if (rb != null && !rb.isKinematic)
 					{
-						this.forceChunks.Add(chunk2);
+						forceChunks.Add(chunk2);
 					}
 				}
 			}
 		}
-		List<Block> list2 = new List<Block>();
-		List<List<Block>> list3 = new List<List<Block>>();
+		List<Block> list = new List<Block>();
+		List<List<Block>> list2 = new List<List<Block>>();
+		List<Vector3> list3 = new List<Vector3>();
 		List<Vector3> list4 = new List<Vector3>();
 		List<Vector3> list5 = new List<Vector3>();
-		List<Vector3> list6 = new List<Vector3>();
 		Dictionary<Block, Chunk> dictionary = new Dictionary<Block, Chunk>();
 		HashSet<Chunk> hashSet = new HashSet<Chunk>();
-		foreach (KeyValuePair<Chunk, List<Block>> keyValuePair in this.chunkBlockRemoves)
+		foreach (KeyValuePair<Chunk, List<Block>> chunkBlockRemove in chunkBlockRemoves)
 		{
-			Chunk key = keyValuePair.Key;
-			List<Block> value = keyValuePair.Value;
+			Chunk key = chunkBlockRemove.Key;
+			List<Block> value2 = chunkBlockRemove.Value;
 			Vector3 item = Vector3.zero;
 			Vector3 item2 = Vector3.zero;
 			Vector3 item3 = key.go.transform.position;
@@ -153,28 +185,22 @@ public class DetachData
 			}
 			else
 			{
-				list2.AddRange(value);
+				list.AddRange(value2);
 			}
-			int count = list3.Count;
-			if (key.blocks.Count == value.Count)
+			int count = list2.Count;
+			if (key.blocks.Count == value2.Count)
 			{
-				foreach (Block item4 in key.blocks)
+				foreach (Block block5 in key.blocks)
 				{
-					list3.Add(new List<Block>
-					{
-						item4
-					});
+					list2.Add(new List<Block> { block5 });
 				}
 			}
 			else
 			{
-				foreach (Block block3 in value)
+				foreach (Block item5 in value2)
 				{
-					key.RemoveBlock(block3);
-					list3.Add(new List<Block>
-					{
-						block3
-					});
+					key.RemoveBlock(item5);
+					list2.Add(new List<Block> { item5 });
 				}
 			}
 			if (key.blocks.Count > 0)
@@ -182,56 +208,58 @@ public class DetachData
 				HashSet<Block> hashSet2 = new HashSet<Block>(key.blocks);
 				while (hashSet2.Count > 0)
 				{
-					Block block4 = null;
-					List<Block> list7 = new List<Block>(hashSet2);
-					foreach (Block block5 in list7)
+					Block block = null;
+					List<Block> list6 = new List<Block>(hashSet2);
+					foreach (Block item6 in list6)
 					{
-						if (!this.detachBlocks.Contains(block5))
+						if (!detachBlocks.Contains(item6))
 						{
-							block4 = block5;
+							block = item6;
 							break;
 						}
-						hashSet2.Remove(block5);
+						hashSet2.Remove(item6);
 					}
-					if (block4 != null)
+					if (block == null)
 					{
-						HashSet<Block> hashSet3 = new HashSet<Block>();
-						List<Block> list8 = new List<Block>();
-						list8.Add(block4);
-						while (list8.Count > 0)
+						continue;
+					}
+					HashSet<Block> hashSet3 = new HashSet<Block>();
+					List<Block> list7 = new List<Block>();
+					list7.Add(block);
+					while (list7.Count > 0)
+					{
+						int index = list7.Count - 1;
+						Block block2 = list7[index];
+						list7.RemoveAt(index);
+						hashSet3.Add(block2);
+						hashSet2.Remove(block2);
+						for (int i = 0; i < block2.connections.Count; i++)
 						{
-							int index = list8.Count - 1;
-							Block block6 = list8[index];
-							list8.RemoveAt(index);
-							hashSet3.Add(block6);
-							hashSet2.Remove(block6);
-							for (int i = 0; i < block6.connections.Count; i++)
+							int num = block2.connectionTypes[i];
+							if (num != 1)
 							{
-								int num = block6.connectionTypes[i];
-								if (num == 1)
+								continue;
+							}
+							Block block3 = block2.connections[i];
+							if (!hashSet3.Contains(block3) && !detachBlocks.Contains(block3))
+							{
+								Chunk chunk3 = block3.chunk;
+								if (chunk3 == key)
 								{
-									Block block7 = block6.connections[i];
-									if (!hashSet3.Contains(block7) && !this.detachBlocks.Contains(block7))
-									{
-										Chunk chunk3 = block7.chunk;
-										if (chunk3 == key)
-										{
-											list8.Add(block7);
-										}
-									}
+									list7.Add(block3);
 								}
 							}
 						}
-						list3.Add(new List<Block>(hashSet3));
 					}
+					list2.Add(new List<Block>(hashSet3));
 				}
 			}
-			int num2 = list3.Count - count;
+			int num2 = list2.Count - count;
 			for (int j = 0; j < num2; j++)
 			{
-				list4.Add(item);
-				list6.Add(item2);
-				list5.Add(item3);
+				list3.Add(item);
+				list5.Add(item2);
+				list4.Add(item3);
 			}
 			for (int k = 0; k < key.blocks.Count; k++)
 			{
@@ -240,161 +268,152 @@ public class DetachData
 			hashSet.Add(key);
 		}
 		HashSet<List<Block>> hashSet4 = new HashSet<List<Block>>();
-		foreach (Chunk chunk4 in hashSet)
+		foreach (Chunk item7 in hashSet)
 		{
-			if (chunk4.blocks.Count != 0)
+			if (item7.blocks.Count != 0 && Block.connectedCache.TryGetValue(item7.blocks[0], out var value3))
 			{
-				List<Block> item5;
-				if (Block.connectedCache.TryGetValue(chunk4.blocks[0], out item5))
-				{
-					hashSet4.Add(item5);
-					Blocksworld.blocksworldCamera.Unfollow(chunk4);
-					Blocksworld.chunks.Remove(chunk4);
-					chunk4.Destroy(false);
-					Blocksworld.blocksworldCamera.ChunkDirty(chunk4);
-				}
+				hashSet4.Add(value3);
+				Blocksworld.blocksworldCamera.Unfollow(item7);
+				Blocksworld.chunks.Remove(item7);
+				item7.Destroy();
+				Blocksworld.blocksworldCamera.ChunkDirty(item7);
 			}
 		}
-		List<Chunk> list9 = new List<Chunk>();
+		List<Chunk> list8 = new List<Chunk>();
 		Dictionary<Chunk, Chunk> dictionary2 = new Dictionary<Chunk, Chunk>();
 		Dictionary<Chunk, Chunk> dictionary3 = new Dictionary<Chunk, Chunk>();
-		for (int l = 0; l < list3.Count; l++)
+		for (int l = 0; l < list2.Count; l++)
 		{
-			List<Block> list10 = list3[l];
-			foreach (Block key2 in list10)
+			List<Block> list9 = list2[l];
+			foreach (Block item8 in list9)
 			{
-				Block.connectedChunks.Remove(key2);
+				Block.connectedChunks.Remove(item8);
 			}
-			if (!this.detachWithoutBreak && list10.Count == 1 && this.detachBlocks.Contains(list10[0]))
+			if (!detachWithoutBreak && list9.Count == 1 && detachBlocks.Contains(list9[0]))
 			{
-				Block block8 = list10[0];
-				if (block8.BreakByDetachExplosion())
+				Block block4 = list9[0];
+				if (block4.BreakByDetachExplosion())
 				{
-					block8.Break(list5[l], list4[l], list6[l]);
+					block4.Break(list4[l], list3[l], list5[l]);
 				}
 			}
-			Quaternion rotation = list10[0].chunk.go.transform.rotation;
-			Chunk chunk5 = new Chunk(list10, rotation, false);
-			if (chunk5.rb != null)
+			Quaternion rotation = list9[0].chunk.go.transform.rotation;
+			Chunk chunk4 = new Chunk(list9, rotation);
+			if (chunk4.rb != null)
 			{
-				chunk5.UpdateCenterOfMass(true);
-				chunk5.rb.velocity = list4[l];
-				chunk5.rb.angularVelocity = list6[l];
-				if (list10.Count > 0 && list10[0].didFix && !list10[0].broken && !this.detachBlocks.Contains(list10[0]))
+				chunk4.UpdateCenterOfMass();
+				chunk4.rb.velocity = list3[l];
+				chunk4.rb.angularVelocity = list5[l];
+				if (list9.Count > 0 && list9[0].didFix && !list9[0].broken && !detachBlocks.Contains(list9[0]))
 				{
-					chunk5.rb.isKinematic = true;
+					chunk4.rb.isKinematic = true;
 				}
 			}
-			Blocksworld.chunks.Add(chunk5);
-			list9.Add(chunk5);
-			this.forceChunks.Add(chunk5);
-			if (list10.Count > 1)
+			Blocksworld.chunks.Add(chunk4);
+			list8.Add(chunk4);
+			forceChunks.Add(chunk4);
+			if (list9.Count <= 1)
 			{
-				for (int m = 0; m < list10.Count; m++)
+				continue;
+			}
+			for (int m = 0; m < list9.Count; m++)
+			{
+				Block key2 = list9[m];
+				if (dictionary.TryGetValue(key2, out var value4))
 				{
-					Block key3 = list10[m];
-					Chunk chunk6;
-					if (dictionary.TryGetValue(key3, out chunk6))
-					{
-						dictionary2[chunk6] = chunk5;
-						dictionary3[chunk5] = chunk6;
-					}
+					dictionary2[value4] = chunk4;
+					dictionary3[chunk4] = value4;
 				}
 			}
 		}
-		foreach (List<Block> list11 in hashSet4)
+		foreach (List<Block> item9 in hashSet4)
 		{
 			HashSet<Chunk> hashSet5 = new HashSet<Chunk>();
 			Dictionary<GameObject, Chunk> dictionary4 = new Dictionary<GameObject, Chunk>();
 			Dictionary<Joint, Joint> dictionary5 = new Dictionary<Joint, Joint>();
-			for (int n = 0; n < list11.Count; n++)
+			for (int n = 0; n < item9.Count; n++)
 			{
-				Chunk chunk7 = list11[n].chunk;
-				hashSet5.Add(chunk7);
-				dictionary4[chunk7.go] = chunk7;
-				Chunk chunk8;
-				if (dictionary3.TryGetValue(chunk7, out chunk8))
+				Chunk chunk5 = item9[n].chunk;
+				hashSet5.Add(chunk5);
+				dictionary4[chunk5.go] = chunk5;
+				if (dictionary3.TryGetValue(chunk5, out var value5))
 				{
-					dictionary4[chunk8.go] = chunk8;
+					dictionary4[value5.go] = value5;
 				}
 			}
-			foreach (Chunk chunk9 in hashSet5)
+			foreach (Chunk item10 in hashSet5)
 			{
-				if (dictionary3.ContainsKey(chunk9))
+				if (dictionary3.ContainsKey(item10))
 				{
-					Chunk chunk10 = dictionary3[chunk9];
-					foreach (Joint joint in chunk10.go.GetComponents<Joint>())
+					Chunk chunk6 = dictionary3[item10];
+					Joint[] components = chunk6.go.GetComponents<Joint>();
+					foreach (Joint joint in components)
 					{
 						ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
 						GameObject gameObject = joint.connectedBody.gameObject;
-						Chunk chunk11;
-						if (dictionary4.TryGetValue(gameObject, out chunk11))
+						if (dictionary4.TryGetValue(gameObject, out var value6))
 						{
-							if (!dictionary3.ContainsKey(chunk11))
+							if (!dictionary3.ContainsKey(value6) && configurableJoint != null && value6.rb != null)
 							{
-								if (configurableJoint != null && chunk11.rb != null)
-								{
-									Joint value2 = this.ReconstructJoint(chunk10.go, chunk9.go, chunk11.go, configurableJoint);
-									dictionary5[configurableJoint] = value2;
-								}
+								Joint value7 = ReconstructJoint(chunk6.go, item10.go, value6.go, configurableJoint);
+								dictionary5[configurableJoint] = value7;
 							}
 						}
 						else if (configurableJoint != null)
 						{
-							Joint value3 = this.ReconstructJoint(chunk10.go, chunk9.go, gameObject, configurableJoint);
-							dictionary5[configurableJoint] = value3;
+							Joint value8 = ReconstructJoint(chunk6.go, item10.go, gameObject, configurableJoint);
+							dictionary5[configurableJoint] = value8;
 						}
 					}
 				}
-				else if (chunk9.go != null)
+				else if (item10.go != null)
 				{
-					foreach (Joint joint2 in chunk9.go.GetComponents<Joint>())
+					Joint[] components2 = item10.go.GetComponents<Joint>();
+					foreach (Joint joint2 in components2)
 					{
 						GameObject gameObject2 = joint2.connectedBody.gameObject;
-						Chunk key4;
-						if (dictionary4.TryGetValue(gameObject2, out key4) && dictionary2.ContainsKey(key4))
+						if (dictionary4.TryGetValue(gameObject2, out var value9) && dictionary2.ContainsKey(value9))
 						{
-							Chunk chunk12 = dictionary2[key4];
-							Rigidbody component = chunk12.go.GetComponent<Rigidbody>();
+							Chunk chunk7 = dictionary2[value9];
+							Rigidbody component = chunk7.go.GetComponent<Rigidbody>();
 							if (component != null)
 							{
 								joint2.connectedBody = component;
 								Vector3 vector = gameObject2.transform.TransformPoint(joint2.connectedAnchor);
-								joint2.connectedAnchor = chunk12.go.transform.InverseTransformPoint(vector);
+								joint2.connectedAnchor = chunk7.go.transform.InverseTransformPoint(vector);
 							}
 						}
 					}
 				}
-				chunk9.ChunksAndJointsModified(dictionary5, dictionary2, dictionary3);
+				item10.ChunksAndJointsModified(dictionary5, dictionary2, dictionary3);
 			}
 		}
-		for (int num5 = 0; num5 < list3.Count; num5++)
+		for (int num5 = 0; num5 < list2.Count; num5++)
 		{
-			List<Block> list12 = list3[num5];
-			foreach (Block block9 in list12)
+			List<Block> list10 = list2[num5];
+			foreach (Block item11 in list10)
 			{
-				Block.connectedChunks[block9] = new HashSet<Chunk>(list9);
-				block9.ReassignedToChunk(block9.chunk);
+				Block.connectedChunks[item11] = new HashSet<Chunk>(list8);
+				item11.ReassignedToChunk(item11.chunk);
 			}
 		}
 		if (Blocksworld.worldOceanBlock != null)
 		{
-			foreach (Block b in list2)
+			foreach (Block item12 in list)
 			{
-				Blocksworld.worldOceanBlock.AddBlockToSimulation(b);
+				Blocksworld.worldOceanBlock.AddBlockToSimulation(item12);
 			}
 		}
-		if (this.informExploded)
+		if (informExploded)
 		{
-			foreach (Block block10 in this.detachBlocks)
+			foreach (Block detachBlock2 in detachBlocks)
 			{
-				block10.Exploded();
+				detachBlock2.Exploded();
 			}
 		}
 		Blocksworld.blocksworldCamera.UpdateChunkSpeeds();
 	}
 
-	// Token: 0x0600143E RID: 5182 RVA: 0x0008E25C File Offset: 0x0008C65C
 	private Joint ReconstructJoint(GameObject oldFrom, GameObject from, GameObject to, ConfigurableJoint cfgJoint)
 	{
 		ConfigurableJoint configurableJoint = from.AddComponent<ConfigurableJoint>();
@@ -433,86 +452,25 @@ public class DetachData
 		return configurableJoint;
 	}
 
-	// Token: 0x0600143F RID: 5183 RVA: 0x0008E418 File Offset: 0x0008C818
 	public void ApplyForces()
 	{
-		this.explosionTime = (float)this.forceCounter * Blocksworld.fixedDeltaTime;
-		if (this.detachForceGiver != null && this.explosionTime < this.forceDuration && !this.detachWithoutForce)
+		explosionTime = (float)forceCounter * Blocksworld.fixedDeltaTime;
+		if (detachForceGiver != null && explosionTime < forceDuration && !detachWithoutForce)
 		{
-			foreach (Chunk chunk in this.forceChunks)
+			foreach (Chunk forceChunk in forceChunks)
 			{
-				if (chunk.go != null)
+				if (forceChunk.go != null)
 				{
-					Rigidbody rb = chunk.rb;
+					Rigidbody rb = forceChunk.rb;
 					if (rb != null)
 					{
-						Vector3 force = this.detachForceGiver.GetForce(rb.worldCenterOfMass, this.explosionTime);
+						Vector3 force = detachForceGiver.GetForce(rb.worldCenterOfMass, explosionTime);
 						rb.AddForce(force, ForceMode.Impulse);
 					}
 				}
 			}
 		}
-		this.forceCounter++;
-		this.done = (this.forceCounter > 3);
+		forceCounter++;
+		done = forceCounter > 3;
 	}
-
-	// Token: 0x04000FE4 RID: 4068
-	public HashSet<Block> blocksToExclude = new HashSet<Block>();
-
-	// Token: 0x04000FE5 RID: 4069
-	public HashSet<Block> onlyInclude;
-
-	// Token: 0x04000FE6 RID: 4070
-	public HashSet<Block> hitByExplosion;
-
-	// Token: 0x04000FE7 RID: 4071
-	public Collider[] colliders;
-
-	// Token: 0x04000FE8 RID: 4072
-	public HashSet<Block> detachBlocks;
-
-	// Token: 0x04000FE9 RID: 4073
-	public HashSet<Block> blocksWithinMaxRadius;
-
-	// Token: 0x04000FEA RID: 4074
-	public HashSet<Chunk> detachChunks;
-
-	// Token: 0x04000FEB RID: 4075
-	public HashSet<Chunk> forceChunks;
-
-	// Token: 0x04000FEC RID: 4076
-	public Dictionary<Chunk, List<Block>> chunkBlockRemoves;
-
-	// Token: 0x04000FED RID: 4077
-	public string onlyBlocksWithTag;
-
-	// Token: 0x04000FEE RID: 4078
-	public bool informExploded;
-
-	// Token: 0x04000FEF RID: 4079
-	public bool detachWithoutBreak;
-
-	// Token: 0x04000FF0 RID: 4080
-	public bool detachWithoutForce;
-
-	// Token: 0x04000FF1 RID: 4081
-	public bool done;
-
-	// Token: 0x04000FF2 RID: 4082
-	public AbstractDetachCommand detachForceGiver;
-
-	// Token: 0x04000FF3 RID: 4083
-	public int forceCounter;
-
-	// Token: 0x04000FF4 RID: 4084
-	public float forceDuration = 1f;
-
-	// Token: 0x04000FF5 RID: 4085
-	public float explosionTime;
-
-	// Token: 0x04000FF6 RID: 4086
-	public Vector3 position;
-
-	// Token: 0x04000FF7 RID: 4087
-	public Block forceDetachBlock;
 }

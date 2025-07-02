@@ -1,12 +1,16 @@
-﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Token: 0x0200011E RID: 286
 public static class CollisionVolumes
 {
-	// Token: 0x060013DC RID: 5084 RVA: 0x000896D8 File Offset: 0x00087AD8
+	public const float lenExtrude = 0.01f;
+
+	private const float lenInwardOffset = 0.2f;
+
+	public const float shapeShrink = 0.1f;
+
+	public static Dictionary<PrefabCollisionData, CollisionMesh[]> PrefabMeshes = new Dictionary<PrefabCollisionData, CollisionMesh[]>();
+
 	public static void TranslateMeshes(CollisionMesh[] meshes, Vector3 offset)
 	{
 		foreach (CollisionMesh collisionMesh in meshes)
@@ -15,81 +19,61 @@ public static class CollisionVolumes
 			collisionMesh2.AABB.center = collisionMesh2.AABB.center + offset;
 			for (int j = 0; j < collisionMesh.Triangles.Length; j++)
 			{
-				collisionMesh.Triangles[j] = CollisionVolumes.TranslateTriangle(collisionMesh.Triangles[j], offset);
+				collisionMesh.Triangles[j] = TranslateTriangle(collisionMesh.Triangles[j], offset);
 			}
 		}
 	}
 
-	// Token: 0x060013DD RID: 5085 RVA: 0x00089758 File Offset: 0x00087B58
 	private static Triangle TranslateTriangle(Triangle tri, Vector3 offset)
 	{
 		Plane p = tri.P;
 		Vector3 v = tri.V1 + offset;
 		Vector3 v2 = tri.V2 + offset;
 		Vector3 v3 = tri.V3 + offset;
-		p.distance = -Vector3.Dot(p.normal, tri.V1 + offset);
+		p.distance = 0f - Vector3.Dot(p.normal, tri.V1 + offset);
 		return new Triangle(v, v2, v3, p);
 	}
 
-	// Token: 0x060013DE RID: 5086 RVA: 0x000897C4 File Offset: 0x00087BC4
 	public static void Remove(GameObject prefab)
 	{
 		if (prefab == null)
 		{
 			return;
 		}
-		foreach (PrefabCollisionData key in new List<PrefabCollisionData>(CollisionVolumes.PrefabMeshes.Keys))
+		foreach (PrefabCollisionData item in new List<PrefabCollisionData>(PrefabMeshes.Keys))
 		{
-			if (key.PrefabID == prefab.GetInstanceID())
+			if (item.PrefabID == prefab.GetInstanceID())
 			{
-				CollisionVolumes.PrefabMeshes.Remove(key);
+				PrefabMeshes.Remove(item);
 			}
 		}
 		ObjectPool.Remove(prefab);
 	}
 
-	// Token: 0x060013DF RID: 5087 RVA: 0x00089854 File Offset: 0x00087C54
 	public static void FromPrefab(GameObject prefab, Transform transform, Vector3 scale, ref CollisionMesh[] meshes)
 	{
 		PrefabCollisionData key = new PrefabCollisionData(prefab, scale);
-		CollisionMesh[] array;
-		if (!CollisionVolumes.PrefabMeshes.TryGetValue(key, out array))
+		if (!PrefabMeshes.TryGetValue(key, out var value))
 		{
-			using (PooledObject pooledObject = ObjectPool.Get(prefab, Vector3.zero, Quaternion.identity))
+			using PooledObject pooledObject = ObjectPool.Get(prefab, Vector3.zero, Quaternion.identity);
+			GameObject gameObject = pooledObject.GameObject;
+			gameObject.transform.localScale = scale;
+			value = new CollisionMesh[gameObject.transform.childCount];
+			int num = 0;
+			foreach (object item in gameObject.transform)
 			{
-				GameObject gameObject = pooledObject.GameObject;
-				gameObject.transform.localScale = scale;
-				array = new CollisionMesh[gameObject.transform.childCount];
-				int num = 0;
-				IEnumerator enumerator = gameObject.transform.GetEnumerator();
-				try
-				{
-					while (enumerator.MoveNext())
-					{
-						object obj = enumerator.Current;
-						Transform transform2 = (Transform)obj;
-						array[num++] = CollisionVolumes.GenerateCollisionMesh(transform2.gameObject);
-					}
-				}
-				finally
-				{
-					IDisposable disposable;
-					if ((disposable = (enumerator as IDisposable)) != null)
-					{
-						disposable.Dispose();
-					}
-				}
+				Transform transform2 = (Transform)item;
+				value[num++] = GenerateCollisionMesh(transform2.gameObject);
 			}
 		}
-		CollisionVolumes.PrefabMeshes[key] = array;
+		PrefabMeshes[key] = value;
 		if (meshes == null)
 		{
-			meshes = new CollisionMesh[array.Length];
+			meshes = new CollisionMesh[value.Length];
 		}
-		CollisionVolumes.TransformMeshes(transform, array, ref meshes);
+		TransformMeshes(transform, value, ref meshes);
 	}
 
-	// Token: 0x060013E0 RID: 5088 RVA: 0x00089964 File Offset: 0x00087D64
 	private static void TransformMeshes(Transform transform, CollisionMesh[] prefabMeshes, ref CollisionMesh[] meshes)
 	{
 		for (int i = 0; i < meshes.Length; i++)
@@ -98,41 +82,20 @@ public static class CollisionVolumes
 		}
 	}
 
-	// Token: 0x060013E1 RID: 5089 RVA: 0x00089994 File Offset: 0x00087D94
 	public static CollisionMesh GenerateCollisionMesh(GameObject volumePrefab)
 	{
-		string name = volumePrefab.name;
-		if (name != null)
+		return volumePrefab.name switch
 		{
-			if (name == "Quad")
-			{
-				return CollisionVolumes.GenerateQuadGlueVolume(volumePrefab, 0.2f);
-			}
-			if (name == "Quad Locked")
-			{
-				return CollisionVolumes.GenerateQuadGlueVolume(volumePrefab, 0f);
-			}
-			if (name == "Tri")
-			{
-				return CollisionVolumes.GenerateTriGlueVolume(volumePrefab, 0.2f);
-			}
-			if (name == "Tri Locked")
-			{
-				return CollisionVolumes.GenerateTriGlueVolume(volumePrefab, 0f);
-			}
-			if (name == "Box")
-			{
-				return CollisionVolumes.GenerateBoxShapeVolume(volumePrefab);
-			}
-			if (name == "Wedge")
-			{
-				return CollisionVolumes.GenerateWedgeShapeVolume(volumePrefab);
-			}
-		}
-		return CollisionVolumes.GenerateMeshVolume(volumePrefab);
+			"Quad" => GenerateQuadGlueVolume(volumePrefab), 
+			"Quad Locked" => GenerateQuadGlueVolume(volumePrefab, 0f), 
+			"Tri" => GenerateTriGlueVolume(volumePrefab), 
+			"Tri Locked" => GenerateTriGlueVolume(volumePrefab, 0f), 
+			"Box" => GenerateBoxShapeVolume(volumePrefab), 
+			"Wedge" => GenerateWedgeShapeVolume(volumePrefab), 
+			_ => GenerateMeshVolume(volumePrefab), 
+		};
 	}
 
-	// Token: 0x060013E2 RID: 5090 RVA: 0x00089A58 File Offset: 0x00087E58
 	public static CollisionMesh GenerateMeshVolume(GameObject volumePrefab)
 	{
 		MeshFilter component = volumePrefab.GetComponent<MeshFilter>();
@@ -160,7 +123,6 @@ public static class CollisionVolumes
 		return new CollisionMesh(array);
 	}
 
-	// Token: 0x060013E3 RID: 5091 RVA: 0x00089B5C File Offset: 0x00087F5C
 	private static CollisionMesh GenerateQuadGlueVolume(GameObject volumePrefab, float inwardOffset = 0.2f)
 	{
 		Triangle[] array = new Triangle[12];
@@ -320,52 +282,50 @@ public static class CollisionVolumes
 		Vector3 normalized = (vector2 - vector3).normalized;
 		Vector3 normalized2 = (vector - vector2).normalized;
 		Vector3 normalized3 = Vector3.Cross(vector3 - vector2, vector3 - vector).normalized;
-		Vector3 b = inwardOffset * normalized;
-		Vector3 b2 = inwardOffset * normalized2;
-		Vector3 b3 = 0.01f * normalized3;
-		array[0] = new Triangle(vector2 - b + b2 + b3, vector - b - b2 + b3, vector3 + b + b2 + b3);
-		array[1] = new Triangle(vector3 + b + b2 + b3, vector - b - b2 + b3, vector4 + b - b2 + b3);
-		array[2] = new Triangle(vector3 + b + b2 - b3, vector - b - b2 - b3, vector2 - b + b2 - b3);
-		array[3] = new Triangle(vector4 + b - b2 - b3, vector - b - b2 - b3, vector3 + b + b2 - b3);
-		array[4] = new Triangle(vector - b - b2 - b3, vector - b - b2 + b3, vector2 - b + b2 - b3);
-		array[5] = new Triangle(vector - b - b2 + b3, vector2 - b + b2 + b3, vector2 - b + b2 - b3);
-		array[6] = new Triangle(vector4 + b - b2 - b3, vector3 + b + b2 - b3, vector4 + b - b2 + b3);
-		array[7] = new Triangle(vector4 + b - b2 + b3, vector3 + b + b2 - b3, vector3 + b + b2 + b3);
-		array[8] = new Triangle(vector - b - b2 - b3, vector4 + b - b2 + b3, vector - b - b2 + b3);
-		array[9] = new Triangle(vector4 + b - b2 + b3, vector - b - b2 - b3, vector4 + b - b2 - b3);
-		array[10] = new Triangle(vector2 - b + b2 - b3, vector2 - b + b2 + b3, vector3 + b + b2 + b3);
-		array[11] = new Triangle(vector3 + b + b2 + b3, vector3 + b + b2 - b3, vector2 - b + b2 - b3);
+		Vector3 vector6 = inwardOffset * normalized;
+		Vector3 vector7 = inwardOffset * normalized2;
+		Vector3 vector8 = 0.01f * normalized3;
+		array[0] = new Triangle(vector2 - vector6 + vector7 + vector8, vector - vector6 - vector7 + vector8, vector3 + vector6 + vector7 + vector8);
+		array[1] = new Triangle(vector3 + vector6 + vector7 + vector8, vector - vector6 - vector7 + vector8, vector4 + vector6 - vector7 + vector8);
+		array[2] = new Triangle(vector3 + vector6 + vector7 - vector8, vector - vector6 - vector7 - vector8, vector2 - vector6 + vector7 - vector8);
+		array[3] = new Triangle(vector4 + vector6 - vector7 - vector8, vector - vector6 - vector7 - vector8, vector3 + vector6 + vector7 - vector8);
+		array[4] = new Triangle(vector - vector6 - vector7 - vector8, vector - vector6 - vector7 + vector8, vector2 - vector6 + vector7 - vector8);
+		array[5] = new Triangle(vector - vector6 - vector7 + vector8, vector2 - vector6 + vector7 + vector8, vector2 - vector6 + vector7 - vector8);
+		array[6] = new Triangle(vector4 + vector6 - vector7 - vector8, vector3 + vector6 + vector7 - vector8, vector4 + vector6 - vector7 + vector8);
+		array[7] = new Triangle(vector4 + vector6 - vector7 + vector8, vector3 + vector6 + vector7 - vector8, vector3 + vector6 + vector7 + vector8);
+		array[8] = new Triangle(vector - vector6 - vector7 - vector8, vector4 + vector6 - vector7 + vector8, vector - vector6 - vector7 + vector8);
+		array[9] = new Triangle(vector4 + vector6 - vector7 + vector8, vector - vector6 - vector7 - vector8, vector4 + vector6 - vector7 - vector8);
+		array[10] = new Triangle(vector2 - vector6 + vector7 - vector8, vector2 - vector6 + vector7 + vector8, vector3 + vector6 + vector7 + vector8);
+		array[11] = new Triangle(vector3 + vector6 + vector7 + vector8, vector3 + vector6 + vector7 - vector8, vector2 - vector6 + vector7 - vector8);
 		return new CollisionMesh(array);
 	}
 
-	// Token: 0x060013E4 RID: 5092 RVA: 0x0008A6C4 File Offset: 0x00088AC4
 	private static CollisionMesh GenerateTriGlueVolume(GameObject volumePrefab, float inwardOffset = 0.2f)
 	{
 		Triangle[] array = new Triangle[8];
 		Transform transform = volumePrefab.transform;
 		Vector3 vector = transform.TransformPoint(new Vector3(0f, -0.5f, 0.5f));
 		Vector3 vector2 = transform.TransformPoint(new Vector3(0f, -0.5f, -0.5f));
-		Vector3 a = transform.TransformPoint(new Vector3(0f, 0.5f, -0.5f));
+		Vector3 vector3 = transform.TransformPoint(new Vector3(0f, 0.5f, -0.5f));
 		Vector3 normalized = (vector2 - vector).normalized;
-		Vector3 normalized2 = (a - vector).normalized;
-		Vector3 normalized3 = (a - vector2).normalized;
+		Vector3 normalized2 = (vector3 - vector).normalized;
+		Vector3 normalized3 = (vector3 - vector2).normalized;
 		Vector3 normalized4 = (normalized + normalized2).normalized;
 		Vector3 normalized5 = (-normalized + normalized3).normalized;
 		Vector3 normalized6 = (-normalized3 - normalized2).normalized;
 		Vector3 normalized7 = Vector3.Cross(normalized2, normalized3).normalized;
-		Vector3 b = 0.01f * normalized7;
-		array[0] = new Triangle(vector2 + inwardOffset * normalized5 + b, a + inwardOffset * normalized6 + b, vector + inwardOffset * normalized4 + b);
-		array[1] = new Triangle(vector2 + inwardOffset * normalized5 - b, vector + inwardOffset * normalized4 - b, a + inwardOffset * normalized6 - b);
-		array[2] = new Triangle(vector2 + inwardOffset * normalized5 - b, vector2 + inwardOffset * normalized5 + b, vector + inwardOffset * normalized4 - b);
-		array[3] = new Triangle(vector + inwardOffset * normalized4 - b, vector2 + inwardOffset * normalized5 + b, vector + inwardOffset * normalized4 + b);
-		array[4] = new Triangle(vector2 + inwardOffset * normalized5 - b, a + inwardOffset * normalized6 + b, vector2 + inwardOffset * normalized5 + b);
-		array[5] = new Triangle(a + inwardOffset * normalized6 + b, vector2 + inwardOffset * normalized5 - b, a + inwardOffset * normalized6 - b);
-		array[6] = new Triangle(vector + inwardOffset * normalized4 + b, a + inwardOffset * normalized6 - b, vector + inwardOffset * normalized4 - b);
-		array[7] = new Triangle(a + inwardOffset * normalized6 - b, vector + inwardOffset * normalized4 + b, a + inwardOffset * normalized6 + b);
+		Vector3 vector4 = 0.01f * normalized7;
+		array[0] = new Triangle(vector2 + inwardOffset * normalized5 + vector4, vector3 + inwardOffset * normalized6 + vector4, vector + inwardOffset * normalized4 + vector4);
+		array[1] = new Triangle(vector2 + inwardOffset * normalized5 - vector4, vector + inwardOffset * normalized4 - vector4, vector3 + inwardOffset * normalized6 - vector4);
+		array[2] = new Triangle(vector2 + inwardOffset * normalized5 - vector4, vector2 + inwardOffset * normalized5 + vector4, vector + inwardOffset * normalized4 - vector4);
+		array[3] = new Triangle(vector + inwardOffset * normalized4 - vector4, vector2 + inwardOffset * normalized5 + vector4, vector + inwardOffset * normalized4 + vector4);
+		array[4] = new Triangle(vector2 + inwardOffset * normalized5 - vector4, vector3 + inwardOffset * normalized6 + vector4, vector2 + inwardOffset * normalized5 + vector4);
+		array[5] = new Triangle(vector3 + inwardOffset * normalized6 + vector4, vector2 + inwardOffset * normalized5 - vector4, vector3 + inwardOffset * normalized6 - vector4);
+		array[6] = new Triangle(vector + inwardOffset * normalized4 + vector4, vector3 + inwardOffset * normalized6 - vector4, vector + inwardOffset * normalized4 - vector4);
+		array[7] = new Triangle(vector3 + inwardOffset * normalized6 - vector4, vector + inwardOffset * normalized4 + vector4, vector3 + inwardOffset * normalized6 + vector4);
 		return new CollisionMesh(array);
 	}
 
-	// Token: 0x060013E5 RID: 5093 RVA: 0x0008AA60 File Offset: 0x00088E60
 	private static CollisionMesh GenerateBoxShapeVolume(GameObject volumePrefab)
 	{
 		Triangle[] array = new Triangle[12];
@@ -373,71 +333,58 @@ public static class CollisionVolumes
 		Vector3 vector = transform.TransformPoint(new Vector3(0.5f, 0.5f, 0.5f));
 		Vector3 vector2 = transform.TransformPoint(new Vector3(0.5f, -0.5f, 0.5f));
 		Vector3 vector3 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, 0.5f));
-		Vector3 a = transform.TransformPoint(new Vector3(-0.5f, 0.5f, 0.5f));
-		Vector3 a2 = transform.TransformPoint(new Vector3(0.5f, 0.5f, -0.5f));
-		Vector3 a3 = transform.TransformPoint(new Vector3(0.5f, -0.5f, -0.5f));
-		Vector3 a4 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, -0.5f));
-		Vector3 a5 = transform.TransformPoint(new Vector3(-0.5f, 0.5f, -0.5f));
+		Vector3 vector4 = transform.TransformPoint(new Vector3(-0.5f, 0.5f, 0.5f));
+		Vector3 vector5 = transform.TransformPoint(new Vector3(0.5f, 0.5f, -0.5f));
+		Vector3 vector6 = transform.TransformPoint(new Vector3(0.5f, -0.5f, -0.5f));
+		Vector3 vector7 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, -0.5f));
+		Vector3 vector8 = transform.TransformPoint(new Vector3(-0.5f, 0.5f, -0.5f));
 		Vector3 normalized = (vector2 - vector3).normalized;
 		Vector3 normalized2 = (vector - vector2).normalized;
 		Vector3 normalized3 = Vector3.Cross(vector3 - vector2, vector3 - vector).normalized;
-		Vector3 b = 0.1f * normalized;
-		Vector3 b2 = 0.1f * normalized2;
-		Vector3 b3 = 0.1f * normalized3;
-		array[0] = new Triangle(a2 - b - b2 + b3, a3 - b + b2 + b3, a5 + b - b2 + b3);
-		array[1] = new Triangle(a5 + b - b2 + b3, a3 - b + b2 + b3, a4 + b + b2 + b3);
-		array[2] = new Triangle(vector - b - b2 - b3, a + b - b2 - b3, vector2 - b + b2 - b3);
-		array[3] = new Triangle(a + b - b2 - b3, vector3 + b + b2 - b3, vector2 - b + b2 - b3);
-		array[4] = new Triangle(vector - b - b2 - b3, vector2 - b + b2 - b3, a2 - b - b2 + b3);
-		array[5] = new Triangle(vector2 - b + b2 - b3, a3 - b + b2 + b3, a2 - b - b2 + b3);
-		array[6] = new Triangle(a + b - b2 - b3, a5 + b - b2 + b3, vector3 + b + b2 - b3);
-		array[7] = new Triangle(vector3 + b + b2 - b3, a5 + b - b2 + b3, a4 + b + b2 + b3);
-		array[8] = new Triangle(vector - b - b2 - b3, a2 - b - b2 + b3, a + b - b2 - b3);
-		array[9] = new Triangle(a2 - b - b2 + b3, a5 + b - b2 + b3, a + b - b2 - b3);
-		array[10] = new Triangle(vector2 - b + b2 - b3, vector3 + b + b2 - b3, a3 - b + b2 + b3);
-		array[11] = new Triangle(a3 - b + b2 + b3, vector3 + b + b2 - b3, a4 + b + b2 + b3);
+		Vector3 vector9 = 0.1f * normalized;
+		Vector3 vector10 = 0.1f * normalized2;
+		Vector3 vector11 = 0.1f * normalized3;
+		array[0] = new Triangle(vector5 - vector9 - vector10 + vector11, vector6 - vector9 + vector10 + vector11, vector8 + vector9 - vector10 + vector11);
+		array[1] = new Triangle(vector8 + vector9 - vector10 + vector11, vector6 - vector9 + vector10 + vector11, vector7 + vector9 + vector10 + vector11);
+		array[2] = new Triangle(vector - vector9 - vector10 - vector11, vector4 + vector9 - vector10 - vector11, vector2 - vector9 + vector10 - vector11);
+		array[3] = new Triangle(vector4 + vector9 - vector10 - vector11, vector3 + vector9 + vector10 - vector11, vector2 - vector9 + vector10 - vector11);
+		array[4] = new Triangle(vector - vector9 - vector10 - vector11, vector2 - vector9 + vector10 - vector11, vector5 - vector9 - vector10 + vector11);
+		array[5] = new Triangle(vector2 - vector9 + vector10 - vector11, vector6 - vector9 + vector10 + vector11, vector5 - vector9 - vector10 + vector11);
+		array[6] = new Triangle(vector4 + vector9 - vector10 - vector11, vector8 + vector9 - vector10 + vector11, vector3 + vector9 + vector10 - vector11);
+		array[7] = new Triangle(vector3 + vector9 + vector10 - vector11, vector8 + vector9 - vector10 + vector11, vector7 + vector9 + vector10 + vector11);
+		array[8] = new Triangle(vector - vector9 - vector10 - vector11, vector5 - vector9 - vector10 + vector11, vector4 + vector9 - vector10 - vector11);
+		array[9] = new Triangle(vector5 - vector9 - vector10 + vector11, vector8 + vector9 - vector10 + vector11, vector4 + vector9 - vector10 - vector11);
+		array[10] = new Triangle(vector2 - vector9 + vector10 - vector11, vector3 + vector9 + vector10 - vector11, vector6 - vector9 + vector10 + vector11);
+		array[11] = new Triangle(vector6 - vector9 + vector10 + vector11, vector3 + vector9 + vector10 - vector11, vector7 + vector9 + vector10 + vector11);
 		return new CollisionMesh(array);
 	}
 
-	// Token: 0x060013E6 RID: 5094 RVA: 0x0008AFD4 File Offset: 0x000893D4
 	private static CollisionMesh GenerateWedgeShapeVolume(GameObject volumePrefab)
 	{
 		Triangle[] array = new Triangle[8];
 		Transform transform = volumePrefab.transform;
 		Vector3 vector = transform.TransformPoint(new Vector3(0.5f, -0.5f, 0.5f));
 		Vector3 vector2 = transform.TransformPoint(new Vector3(0.5f, -0.5f, -0.5f));
-		Vector3 a = transform.TransformPoint(new Vector3(0.5f, 0.5f, -0.5f));
-		Vector3 a2 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, 0.5f));
-		Vector3 a3 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, -0.5f));
-		Vector3 a4 = transform.TransformPoint(new Vector3(-0.5f, 0.5f, -0.5f));
+		Vector3 vector3 = transform.TransformPoint(new Vector3(0.5f, 0.5f, -0.5f));
+		Vector3 vector4 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, 0.5f));
+		Vector3 vector5 = transform.TransformPoint(new Vector3(-0.5f, -0.5f, -0.5f));
+		Vector3 vector6 = transform.TransformPoint(new Vector3(-0.5f, 0.5f, -0.5f));
 		Vector3 normalized = (vector2 - vector).normalized;
-		Vector3 normalized2 = (a - vector).normalized;
-		Vector3 normalized3 = (a - vector2).normalized;
+		Vector3 normalized2 = (vector3 - vector).normalized;
+		Vector3 normalized3 = (vector3 - vector2).normalized;
 		Vector3 normalized4 = (normalized + normalized2).normalized;
 		Vector3 normalized5 = (-normalized + normalized3).normalized;
 		Vector3 normalized6 = (-normalized3 - normalized2).normalized;
 		Vector3 normalized7 = Vector3.Cross(normalized2, normalized3).normalized;
-		Vector3 b = 0.1f * normalized7;
-		array[0] = new Triangle(vector2 + 0.1f * normalized5 - b, a + 0.1f * normalized6 - b, vector + 0.1f * normalized4 - b);
-		array[1] = new Triangle(a3 + 0.1f * normalized5 + b, a2 + 0.1f * normalized4 + b, a4 + 0.1f * normalized6 + b);
-		array[2] = new Triangle(vector2 + 0.1f * normalized5 - b, vector + 0.1f * normalized4 - b, a3 + 0.1f * normalized5 + b);
-		array[3] = new Triangle(vector + 0.1f * normalized4 - b, a2 + 0.1f * normalized4 + b, a3 + 0.1f * normalized5 + b);
-		array[4] = new Triangle(vector2 + 0.1f * normalized5 - b, a3 + 0.1f * normalized5 + b, a4 + 0.1f * normalized6 + b);
-		array[5] = new Triangle(a4 + 0.1f * normalized6 + b, a + 0.1f * normalized6 - b, vector2 + 0.1f * normalized5 - b);
-		array[6] = new Triangle(a2 + 0.1f * normalized4 + b, vector + 0.1f * normalized4 - b, a + 0.1f * normalized6 - b);
-		array[7] = new Triangle(a + 0.1f * normalized6 - b, a4 + 0.1f * normalized6 + b, a2 + 0.1f * normalized4 + b);
+		Vector3 vector7 = 0.1f * normalized7;
+		array[0] = new Triangle(vector2 + 0.1f * normalized5 - vector7, vector3 + 0.1f * normalized6 - vector7, vector + 0.1f * normalized4 - vector7);
+		array[1] = new Triangle(vector5 + 0.1f * normalized5 + vector7, vector4 + 0.1f * normalized4 + vector7, vector6 + 0.1f * normalized6 + vector7);
+		array[2] = new Triangle(vector2 + 0.1f * normalized5 - vector7, vector + 0.1f * normalized4 - vector7, vector5 + 0.1f * normalized5 + vector7);
+		array[3] = new Triangle(vector + 0.1f * normalized4 - vector7, vector4 + 0.1f * normalized4 + vector7, vector5 + 0.1f * normalized5 + vector7);
+		array[4] = new Triangle(vector2 + 0.1f * normalized5 - vector7, vector5 + 0.1f * normalized5 + vector7, vector6 + 0.1f * normalized6 + vector7);
+		array[5] = new Triangle(vector6 + 0.1f * normalized6 + vector7, vector3 + 0.1f * normalized6 - vector7, vector2 + 0.1f * normalized5 - vector7);
+		array[6] = new Triangle(vector4 + 0.1f * normalized4 + vector7, vector + 0.1f * normalized4 - vector7, vector3 + 0.1f * normalized6 - vector7);
+		array[7] = new Triangle(vector3 + 0.1f * normalized6 - vector7, vector6 + 0.1f * normalized6 + vector7, vector4 + 0.1f * normalized4 + vector7);
 		return new CollisionMesh(array);
 	}
-
-	// Token: 0x04000F84 RID: 3972
-	public const float lenExtrude = 0.01f;
-
-	// Token: 0x04000F85 RID: 3973
-	private const float lenInwardOffset = 0.2f;
-
-	// Token: 0x04000F86 RID: 3974
-	public const float shapeShrink = 0.1f;
-
-	// Token: 0x04000F87 RID: 3975
-	public static Dictionary<PrefabCollisionData, CollisionMesh[]> PrefabMeshes = new Dictionary<PrefabCollisionData, CollisionMesh[]>();
 }

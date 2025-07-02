@@ -1,50 +1,87 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Exdilin;
 using SimpleJSON;
 using UnityEngine;
-using Exdilin;
 
-// Token: 0x02000049 RID: 73
 public class BlockItem
 {
-	// Token: 0x06000254 RID: 596 RVA: 0x0000D66C File Offset: 0x0000BA6C
-	public BlockItem(int id, string intenalIdentifier, string label, string title, string gafPredicateName, object[] gafDefaultArgs, string iconName, string iconBackgroundColor, RarityLevelEnum rarity)
+	public readonly int Id;
+
+	public readonly string InternalIdentifier;
+
+	public readonly string GafPredicateName;
+
+	public readonly object[] GafDefaultArgs;
+
+	public readonly string IconName;
+
+	public readonly string IconBackgroundColor;
+
+	public readonly string Label;
+
+	public readonly string Title;
+
+	public readonly RarityLevelEnum Rarity;
+
+	public static List<BlockItem> AllBlockItems;
+
+	private static Dictionary<int, BlockItem> _indexById;
+
+	private static Dictionary<string, BlockItem> _indexByInternalIdentifier;
+
+	private static Dictionary<string, List<BlockItem>> _indexByGafPredicateName;
+
+	public bool IsRare => Rarity != RarityLevelEnum.common;
+
+	public bool HasRarityBorder
 	{
-		this.Id = id;
-		this.InternalIdentifier = intenalIdentifier;
-		this.Label = label;
-		this.Title = title;
-		this.GafPredicateName = gafPredicateName;
-		this.GafDefaultArgs = gafDefaultArgs;
-		this.Rarity = rarity;
-		this.IconName = iconName;
-		this.IconBackgroundColor = iconBackgroundColor;
+		get
+		{
+			if (Rarity != RarityLevelEnum.common)
+			{
+				return Rarity != RarityLevelEnum.uncommon;
+			}
+			return false;
+		}
 	}
 
-	// Token: 0x06000255 RID: 597 RVA: 0x0000D6C4 File Offset: 0x0000BAC4
+	public BlockItem(int id, string intenalIdentifier, string label, string title, string gafPredicateName, object[] gafDefaultArgs, string iconName, string iconBackgroundColor, RarityLevelEnum rarity)
+	{
+		Id = id;
+		InternalIdentifier = intenalIdentifier;
+		Label = label;
+		Title = title;
+		GafPredicateName = gafPredicateName;
+		GafDefaultArgs = gafDefaultArgs;
+		Rarity = rarity;
+		IconName = iconName;
+		IconBackgroundColor = iconBackgroundColor;
+	}
+
 	public static void LoadBlockItemsFromResources()
 	{
 		string text = Resources.Load<TextAsset>("block_items_json").text;
 		List<JObject> arrayValue = JSONDecoder.Decode(text).ArrayValue;
 		GafToBlockItem.Init();
-		BlockItem.AllBlockItems = new List<BlockItem>();
-		BlockItem._indexById = new Dictionary<int, BlockItem>();
-		BlockItem._indexByInternalIdentifier = new Dictionary<string, BlockItem>();
-		BlockItem._indexByGafPredicateName = new Dictionary<string, List<BlockItem>>();
-		foreach (JObject jobject in arrayValue)
+		AllBlockItems = new List<BlockItem>();
+		_indexById = new Dictionary<int, BlockItem>();
+		_indexByInternalIdentifier = new Dictionary<string, BlockItem>();
+		_indexByGafPredicateName = new Dictionary<string, List<BlockItem>>();
+		foreach (JObject item2 in arrayValue)
 		{
-			BlockItem blockItem = BlockItem.BlockItemFromJSON(jobject);
+			BlockItem blockItem = BlockItemFromJSON(item2);
 			if (blockItem != null)
 			{
-				BlockItem.AllBlockItems.Add(blockItem);
-				BlockItem._indexById[blockItem.Id] = blockItem;
-				BlockItem._indexByInternalIdentifier[blockItem.InternalIdentifier] = blockItem;
-				if (!BlockItem._indexByGafPredicateName.ContainsKey(blockItem.GafPredicateName))
+				AllBlockItems.Add(blockItem);
+				_indexById[blockItem.Id] = blockItem;
+				_indexByInternalIdentifier[blockItem.InternalIdentifier] = blockItem;
+				if (!_indexByGafPredicateName.ContainsKey(blockItem.GafPredicateName))
 				{
-					BlockItem._indexByGafPredicateName[blockItem.GafPredicateName] = new List<BlockItem>();
+					_indexByGafPredicateName[blockItem.GafPredicateName] = new List<BlockItem>();
 				}
-				BlockItem._indexByGafPredicateName[blockItem.GafPredicateName].Add(blockItem);
-				List<JObject> arrayValue2 = jobject["argument_patterns"].ArrayValue;
+				_indexByGafPredicateName[blockItem.GafPredicateName].Add(blockItem);
+				List<JObject> arrayValue2 = item2["argument_patterns"].ArrayValue;
 				string[] array = new string[arrayValue2.Count];
 				for (int i = 0; i < arrayValue2.Count; i++)
 				{
@@ -53,69 +90,63 @@ public class BlockItem
 				GafToBlockItem.CreatePatternMatch(blockItem, array);
 			}
 		}
-        foreach (BlockItemEntry blockEntry in BlockItemsRegistry.GetItemEntries())
-        {
-            BlockItem blockItem = blockEntry.item;
-            if (blockItem != null)
-            {
-                BlockItem.AllBlockItems.Add(blockItem);
-                BlockItem._indexById[blockItem.Id] = blockItem;
-                BlockItem._indexByInternalIdentifier[blockItem.InternalIdentifier] = blockItem;
-                if (!BlockItem._indexByGafPredicateName.ContainsKey(blockItem.GafPredicateName))
-                {
-                    BlockItem._indexByGafPredicateName[blockItem.GafPredicateName] = new List<BlockItem>();
-                }
-                BlockItem._indexByGafPredicateName[blockItem.GafPredicateName].Add(blockItem);
-                GafToBlockItem.CreatePatternMatch(blockItem, blockEntry.argumentPatterns);
-            }
-        }
-    }
+		BlockItemEntry[] itemEntries = BlockItemsRegistry.GetItemEntries();
+		foreach (BlockItemEntry blockItemEntry in itemEntries)
+		{
+			BlockItem item = blockItemEntry.item;
+			if (item != null)
+			{
+				AllBlockItems.Add(item);
+				_indexById[item.Id] = item;
+				_indexByInternalIdentifier[item.InternalIdentifier] = item;
+				if (!_indexByGafPredicateName.ContainsKey(item.GafPredicateName))
+				{
+					_indexByGafPredicateName[item.GafPredicateName] = new List<BlockItem>();
+				}
+				_indexByGafPredicateName[item.GafPredicateName].Add(item);
+				GafToBlockItem.CreatePatternMatch(item, blockItemEntry.argumentPatterns);
+			}
+		}
+	}
 
-	// Token: 0x06000256 RID: 598 RVA: 0x0000D84C File Offset: 0x0000BC4C
 	public static bool Exists(int id)
 	{
-		return BlockItem._indexById.ContainsKey(id);
+		return _indexById.ContainsKey(id);
 	}
 
-	// Token: 0x06000257 RID: 599 RVA: 0x0000D859 File Offset: 0x0000BC59
 	public static BlockItem FindByID(int id)
 	{
-		return BlockItem._indexById[id];
+		return _indexById[id];
 	}
 
-	// Token: 0x06000258 RID: 600 RVA: 0x0000D866 File Offset: 0x0000BC66
 	public static bool Exists(string internalIdentifier)
 	{
-		return BlockItem._indexByInternalIdentifier.ContainsKey(internalIdentifier);
+		return _indexByInternalIdentifier.ContainsKey(internalIdentifier);
 	}
 
-	// Token: 0x06000259 RID: 601 RVA: 0x0000D873 File Offset: 0x0000BC73
 	public static BlockItem FindByInternalIdentifier(string internalIdentifier)
 	{
-		return BlockItem._indexByInternalIdentifier[internalIdentifier];
+		return _indexByInternalIdentifier[internalIdentifier];
 	}
 
-	// Token: 0x0600025A RID: 602 RVA: 0x0000D880 File Offset: 0x0000BC80
 	public static List<BlockItem> FindByGafPredicateName(string gafPredicateName)
 	{
-		if (BlockItem._indexByGafPredicateName.ContainsKey(gafPredicateName))
+		if (_indexByGafPredicateName.ContainsKey(gafPredicateName))
 		{
-			return BlockItem._indexByGafPredicateName[gafPredicateName];
+			return _indexByGafPredicateName[gafPredicateName];
 		}
 		return new List<BlockItem>(0);
 	}
 
-	// Token: 0x0600025B RID: 603 RVA: 0x0000D8A4 File Offset: 0x0000BCA4
 	public static BlockItem FindByGafPredicateNameAndArguments(string gafPredicateName, object[] gafArguments)
 	{
-		List<BlockItem> list;
-		if (!BlockItem._indexByGafPredicateName.TryGetValue(gafPredicateName, out list))
+		if (!_indexByGafPredicateName.TryGetValue(gafPredicateName, out var value))
 		{
 			return null;
 		}
-		for (int i = 0; i < list.Count; i++)
+		for (int i = 0; i < value.Count; i++)
 		{
-			BlockItem blockItem = list[i];
+			BlockItem blockItem = value[i];
 			bool flag = false;
 			for (int j = 0; j < Mathf.Min(gafArguments.Length, blockItem.GafDefaultArgs.Length); j++)
 			{
@@ -153,15 +184,14 @@ public class BlockItem
 		return null;
 	}
 
-	// Token: 0x0600025C RID: 604 RVA: 0x0000D9F0 File Offset: 0x0000BDF0
 	private static BlockItem BlockItemFromJSON(JObject jObj)
 	{
-		string text = jObj["predicate"].StringValue;
-		text = SymbolCompat.RenamePredicate(text);
-		Predicate predicate = PredicateRegistry.ByName(text, true);
+		string stringValue = jObj["predicate"].StringValue;
+		stringValue = SymbolCompat.RenamePredicate(stringValue);
+		Predicate predicate = PredicateRegistry.ByName(stringValue);
 		if (predicate == null)
 		{
-			BWLog.Error("Unknown predicate " + text);
+			BWLog.Error("Unknown predicate " + stringValue);
 			return null;
 		}
 		if (!(bool)jObj["production_ready"] && !Util.IncludeNonProductionReadyBlockItems())
@@ -169,18 +199,17 @@ public class BlockItem
 			return null;
 		}
 		int intValue = jObj["id"].IntValue;
-		string stringValue = jObj["internal_identifier"].StringValue;
-		string stringValue2 = jObj["label"].StringValue;
-		string stringValue3 = jObj["title"].StringValue;
-		object[] gafDefaultArgs = BlockItem.GAFArgumentsFromJSON(jObj["default_args"], predicate);
+		string stringValue2 = jObj["internal_identifier"].StringValue;
+		string stringValue3 = jObj["label"].StringValue;
+		string stringValue4 = jObj["title"].StringValue;
+		object[] gafDefaultArgs = GAFArgumentsFromJSON(jObj["default_args"], predicate);
 		string key = "icon_name";
-		string iconName = (!jObj.ContainsKey(key)) ? string.Empty : jObj[key].StringValue;
-		string iconBackgroundColor = (!jObj.ContainsKey("icon_background_color")) ? string.Empty : jObj["icon_background_color"].StringValue;
+		string iconName = ((!jObj.ContainsKey(key)) ? string.Empty : jObj[key].StringValue);
+		string iconBackgroundColor = ((!jObj.ContainsKey("icon_background_color")) ? string.Empty : jObj["icon_background_color"].StringValue);
 		RarityLevelEnum enumValue = new RarityLevel(jObj["rarity"].StringValue).EnumValue;
-		return new BlockItem(intValue, stringValue, stringValue2, stringValue3, text, gafDefaultArgs, iconName, iconBackgroundColor, enumValue);
+		return new BlockItem(intValue, stringValue2, stringValue3, stringValue4, stringValue, gafDefaultArgs, iconName, iconBackgroundColor, enumValue);
 	}
 
-	// Token: 0x0600025D RID: 605 RVA: 0x0000DB40 File Offset: 0x0000BF40
 	private static object[] GAFArgumentsFromJSON(JObject jObj, Predicate predicate)
 	{
 		List<JObject> arrayValue = jObj.ArrayValue;
@@ -189,12 +218,11 @@ public class BlockItem
 		object[] array = new object[num];
 		for (int i = 0; i < num; i++)
 		{
-			array[i] = BlockItem.ArgFromJSON(argTypes[i], jObj[i]);
+			array[i] = ArgFromJSON(argTypes[i], jObj[i]);
 		}
 		return array;
 	}
 
-	// Token: 0x0600025E RID: 606 RVA: 0x0000DBA0 File Offset: 0x0000BFA0
 	private static object ArgFromJSON(Type type, JObject obj)
 	{
 		if (type == typeof(float))
@@ -221,101 +249,32 @@ public class BlockItem
 		{
 			return obj.QuaternionValue();
 		}
-		BWLog.Error(type + "Don't know how to materialize this type");
+		BWLog.Error(type?.ToString() + "Don't know how to materialize this type");
 		return null;
 	}
 
-	// Token: 0x0600025F RID: 607 RVA: 0x0000DC61 File Offset: 0x0000C061
 	public bool IsUnsellable()
 	{
-		return this.Rarity == RarityLevelEnum.ip || this.Rarity == RarityLevelEnum.unique;
-	}
-
-	// Token: 0x1700003F RID: 63
-	// (get) Token: 0x06000260 RID: 608 RVA: 0x0000DC7B File Offset: 0x0000C07B
-	public bool IsRare
-	{
-		get
+		if (Rarity != RarityLevelEnum.ip)
 		{
-			return this.Rarity != RarityLevelEnum.common;
+			return Rarity == RarityLevelEnum.unique;
 		}
+		return true;
 	}
 
-	// Token: 0x17000040 RID: 64
-	// (get) Token: 0x06000261 RID: 609 RVA: 0x0000DC89 File Offset: 0x0000C089
-	public bool HasRarityBorder
-	{
-		get
-		{
-			return this.Rarity != RarityLevelEnum.common && this.Rarity != RarityLevelEnum.uncommon;
-		}
-	}
-
-	// Token: 0x06000262 RID: 610 RVA: 0x0000DCA8 File Offset: 0x0000C0A8
 	public new string ToString()
 	{
 		string text = string.Empty;
-		for (int i = 0; i < this.GafDefaultArgs.Length; i++)
+		for (int i = 0; i < GafDefaultArgs.Length; i++)
 		{
-			text += this.GafDefaultArgs[i].ToString();
+			text += GafDefaultArgs[i].ToString();
 			string text2 = text;
-			text = string.Concat(new object[]
-			{
-				text2,
-				"(",
-				this.GafDefaultArgs[i].GetType(),
-				")"
-			});
-			if (i < this.GafDefaultArgs.Length - 1)
+			text = string.Concat(text2, "(", GafDefaultArgs[i].GetType(), ")");
+			if (i < GafDefaultArgs.Length - 1)
 			{
 				text += ", ";
 			}
 		}
-		return string.Format("{0} ({1}), Predicate: {2}, Args: {3}", new object[]
-		{
-			this.InternalIdentifier,
-			this.Id,
-			this.GafPredicateName,
-			text
-		});
+		return $"{InternalIdentifier} ({Id}), Predicate: {GafPredicateName}, Args: {text}";
 	}
-
-	// Token: 0x0400021F RID: 543
-	public readonly int Id;
-
-	// Token: 0x04000220 RID: 544
-	public readonly string InternalIdentifier;
-
-	// Token: 0x04000221 RID: 545
-	public readonly string GafPredicateName;
-
-	// Token: 0x04000222 RID: 546
-	public readonly object[] GafDefaultArgs;
-
-	// Token: 0x04000223 RID: 547
-	public readonly string IconName;
-
-	// Token: 0x04000224 RID: 548
-	public readonly string IconBackgroundColor;
-
-	// Token: 0x04000225 RID: 549
-	public readonly string Label;
-
-	// Token: 0x04000226 RID: 550
-	public readonly string Title;
-
-	// Token: 0x04000227 RID: 551
-	public readonly RarityLevelEnum Rarity;
-
-	// Token: 0x04000228 RID: 552
-	public static List<BlockItem> AllBlockItems;
-
-	// Token: 0x04000229 RID: 553
-	private static Dictionary<int, BlockItem> _indexById;
-
-	// Token: 0x0400022A RID: 554
-	private static Dictionary<string, BlockItem> _indexByInternalIdentifier;
-
-	// Token: 0x0400022B RID: 555
-	private static Dictionary<string, List<BlockItem>> _indexByGafPredicateName;
 }

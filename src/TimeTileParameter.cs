@@ -1,38 +1,41 @@
-﻿using System;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x0200015D RID: 349
 public class TimeTileParameter : NumericHandleTileParameter
 {
-	// Token: 0x06001521 RID: 5409 RVA: 0x00093AC0 File Offset: 0x00091EC0
-	public TimeTileParameter(int parameterIndex = 0, float sensitivity = 25f) : base(sensitivity, parameterIndex, 3, false, string.Empty, string.Empty)
+	public int index;
+
+	public int[] timeComponents;
+
+	private int[] steps;
+
+	private int[] maxValues;
+
+	protected int startValue;
+
+	protected Tile timerArrowUp;
+
+	protected Tile timerArrowDown;
+
+	private Vector2? stringDim;
+
+	public TimeTileParameter(int parameterIndex = 0, float sensitivity = 25f)
+		: base(sensitivity, parameterIndex, 3, onlyShowPositive: false, string.Empty, string.Empty)
 	{
-		this.timeComponents = new int[3];
-		this.maxValues = new int[]
-		{
-			99,
-			59,
-			99
-		};
-		this.steps = new int[]
-		{
-			2,
-			1,
-			1
-		};
+		timeComponents = new int[3];
+		maxValues = new int[3] { 99, 59, 99 };
+		steps = new int[3] { 2, 1, 1 };
 	}
 
-	// Token: 0x06001522 RID: 5410 RVA: 0x00093B1C File Offset: 0x00091F1C
 	public override void HelpSetParameterValueInTutorial(Block block, Tile thisTile, Tile goalTile)
 	{
-		if (Blocksworld.bw.tileParameterEditor.selectedTile != thisTile || this.handle == null)
+		if (Blocksworld.bw.tileParameterEditor.selectedTile != thisTile || handle == null)
 		{
 			Tutorial.HelpToggleTile(block, thisTile);
 			return;
 		}
-		int[] array = this.CalculateTimeComponents(thisTile.gaf, null);
-		int[] array2 = this.CalculateTimeComponents(goalTile.gaf, null);
+		int[] array = CalculateTimeComponents(thisTile.gaf);
+		int[] array2 = CalculateTimeComponents(goalTile.gaf);
 		bool flag = true;
 		for (int i = 0; i < array.Length; i++)
 		{
@@ -41,23 +44,23 @@ public class TimeTileParameter : NumericHandleTileParameter
 				flag = false;
 			}
 		}
-		if (flag)
+		if (!flag)
 		{
-			return;
+			int num = steps[index];
+			int num2 = array2[index] - array[index];
+			if (num2 != 0)
+			{
+				float offset = (float)num2 / (GetSensitivity() * (float)num);
+				HelpDragHandle(thisTile, offset);
+				tutorialErrorOffset = offset;
+			}
+			else
+			{
+				Tutorial.HelpToggleTile(block, thisTile);
+			}
 		}
-		int num = this.steps[this.index];
-		int num2 = array2[this.index] - array[this.index];
-		if (num2 != 0)
-		{
-			float num3 = (float)num2 / (this.GetSensitivity() * (float)num);
-			base.HelpDragHandle(thisTile, num3);
-			this.tutorialErrorOffset = num3;
-			return;
-		}
-		Tutorial.HelpToggleTile(block, thisTile);
 	}
 
-	// Token: 0x06001523 RID: 5411 RVA: 0x00093BEC File Offset: 0x00091FEC
 	public static int[] CalculateTimeComponents(float secondsRaw, int[] result = null)
 	{
 		if (result == null)
@@ -74,84 +77,69 @@ public class TimeTileParameter : NumericHandleTileParameter
 		return result;
 	}
 
-	// Token: 0x06001524 RID: 5412 RVA: 0x00093C48 File Offset: 0x00092048
 	public int[] CalculateTimeComponents(GAF gaf, int[] result = null)
 	{
 		float secondsRaw = (float)gaf.Args[base.parameterIndex];
-		return TimeTileParameter.CalculateTimeComponents(secondsRaw, result);
+		return CalculateTimeComponents(secondsRaw, result);
 	}
 
-	// Token: 0x06001525 RID: 5413 RVA: 0x00093C70 File Offset: 0x00092070
 	protected float GetSensitivity()
 	{
-		float num = this.sensitivity;
-		if (this.index == 0)
+		float num = sensitivity;
+		if (index == 0)
 		{
 			num *= 1.5f;
 		}
 		return num;
 	}
 
-	// Token: 0x06001526 RID: 5414 RVA: 0x00093C98 File Offset: 0x00092098
 	protected override bool UpdateValue()
 	{
 		bool result = false;
-		int num = this.steps[this.index];
-		float sensitivity = this.GetSensitivity();
-		int num2 = Mathf.RoundToInt(Mathf.Clamp((float)this.startValue + (this.screenPos.x - this.startPositionScreen.x) * sensitivity * (float)num, 0f, (float)this.maxValues[this.index]));
-		if (Mathf.Abs(num2 - this.timeComponents[this.index]) >= num)
+		int num = steps[index];
+		float num2 = GetSensitivity();
+		int num3 = Mathf.RoundToInt(Mathf.Clamp((float)startValue + (screenPos.x - startPositionScreen.x) * num2 * (float)num, 0f, maxValues[index]));
+		if (Mathf.Abs(num3 - timeComponents[index]) >= num)
 		{
-			this.timeComponents[this.index] = Mathf.RoundToInt((float)this.timeComponents[this.index] + (float)num * Mathf.Sign((float)(num2 - this.timeComponents[this.index])));
+			timeComponents[index] = Mathf.RoundToInt((float)timeComponents[index] + (float)num * Mathf.Sign(num3 - timeComponents[index]));
 			result = true;
-			base.objectValue = (float)this.timeComponents[0] * 0.01f + (float)this.timeComponents[1] + (float)this.timeComponents[2] * 60f;
+			base.objectValue = (float)timeComponents[0] * 0.01f + (float)timeComponents[1] + (float)timeComponents[2] * 60f;
 		}
 		return result;
 	}
 
-	// Token: 0x06001527 RID: 5415 RVA: 0x00093D88 File Offset: 0x00092188
 	protected override void InitializeStartValue()
 	{
-		this.startValue = this.timeComponents[this.index];
+		startValue = timeComponents[index];
 	}
 
-	// Token: 0x06001528 RID: 5416 RVA: 0x00093DA0 File Offset: 0x000921A0
 	protected override void SetValueAndStep(Tile tile)
 	{
-		this.CalculateTimeComponents(tile.gaf, this.timeComponents);
-		this.index = tile.subParameterIndex;
+		CalculateTimeComponents(tile.gaf, timeComponents);
+		index = tile.subParameterIndex;
 		float num = (float)tile.gaf.Args[base.parameterIndex];
 		base.objectValue = num;
 	}
 
-	// Token: 0x06001529 RID: 5417 RVA: 0x00093DF0 File Offset: 0x000921F0
 	protected override bool ValueAtMaxOrMore()
 	{
-		return this.timeComponents[this.index] >= this.maxValues[this.index];
+		return timeComponents[index] >= maxValues[index];
 	}
 
-	// Token: 0x0600152A RID: 5418 RVA: 0x00093E11 File Offset: 0x00092211
 	protected override bool ValueAtMinOrLess()
 	{
-		return this.timeComponents[this.index] <= 0;
+		return timeComponents[index] <= 0;
 	}
 
-	// Token: 0x0600152B RID: 5419 RVA: 0x00093E28 File Offset: 0x00092228
 	public override string ValueAsString()
 	{
 		string text = string.Empty;
-		for (int i = 2; i >= 0; i--)
+		for (int num = 2; num >= 0; num--)
 		{
-			if (this.index == i)
-			{
-				text += "<color=#ffffffff>";
-			}
-			else
-			{
-				text += "<color=#ccccccff>";
-			}
-			text += this.timeComponents[i].ToString("D2");
+			text = ((index != num) ? (text + "<color=#ccccccff>") : (text + "<color=#ffffffff>"));
+			text += timeComponents[num].ToString("D2");
 			text += "</color>";
-			if (i > 0)
+			if (num > 0)
 			{
 				text += ":";
 			}
@@ -159,123 +147,81 @@ public class TimeTileParameter : NumericHandleTileParameter
 		return text;
 	}
 
-	// Token: 0x0600152C RID: 5420 RVA: 0x00093EB4 File Offset: 0x000922B4
 	public override void OnHudMesh()
 	{
-		if (this.tile == null)
+		if (tile == null)
 		{
-			BWLog.Info("Tile was null in " + base.GetType().Name);
-			return;
+			BWLog.Info("Tile was null in " + GetType().Name);
 		}
-		if (base.useDoubleWidth && this.tile.IsShowing())
+		else if (base.useDoubleWidth && tile.IsShowing())
 		{
-			base.DisplayDescriptor();
-			HudMeshStyle hudMeshStyle = this.GetHudMeshStyle();
-			string text = this.ValueAsString();
-			Vector2? vector = this.stringDim;
-			if (vector == null)
+			DisplayDescriptor();
+			HudMeshStyle hudMeshStyle = GetHudMeshStyle();
+			string text = ValueAsString();
+			Vector2? vector = stringDim;
+			if (!vector.HasValue)
 			{
-				this.stringDim = new Vector2?(HudMeshUtils.CalcSize(hudMeshStyle, text));
+				stringDim = HudMeshUtils.CalcSize(hudMeshStyle, text);
 			}
-			Rect rightSideRect = base.GetRightSideRect();
-			HudMeshOnGUI.Label(ref this.label, rightSideRect, text, hudMeshStyle, 0f);
-			if (this.rightSide == null)
+			Rect rightSideRect = GetRightSideRect();
+			HudMeshOnGUI.Label(ref label, rightSideRect, text, hudMeshStyle);
+			if (rightSide != null && !(rightSide.tileObject == null))
 			{
-				return;
+				Vector3 position = rightSide.tileObject.GetPosition();
+				float scale = NormalizedScreen.scale;
+				Vector2 value = stringDim.Value;
+				float num = (0f - (float)index + 1f) * (value.x * 0.35f) / scale;
+				num *= NormalizedScreen.pixelScale;
+				float num2 = value.y * 0.9f / scale;
+				num2 *= NormalizedScreen.pixelScale;
+				timerArrowUp.MoveTo(position.x + num, position.y - num2, 1f);
+				timerArrowDown.MoveTo(position.x + num, position.y + num2, 1f);
 			}
-			if (this.rightSide.tileObject == null)
-			{
-				return;
-			}
-			Vector3 position = this.rightSide.tileObject.GetPosition();
-			float scale = NormalizedScreen.scale;
-			Vector2 value = this.stringDim.Value;
-			float num = (float)(-(float)this.index + 1) * (value.x * 0.35f) / scale;
-			num *= NormalizedScreen.pixelScale;
-			float num2 = value.y * 0.9f / scale;
-			num2 *= NormalizedScreen.pixelScale;
-			this.timerArrowUp.MoveTo(position.x + num, position.y - num2, 1f);
-			this.timerArrowDown.MoveTo(position.x + num, position.y + num2, 1f);
 		}
 	}
 
-	// Token: 0x0600152D RID: 5421 RVA: 0x0009402C File Offset: 0x0009242C
 	public override void CleanupUI()
 	{
 		base.CleanupUI();
-		this.timerArrowUp.Show(false);
-		this.timerArrowDown.Show(false);
+		timerArrowUp.Show(show: false);
+		timerArrowDown.Show(show: false);
 	}
 
-	// Token: 0x0600152E RID: 5422 RVA: 0x0009404C File Offset: 0x0009244C
 	public override GameObject SetupUI(Tile tile)
 	{
 		GameObject result = base.SetupUI(tile);
-		if (this.timerArrowUp != null)
+		if (timerArrowUp != null)
 		{
-			this.timerArrowUp.Show(false);
+			timerArrowUp.Show(show: false);
 		}
-		if (this.timerArrowDown != null)
+		if (timerArrowDown != null)
 		{
-			this.timerArrowDown.Show(false);
+			timerArrowDown.Show(show: false);
 		}
-		this.timerArrowUp = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Misc/Timer_Arrow_Up", true));
-		this.timerArrowDown = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Misc/Timer_Arrow_Down", true));
-		this.timerArrowUp.Show(true);
-		this.timerArrowDown.Show(true);
+		timerArrowUp = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Misc/Timer_Arrow_Up", enabled: true));
+		timerArrowDown = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Misc/Timer_Arrow_Down", enabled: true));
+		timerArrowUp.Show(show: true);
+		timerArrowDown.Show(show: true);
 		return result;
 	}
 
-	// Token: 0x0600152F RID: 5423 RVA: 0x000940DE File Offset: 0x000924DE
 	protected override HudMeshStyle GetHudMeshStyle()
 	{
-		if (this.style == null)
+		if (style == null)
 		{
-			this.style = HudMeshOnGUI.dataSource.timeParamStyle;
+			style = HudMeshOnGUI.dataSource.timeParamStyle;
 		}
-		return this.style;
+		return style;
 	}
 
-	// Token: 0x06001530 RID: 5424 RVA: 0x00094104 File Offset: 0x00092504
 	protected override string GetDescriptorText()
 	{
-		int num = this.index;
-		if (num == 0)
+		return index switch
 		{
-			return "Sec/100";
-		}
-		if (num == 1)
-		{
-			return "Seconds";
-		}
-		if (num != 2)
-		{
-			return "Duration";
-		}
-		return "Minutes";
+			0 => "Sec/100", 
+			1 => "Seconds", 
+			2 => "Minutes", 
+			_ => "Duration", 
+		};
 	}
-
-	// Token: 0x04001097 RID: 4247
-	public int index;
-
-	// Token: 0x04001098 RID: 4248
-	public int[] timeComponents;
-
-	// Token: 0x04001099 RID: 4249
-	private int[] steps;
-
-	// Token: 0x0400109A RID: 4250
-	private int[] maxValues;
-
-	// Token: 0x0400109B RID: 4251
-	protected int startValue;
-
-	// Token: 0x0400109C RID: 4252
-	protected Tile timerArrowUp;
-
-	// Token: 0x0400109D RID: 4253
-	protected Tile timerArrowDown;
-
-	// Token: 0x0400109E RID: 4254
-	private Vector2? stringDim;
 }

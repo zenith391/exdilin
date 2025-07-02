@@ -1,27 +1,26 @@
-﻿using System;
+namespace Exdilin;
 
-namespace Exdilin
+public class SettingEntry
 {
-    public class SettingEntry
-    {
-        public Mod mod;
+	public Mod mod;
 
-        public string value;
-        public string defaultValue = String.Empty;
+	public string value;
 
-        public string id = String.Empty;
-        public string label = String.Empty;
+	public string defaultValue = string.Empty;
 
-        // Those value should not be edited by the mod
-        public string _old = null;
-        public string _valedit = null;
+	public string id = string.Empty;
 
-        public SettingEntry(string id, string label, string defaultValue)
-        {
-            this.id = id;
-            this.label = label;
-            this.defaultValue = defaultValue;
-            this.value = defaultValue;
-        }
-    }
+	public string label = string.Empty;
+
+	public string _old;
+
+	public string _valedit;
+
+	public SettingEntry(string id, string label, string defaultValue)
+	{
+		this.id = id;
+		this.label = label;
+		this.defaultValue = defaultValue;
+		value = defaultValue;
+	}
 }

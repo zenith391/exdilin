@@ -1,46 +1,121 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x020001DE RID: 478
 public class ModelTutorializeUtils
 {
-	// Token: 0x0600189D RID: 6301 RVA: 0x000AC76F File Offset: 0x000AAB6F
-	public static void PrepareForStepByStepTutorial(List<Block> modelBlocks, ModelTutorializeUtils.StepByStepTutorializeOptions options = null, Action completionHandler = null)
+	public class StepByStepTutorializeOptions
 	{
-		Blocksworld.bw.StartCoroutine(ModelTutorializeUtils.PrepareForStepByStepTutorialTimeSliced(modelBlocks, options, completionHandler));
+		public bool disableRendererForUnplacedBlocks = true;
+
+		public float waitTimePerBlock = 0.01f;
+
+		public int symmetryChainPenaltyThreshold = 3;
+
+		public float symmetryChainPenalty = 0.2f;
+
+		public float heightPenaltyFactor = 0.1f;
+
+		public float maxHeightPenalty = 1f;
+
+		public float selfOcclusionPenaltyFactor = 0.1f;
+
+		public float upOcclusionPenaltyFactor = 0.5f;
+
+		public float sideOcclusionPenaltyFactor = 0.3f;
+
+		public float paintedBlockOcclusionSeverityBias = 0.1f;
+
+		public float paintedBlockOcclusionSeverityMultiplier = 2f;
+
+		public float texturedBlockOcclusionSeverityBias = 0.1f;
+
+		public float texturedBlockOcclusionSeverityMultiplier = 2f;
+
+		public float texturedSideBlockOcclusionSeverityBias = 0.3f;
+
+		public float texturedSideBlockOcclusionSeverityMultiplier = 2.5f;
+
+		public float connectedToLastBlockReward = 1f;
+
+		public float isolatedBlockPenalty = 3f;
+
+		public Func<float, float> distanceToLastBlockRewardFunction = (float dist) => 1f / (1f + 0.25f * dist);
 	}
 
-	// Token: 0x0600189E RID: 6302 RVA: 0x000AC784 File Offset: 0x000AAB84
-	private static IEnumerator PrepareForStepByStepTutorialTimeSliced(List<Block> modelBlocks, ModelTutorializeUtils.StepByStepTutorializeOptions options = null, Action completionHandler = null)
+	private class SymmetricBlocks
+	{
+		public List<Block> side1 = new List<Block>();
+
+		public List<Block> side2 = new List<Block>();
+
+		public int coordIndex;
+
+		public float centerCoord;
+
+		public void Add(Block b1, Block b2)
+		{
+			side1.Add(b1);
+			side2.Add(b2);
+		}
+
+		public int PairCount()
+		{
+			return side1.Count;
+		}
+
+		public static string CalculateLookupKey(int coordIndex, float centerCoord)
+		{
+			return coordIndex.ToString() + Mathf.RoundToInt(centerCoord * 10f);
+		}
+
+		public override string ToString()
+		{
+			return $"[SymmetricBlocks pair count: {PairCount()}, coordIndex: {coordIndex}, centerCoord: {centerCoord}]";
+		}
+	}
+
+	private class BlockOcclusion
+	{
+		public Block block;
+
+		public float severity;
+	}
+
+	public static void PrepareForStepByStepTutorial(List<Block> modelBlocks, StepByStepTutorializeOptions options = null, Action completionHandler = null)
+	{
+		Blocksworld.bw.StartCoroutine(PrepareForStepByStepTutorialTimeSliced(modelBlocks, options, completionHandler));
+	}
+
+	private static IEnumerator PrepareForStepByStepTutorialTimeSliced(List<Block> modelBlocks, StepByStepTutorializeOptions options = null, Action completionHandler = null)
 	{
 		if (options == null)
 		{
-			options = new ModelTutorializeUtils.StepByStepTutorializeOptions();
+			options = new StepByStepTutorializeOptions();
 		}
 		List<Block> allBlocks = BWSceneManager.AllBlocks();
-		Dictionary<Block, int[]> blockIndexMap = ModelTutorializeUtils.GetIdentityBlockIndexMap(allBlocks);
+		Dictionary<Block, int[]> blockIndexMap = GetIdentityBlockIndexMap(allBlocks);
 		HashSet<Block> blocksToPlace = new HashSet<Block>();
 		HashSet<Block> placedBlocks = new HashSet<Block>();
-		ModelTutorializeUtils.CalculateBlocksToPlace(allBlocks, modelBlocks, blocksToPlace, placedBlocks);
+		CalculateBlocksToPlace(allBlocks, modelBlocks, blocksToPlace, placedBlocks);
 		float minY = float.MaxValue;
-		foreach (Block block in blocksToPlace)
+		foreach (Block item2 in blocksToPlace)
 		{
 			if (options.disableRendererForUnplacedBlocks)
 			{
-				ModelTutorializeUtils.EnableRenderers(block, false);
+				EnableRenderers(item2, enable: false);
 			}
-			minY = Mathf.Min(block.go.transform.position.y, minY);
+			minY = Mathf.Min(item2.go.transform.position.y, minY);
 		}
 		Dictionary<Block, Block> blockSymmetryMap = new Dictionary<Block, Block>();
-		Dictionary<Block, ModelTutorializeUtils.SymmetricBlocks> blockSymmetries = new Dictionary<Block, ModelTutorializeUtils.SymmetricBlocks>();
-		ModelTutorializeUtils.CalculateBlockSymmetries(blocksToPlace, blockSymmetryMap, blockSymmetries);
+		Dictionary<Block, SymmetricBlocks> blockSymmetries = new Dictionary<Block, SymmetricBlocks>();
+		CalculateBlockSymmetries(blocksToPlace, blockSymmetryMap, blockSymmetries);
 		Dictionary<Block, float> blockOcclusions = new Dictionary<Block, float>();
-		Dictionary<Block, List<ModelTutorializeUtils.BlockOcclusion>> blockOtherOcclusions = new Dictionary<Block, List<ModelTutorializeUtils.BlockOcclusion>>();
-		ModelTutorializeUtils.CalculateBlockOcclusions(blocksToPlace, blockOcclusions, blockOtherOcclusions, options);
-		ModelTutorializeUtils.SymmetricBlocks currentSymmetry = null;
+		Dictionary<Block, List<BlockOcclusion>> blockOtherOcclusions = new Dictionary<Block, List<BlockOcclusion>>();
+		CalculateBlockOcclusions(blocksToPlace, blockOcclusions, blockOtherOcclusions, options);
+		SymmetricBlocks currentSymmetry = null;
 		List<Block> symmetryChain = new List<Block>();
 		List<Block> sortedBlocks = new List<Block>();
 		Block lastPlacedBlock = null;
@@ -51,7 +126,7 @@ public class ModelTutorializeUtils
 			{
 				yield return new WaitForSeconds(options.waitTimePerBlock);
 			}
-			ModelTutorializeUtils.FindNextBlocksToPlace(blocksToPlace, placedBlocks, blockSymmetryMap, blockSymmetries, blockOcclusions, blockOtherOcclusions, symmetryChain, sortedBlocks, minY, ref index, ref lastPlacedBlock, ref currentSymmetry, options);
+			FindNextBlocksToPlace(blocksToPlace, placedBlocks, blockSymmetryMap, blockSymmetries, blockOcclusions, blockOtherOcclusions, symmetryChain, sortedBlocks, minY, ref index, ref lastPlacedBlock, ref currentSymmetry, options);
 		}
 		for (int i = 0; i < sortedBlocks.Count; i++)
 		{
@@ -59,36 +134,31 @@ public class ModelTutorializeUtils
 			allBlocks.Remove(item);
 			allBlocks.Add(item);
 		}
-		ModelTutorializeUtils.UpdateBlockIndexMapAndInformBlocks(allBlocks, blockIndexMap);
-		if (completionHandler != null)
-		{
-			completionHandler();
-		}
-		yield break;
+		UpdateBlockIndexMapAndInformBlocks(allBlocks, blockIndexMap);
+		completionHandler?.Invoke();
 	}
 
-	// Token: 0x0600189F RID: 6303 RVA: 0x000AC7B0 File Offset: 0x000AABB0
-	private static void FindNextBlocksToPlace(HashSet<Block> blocksToPlace, HashSet<Block> placedBlocks, Dictionary<Block, Block> blockSymmetryMap, Dictionary<Block, ModelTutorializeUtils.SymmetricBlocks> blockSymmetries, Dictionary<Block, float> blockOcclusions, Dictionary<Block, List<ModelTutorializeUtils.BlockOcclusion>> blockOtherOcclusions, List<Block> symmetryChain, List<Block> sortedBlocks, float minY, ref int index, ref Block lastPlacedBlock, ref ModelTutorializeUtils.SymmetricBlocks currentSymmetry, ModelTutorializeUtils.StepByStepTutorializeOptions options)
+	private static void FindNextBlocksToPlace(HashSet<Block> blocksToPlace, HashSet<Block> placedBlocks, Dictionary<Block, Block> blockSymmetryMap, Dictionary<Block, SymmetricBlocks> blockSymmetries, Dictionary<Block, float> blockOcclusions, Dictionary<Block, List<BlockOcclusion>> blockOtherOcclusions, List<Block> symmetryChain, List<Block> sortedBlocks, float minY, ref int index, ref Block lastPlacedBlock, ref SymmetricBlocks currentSymmetry, StepByStepTutorializeOptions options)
 	{
 		float num = float.MinValue;
 		Block block = null;
-		foreach (Block block2 in blocksToPlace)
+		foreach (Block item in blocksToPlace)
 		{
-			Vector3 position = block2.go.transform.position;
+			Vector3 position = item.go.transform.position;
 			float num2 = 0f;
 			float y = position.y;
-			float num3 = Mathf.Max(-options.heightPenaltyFactor * (y - minY), -options.maxHeightPenalty);
+			float num3 = Mathf.Max((0f - options.heightPenaltyFactor) * (y - minY), 0f - options.maxHeightPenalty);
 			num2 += num3;
 			float num4 = 0f;
 			bool flag = false;
-			for (int i = 0; i < block2.connections.Count; i++)
+			for (int i = 0; i < item.connections.Count; i++)
 			{
-				Block block3 = block2.connections[i];
-				if (placedBlocks.Contains(block3) && block3.GetType() != typeof(BlockPosition))
+				Block block2 = item.connections[i];
+				if (placedBlocks.Contains(block2) && block2.GetType() != typeof(BlockPosition))
 				{
 					flag = true;
 				}
-				if (block3 == lastPlacedBlock)
+				if (block2 == lastPlacedBlock)
 				{
 					num4 += options.connectedToLastBlockReward;
 				}
@@ -105,19 +175,18 @@ public class ModelTutorializeUtils
 				num5 = options.distanceToLastBlockRewardFunction(magnitude);
 			}
 			num2 += num5;
-			float num6 = blockOcclusions[block2];
+			float num6 = blockOcclusions[item];
 			num2 += num6;
-			if (blockSymmetries.ContainsKey(block2) && blockSymmetries[block2] == currentSymmetry && symmetryChain.Count > options.symmetryChainPenaltyThreshold)
+			if (blockSymmetries.ContainsKey(item) && blockSymmetries[item] == currentSymmetry && symmetryChain.Count > options.symmetryChainPenaltyThreshold)
 			{
 				num2 -= (float)(symmetryChain.Count - options.symmetryChainPenaltyThreshold) * options.symmetryChainPenalty;
 			}
 			float num7 = 0f;
-			List<ModelTutorializeUtils.BlockOcclusion> list;
-			if (blockOtherOcclusions.TryGetValue(block2, out list))
+			if (blockOtherOcclusions.TryGetValue(item, out var value))
 			{
-				for (int j = 0; j < list.Count; j++)
+				for (int j = 0; j < value.Count; j++)
 				{
-					ModelTutorializeUtils.BlockOcclusion blockOcclusion = list[j];
+					BlockOcclusion blockOcclusion = value[j];
 					if (blocksToPlace.Contains(blockOcclusion.block))
 					{
 						num7 -= blockOcclusion.severity * options.selfOcclusionPenaltyFactor;
@@ -125,63 +194,59 @@ public class ModelTutorializeUtils
 				}
 			}
 			num2 += num7;
-			if (num2 > num && (!symmetryChain.Contains(block2) || block == null))
+			if (num2 > num && (!symmetryChain.Contains(item) || block == null))
 			{
 				num = num2;
-				block = block2;
+				block = item;
 			}
 		}
 		if (block == null)
 		{
 			BWLog.Error("Best block was null. Should never happen...");
+			return;
 		}
-		else
+		bool flag2 = true;
+		if (!symmetryChain.Contains(block) && blockSymmetryMap.TryGetValue(block, out var value2) && (blockSymmetries[block] == currentSymmetry || currentSymmetry == null))
 		{
-			bool flag2 = true;
-			Block item;
-			if (!symmetryChain.Contains(block) && blockSymmetryMap.TryGetValue(block, out item) && (blockSymmetries[block] == currentSymmetry || currentSymmetry == null))
+			currentSymmetry = blockSymmetries[block];
+			symmetryChain.Add(value2);
+		}
+		else if (symmetryChain.Count > 0)
+		{
+			for (int k = 0; k < symmetryChain.Count; k++)
 			{
-				currentSymmetry = blockSymmetries[block];
-				symmetryChain.Add(item);
-			}
-			else if (symmetryChain.Count > 0)
-			{
-				for (int k = 0; k < symmetryChain.Count; k++)
+				Block block3 = symmetryChain[k];
+				if (blocksToPlace.Contains(block3))
 				{
-					Block block4 = symmetryChain[k];
-					if (blocksToPlace.Contains(block4))
+					blocksToPlace.Remove(block3);
+					sortedBlocks.Add(block3);
+					placedBlocks.Add(block3);
+					lastPlacedBlock = block3;
+					if (options.disableRendererForUnplacedBlocks)
 					{
-						blocksToPlace.Remove(block4);
-						sortedBlocks.Add(block4);
-						placedBlocks.Add(block4);
-						lastPlacedBlock = block4;
-						if (options.disableRendererForUnplacedBlocks)
-						{
-							ModelTutorializeUtils.EnableRenderers(block4, true);
-						}
-						index++;
+						EnableRenderers(block3, enable: true);
 					}
+					index++;
 				}
-				symmetryChain.Clear();
-				currentSymmetry = null;
-				flag2 = false;
 			}
-			if (flag2)
+			symmetryChain.Clear();
+			currentSymmetry = null;
+			flag2 = false;
+		}
+		if (flag2)
+		{
+			blocksToPlace.Remove(block);
+			sortedBlocks.Add(block);
+			placedBlocks.Add(block);
+			lastPlacedBlock = block;
+			if (options.disableRendererForUnplacedBlocks)
 			{
-				blocksToPlace.Remove(block);
-				sortedBlocks.Add(block);
-				placedBlocks.Add(block);
-				lastPlacedBlock = block;
-				if (options.disableRendererForUnplacedBlocks)
-				{
-					ModelTutorializeUtils.EnableRenderers(block, true);
-				}
-				index++;
+				EnableRenderers(block, enable: true);
 			}
+			index++;
 		}
 	}
 
-	// Token: 0x060018A0 RID: 6304 RVA: 0x000ACB48 File Offset: 0x000AAF48
 	private static void UpdateBlockIndexMapAndInformBlocks(List<Block> allBlocks, Dictionary<Block, int[]> blockIndexMap)
 	{
 		for (int i = 0; i < allBlocks.Count; i++)
@@ -189,9 +254,9 @@ public class ModelTutorializeUtils
 			Block key = allBlocks[i];
 			blockIndexMap[key][1] = i;
 		}
-		foreach (KeyValuePair<Block, int[]> keyValuePair in blockIndexMap)
+		foreach (KeyValuePair<Block, int[]> item in blockIndexMap)
 		{
-			int[] value = keyValuePair.Value;
+			int[] value = item.Value;
 			if (value[0] != value[1])
 			{
 				for (int j = 0; j < allBlocks.Count; j++)
@@ -203,16 +268,15 @@ public class ModelTutorializeUtils
 		}
 	}
 
-	// Token: 0x060018A1 RID: 6305 RVA: 0x000ACC0C File Offset: 0x000AB00C
 	private static void EnableRenderers(Block b, bool enable)
 	{
-		foreach (MeshRenderer meshRenderer in b.go.GetComponentsInChildren<MeshRenderer>())
+		MeshRenderer[] componentsInChildren = b.go.GetComponentsInChildren<MeshRenderer>();
+		foreach (MeshRenderer meshRenderer in componentsInChildren)
 		{
 			meshRenderer.enabled = enable;
 		}
 	}
 
-	// Token: 0x060018A2 RID: 6306 RVA: 0x000ACC44 File Offset: 0x000AB044
 	private static Dictionary<string, List<Block>> GatherBlockTypeClustersWithSameScale(List<Block> blocks)
 	{
 		Dictionary<string, List<Block>> dictionary = new Dictionary<string, List<Block>>();
@@ -221,19 +285,16 @@ public class ModelTutorializeUtils
 			Block block = blocks[i];
 			Vector3 v = block.goT.rotation * block.Scale();
 			string key = block.BlockType() + Util.Round(Util.Abs(v)).ToString();
-			List<Block> list;
-			if (!dictionary.TryGetValue(key, out list))
+			if (!dictionary.TryGetValue(key, out var value))
 			{
-				list = new List<Block>();
-				dictionary[key] = list;
+				value = (dictionary[key] = new List<Block>());
 			}
-			list.Add(block);
+			value.Add(block);
 		}
 		return dictionary;
 	}
 
-	// Token: 0x060018A3 RID: 6307 RVA: 0x000ACCE0 File Offset: 0x000AB0E0
-	private static void UpdateSymmetry(Block b1, Block b2, Dictionary<string, ModelTutorializeUtils.SymmetricBlocks> symmetries)
+	private static void UpdateSymmetry(Block b1, Block b2, Dictionary<string, SymmetricBlocks> symmetries)
 	{
 		Vector3 position = b1.GetPosition();
 		Vector3 position2 = b2.GetPosition();
@@ -254,54 +315,49 @@ public class ModelTutorializeUtils
 				num = num2;
 			}
 		}
-		if (!flag || num == 1 || num == -1)
+		if (flag && num != 1 && num != -1)
 		{
-			return;
-		}
-		float num4 = position[num];
-		float num5 = position2[num];
-		float centerCoord = 0.5f * (num4 + num5);
-		string key = ModelTutorializeUtils.SymmetricBlocks.CalculateLookupKey(num, centerCoord);
-		ModelTutorializeUtils.SymmetricBlocks symmetricBlocks;
-		if (!symmetries.TryGetValue(key, out symmetricBlocks))
-		{
-			symmetricBlocks = new ModelTutorializeUtils.SymmetricBlocks
+			float num4 = position[num];
+			float num5 = position2[num];
+			float centerCoord = 0.5f * (num4 + num5);
+			string key = SymmetricBlocks.CalculateLookupKey(num, centerCoord);
+			if (!symmetries.TryGetValue(key, out var value))
 			{
-				coordIndex = num,
-				centerCoord = centerCoord
-			};
-			symmetries[key] = symmetricBlocks;
-		}
-		if (num4 < num5)
-		{
-			symmetricBlocks.Add(b1, b2);
-		}
-		else
-		{
-			symmetricBlocks.Add(b2, b1);
+				value = (symmetries[key] = new SymmetricBlocks
+				{
+					coordIndex = num,
+					centerCoord = centerCoord
+				});
+			}
+			if (num4 < num5)
+			{
+				value.Add(b1, b2);
+			}
+			else
+			{
+				value.Add(b2, b1);
+			}
 		}
 	}
 
-	// Token: 0x060018A4 RID: 6308 RVA: 0x000ACDF0 File Offset: 0x000AB1F0
-	private static Dictionary<string, ModelTutorializeUtils.SymmetricBlocks> FindSymmetricBlocks(List<Block> blocks)
+	private static Dictionary<string, SymmetricBlocks> FindSymmetricBlocks(List<Block> blocks)
 	{
-		Dictionary<string, List<Block>> dictionary = ModelTutorializeUtils.GatherBlockTypeClustersWithSameScale(blocks);
-		Dictionary<string, ModelTutorializeUtils.SymmetricBlocks> dictionary2 = new Dictionary<string, ModelTutorializeUtils.SymmetricBlocks>();
-		foreach (KeyValuePair<string, List<Block>> keyValuePair in dictionary)
+		Dictionary<string, List<Block>> dictionary = GatherBlockTypeClustersWithSameScale(blocks);
+		Dictionary<string, SymmetricBlocks> dictionary2 = new Dictionary<string, SymmetricBlocks>();
+		foreach (KeyValuePair<string, List<Block>> item in dictionary)
 		{
-			List<Block> value = keyValuePair.Value;
+			List<Block> value = item.Value;
 			for (int i = 0; i < value.Count; i++)
 			{
 				for (int j = i + 1; j < value.Count; j++)
 				{
-					ModelTutorializeUtils.UpdateSymmetry(value[i], value[j], dictionary2);
+					UpdateSymmetry(value[i], value[j], dictionary2);
 				}
 			}
 		}
 		return dictionary2;
 	}
 
-	// Token: 0x060018A5 RID: 6309 RVA: 0x000ACEAC File Offset: 0x000AB2AC
 	private static void CalculateBlocksToPlace(List<Block> allBlocks, List<Block> modelBlocks, HashSet<Block> blocksToPlace, HashSet<Block> placedBlocks)
 	{
 		for (int i = 0; i < modelBlocks.Count; i++)
@@ -334,24 +390,18 @@ public class ModelTutorializeUtils
 		}
 	}
 
-	// Token: 0x060018A6 RID: 6310 RVA: 0x000ACF78 File Offset: 0x000AB378
 	private static Dictionary<Block, int[]> GetIdentityBlockIndexMap(List<Block> allBlocks)
 	{
 		Dictionary<Block, int[]> dictionary = new Dictionary<Block, int[]>();
 		for (int i = 0; i < allBlocks.Count; i++)
 		{
 			Block key = allBlocks[i];
-			dictionary[key] = new int[]
-			{
-				i,
-				i
-			};
+			dictionary[key] = new int[2] { i, i };
 		}
 		return dictionary;
 	}
 
-	// Token: 0x060018A7 RID: 6311 RVA: 0x000ACFC0 File Offset: 0x000AB3C0
-	private static void CalculateBlockOcclusions(HashSet<Block> blocksToPlace, Dictionary<Block, float> blockOcclusions, Dictionary<Block, List<ModelTutorializeUtils.BlockOcclusion>> blockOtherOcclusions, ModelTutorializeUtils.StepByStepTutorializeOptions options)
+	private static void CalculateBlockOcclusions(HashSet<Block> blocksToPlace, Dictionary<Block, float> blockOcclusions, Dictionary<Block, List<BlockOcclusion>> blockOtherOcclusions, StepByStepTutorializeOptions options)
 	{
 		Dictionary<Vector3, float> dictionary = new Dictionary<Vector3, float>
 		{
@@ -392,66 +442,62 @@ public class ModelTutorializeUtils
 				options.sideOcclusionPenaltyFactor
 			}
 		};
-		foreach (Block block in blocksToPlace)
+		foreach (Block item in blocksToPlace)
 		{
-			string blockType = block.BlockType();
+			string blockType = item.BlockType();
 			string[] array = Scarcity.DefaultPaints(blockType);
 			string[] array2 = Scarcity.DefaultTextures(blockType);
 			float num = 0f;
 			float num2 = 1f;
 			for (int i = 0; i < array.Length; i++)
 			{
-				if (array[i] != block.GetPaint(i))
+				if (array[i] != item.GetPaint(i))
 				{
 					num = Mathf.Max(options.paintedBlockOcclusionSeverityBias, num);
 					num2 = Mathf.Max(num2, options.paintedBlockOcclusionSeverityMultiplier);
 				}
-				string texture = block.GetTexture(i);
-				if (array2[i] != texture)
+				string texture = item.GetTexture(i);
+				if (!(array2[i] != texture))
 				{
-					num = Mathf.Max(options.texturedBlockOcclusionSeverityBias, num);
-					num2 = Mathf.Max(num2, options.paintedBlockOcclusionSeverityMultiplier);
-					TextureInfo textureInfo;
-					if (Materials.textureInfos.TryGetValue(texture, out textureInfo))
+					continue;
+				}
+				num = Mathf.Max(options.texturedBlockOcclusionSeverityBias, num);
+				num2 = Mathf.Max(num2, options.paintedBlockOcclusionSeverityMultiplier);
+				if (Materials.textureInfos.TryGetValue(texture, out var value))
+				{
+					Mapping mapping = value.mapping;
+					if ((uint)(mapping - 2) <= 1u || (uint)(mapping - 6) <= 1u)
 					{
-						switch (textureInfo.mapping)
-						{
-						case Mapping.OneSideTo1x1:
-						case Mapping.TwoSidesTo1x1:
-						case Mapping.OneSideWrapTo1x1:
-						case Mapping.TwoSidesWrapTo1x1:
-							num = Mathf.Max(options.texturedSideBlockOcclusionSeverityBias, num);
-							num2 = Mathf.Max(num2, options.texturedSideBlockOcclusionSeverityMultiplier);
-							break;
-						}
+						num = Mathf.Max(options.texturedSideBlockOcclusionSeverityBias, num);
+						num2 = Mathf.Max(num2, options.texturedSideBlockOcclusionSeverityMultiplier);
 					}
 				}
 			}
-			Vector3 position = block.go.transform.position;
-			float num3 = 0.5f * Util.MeanAbs(block.Scale());
+			Vector3 position = item.go.transform.position;
+			float num3 = 0.5f * Util.MeanAbs(item.Scale());
 			float num4 = 15f + num3;
-			foreach (KeyValuePair<Vector3, float> keyValuePair in dictionary)
+			foreach (KeyValuePair<Vector3, float> item2 in dictionary)
 			{
-				Vector3 key = keyValuePair.Key;
+				Vector3 key = item2.Key;
 				RaycastHit[] array3 = Physics.RaycastAll(position, key, num4, -1);
 				float num5 = 0f;
-				foreach (RaycastHit raycastHit in array3)
+				RaycastHit[] array4 = array3;
+				for (int j = 0; j < array4.Length; j++)
 				{
+					RaycastHit raycastHit = array4[j];
 					Collider collider = raycastHit.collider;
-					Block block2 = BWSceneManager.FindBlock(collider.gameObject, true);
-					if (block2 != null && block2 != block)
+					Block block = BWSceneManager.FindBlock(collider.gameObject, checkChildGos: true);
+					if (block != null && block != item)
 					{
 						float num6 = 1f - raycastHit.distance / num4;
-						float num7 = num6 * keyValuePair.Value;
-						List<ModelTutorializeUtils.BlockOcclusion> list;
-						if (!blockOtherOcclusions.TryGetValue(block2, out list))
+						float num7 = num6 * item2.Value;
+						if (!blockOtherOcclusions.TryGetValue(block, out var value2))
 						{
-							list = new List<ModelTutorializeUtils.BlockOcclusion>();
-							blockOtherOcclusions[block2] = list;
+							value2 = (blockOtherOcclusions[block] = new List<BlockOcclusion>());
 						}
-						list.Add(new ModelTutorializeUtils.BlockOcclusion
+						value2.Add(new BlockOcclusion
 						{
-							block = block,
+							block = item,
 							severity = num7
 						});
 						num5 = Mathf.Max(num7, num5);
@@ -459,147 +505,38 @@ public class ModelTutorializeUtils
 				}
 				num += num5 * num2;
 			}
-			blockOcclusions[block] = num;
+			blockOcclusions[item] = num;
 		}
 	}
 
-	// Token: 0x060018A8 RID: 6312 RVA: 0x000AD450 File Offset: 0x000AB850
-	private static void CalculateBlockSymmetries(HashSet<Block> blocksToPlace, Dictionary<Block, Block> blockSymmetryMap, Dictionary<Block, ModelTutorializeUtils.SymmetricBlocks> blockSymmetries)
+	private static void CalculateBlockSymmetries(HashSet<Block> blocksToPlace, Dictionary<Block, Block> blockSymmetryMap, Dictionary<Block, SymmetricBlocks> blockSymmetries)
 	{
-		Dictionary<string, ModelTutorializeUtils.SymmetricBlocks> dictionary = ModelTutorializeUtils.FindSymmetricBlocks(new List<Block>(blocksToPlace));
+		Dictionary<string, SymmetricBlocks> dictionary = FindSymmetricBlocks(new List<Block>(blocksToPlace));
 		HashSet<Block> hashSet = new HashSet<Block>(blocksToPlace);
-		List<ModelTutorializeUtils.SymmetricBlocks> list = new List<ModelTutorializeUtils.SymmetricBlocks>(dictionary.Values);
-		list.Sort((ModelTutorializeUtils.SymmetricBlocks s1, ModelTutorializeUtils.SymmetricBlocks s2) => s2.side1.Count.CompareTo(s1.side1.Count));
-		int num = (list.Count <= 0) ? 0 : list[0].side1.Count;
-		for (int i = 0; i < list.Count; i++)
+		List<SymmetricBlocks> list = new List<SymmetricBlocks>(dictionary.Values);
+		list.Sort((SymmetricBlocks s1, SymmetricBlocks s2) => s2.side1.Count.CompareTo(s1.side1.Count));
+		int num = ((list.Count > 0) ? list[0].side1.Count : 0);
+		for (int num2 = 0; num2 < list.Count; num2++)
 		{
-			ModelTutorializeUtils.SymmetricBlocks symmetricBlocks = list[i];
-			if (symmetricBlocks.side1.Count != 1 || num <= 2)
+			SymmetricBlocks symmetricBlocks = list[num2];
+			if (symmetricBlocks.side1.Count == 1 && num > 2)
 			{
-				for (int j = 0; j < symmetricBlocks.side1.Count; j++)
+				continue;
+			}
+			for (int num3 = 0; num3 < symmetricBlocks.side1.Count; num3++)
+			{
+				Block block = symmetricBlocks.side1[num3];
+				Block block2 = symmetricBlocks.side2[num3];
+				if (hashSet.Contains(block) && hashSet.Contains(block2))
 				{
-					Block block = symmetricBlocks.side1[j];
-					Block block2 = symmetricBlocks.side2[j];
-					if (hashSet.Contains(block) && hashSet.Contains(block2))
-					{
-						blockSymmetryMap[block] = block2;
-						blockSymmetryMap[block2] = block;
-						blockSymmetries[block] = symmetricBlocks;
-						blockSymmetries[block2] = symmetricBlocks;
-						hashSet.Remove(block);
-						hashSet.Remove(block2);
-					}
+					blockSymmetryMap[block] = block2;
+					blockSymmetryMap[block2] = block;
+					blockSymmetries[block] = symmetricBlocks;
+					blockSymmetries[block2] = symmetricBlocks;
+					hashSet.Remove(block);
+					hashSet.Remove(block2);
 				}
 			}
 		}
-	}
-
-	// Token: 0x020001DF RID: 479
-	public class StepByStepTutorializeOptions
-	{
-		// Token: 0x04001382 RID: 4994
-		public bool disableRendererForUnplacedBlocks = true;
-
-		// Token: 0x04001383 RID: 4995
-		public float waitTimePerBlock = 0.01f;
-
-		// Token: 0x04001384 RID: 4996
-		public int symmetryChainPenaltyThreshold = 3;
-
-		// Token: 0x04001385 RID: 4997
-		public float symmetryChainPenalty = 0.2f;
-
-		// Token: 0x04001386 RID: 4998
-		public float heightPenaltyFactor = 0.1f;
-
-		// Token: 0x04001387 RID: 4999
-		public float maxHeightPenalty = 1f;
-
-		// Token: 0x04001388 RID: 5000
-		public float selfOcclusionPenaltyFactor = 0.1f;
-
-		// Token: 0x04001389 RID: 5001
-		public float upOcclusionPenaltyFactor = 0.5f;
-
-		// Token: 0x0400138A RID: 5002
-		public float sideOcclusionPenaltyFactor = 0.3f;
-
-		// Token: 0x0400138B RID: 5003
-		public float paintedBlockOcclusionSeverityBias = 0.1f;
-
-		// Token: 0x0400138C RID: 5004
-		public float paintedBlockOcclusionSeverityMultiplier = 2f;
-
-		// Token: 0x0400138D RID: 5005
-		public float texturedBlockOcclusionSeverityBias = 0.1f;
-
-		// Token: 0x0400138E RID: 5006
-		public float texturedBlockOcclusionSeverityMultiplier = 2f;
-
-		// Token: 0x0400138F RID: 5007
-		public float texturedSideBlockOcclusionSeverityBias = 0.3f;
-
-		// Token: 0x04001390 RID: 5008
-		public float texturedSideBlockOcclusionSeverityMultiplier = 2.5f;
-
-		// Token: 0x04001391 RID: 5009
-		public float connectedToLastBlockReward = 1f;
-
-		// Token: 0x04001392 RID: 5010
-		public float isolatedBlockPenalty = 3f;
-
-		// Token: 0x04001393 RID: 5011
-		public Func<float, float> distanceToLastBlockRewardFunction = (float dist) => 1f / (1f + 0.25f * dist);
-	}
-
-	// Token: 0x020001E0 RID: 480
-	private class SymmetricBlocks
-	{
-		// Token: 0x060018AD RID: 6317 RVA: 0x000AD6E8 File Offset: 0x000ABAE8
-		public void Add(Block b1, Block b2)
-		{
-			this.side1.Add(b1);
-			this.side2.Add(b2);
-		}
-
-		// Token: 0x060018AE RID: 6318 RVA: 0x000AD702 File Offset: 0x000ABB02
-		public int PairCount()
-		{
-			return this.side1.Count;
-		}
-
-		// Token: 0x060018AF RID: 6319 RVA: 0x000AD710 File Offset: 0x000ABB10
-		public static string CalculateLookupKey(int coordIndex, float centerCoord)
-		{
-			return coordIndex.ToString() + Mathf.RoundToInt(centerCoord * 10f).ToString();
-		}
-
-		// Token: 0x060018B0 RID: 6320 RVA: 0x000AD749 File Offset: 0x000ABB49
-		public override string ToString()
-		{
-			return string.Format("[SymmetricBlocks pair count: {0}, coordIndex: {1}, centerCoord: {2}]", this.PairCount(), this.coordIndex, this.centerCoord);
-		}
-
-		// Token: 0x04001395 RID: 5013
-		public List<Block> side1 = new List<Block>();
-
-		// Token: 0x04001396 RID: 5014
-		public List<Block> side2 = new List<Block>();
-
-		// Token: 0x04001397 RID: 5015
-		public int coordIndex;
-
-		// Token: 0x04001398 RID: 5016
-		public float centerCoord;
-	}
-
-	// Token: 0x020001E1 RID: 481
-	private class BlockOcclusion
-	{
-		// Token: 0x04001399 RID: 5017
-		public Block block;
-
-		// Token: 0x0400139A RID: 5018
-		public float severity;
 	}
 }

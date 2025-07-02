@@ -1,879 +1,783 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Blocks
+namespace Blocks;
+
+public class BlockAbstractTorsionSpring : Block
 {
-	// Token: 0x0200006D RID: 109
-	public class BlockAbstractTorsionSpring : Block
+	private enum TorsionSpringMode
 	{
-		// Token: 0x060008C3 RID: 2243 RVA: 0x0003D6A4 File Offset: 0x0003BAA4
-		public BlockAbstractTorsionSpring(List<List<Tile>> tiles, string axleName, float angleLimit) : base(tiles)
-		{
-			this.axle = this.goT.Find(axleName).gameObject;
-			this.loopName = "Torsion Spring Loop";
-			this.sfxLoopUpdateCounter = UnityEngine.Random.Range(0, 5);
-			this.springLimit = angleLimit;
-		}
+		FreeSpin,
+		Spring
+	}
 
-		// Token: 0x060008C4 RID: 2244 RVA: 0x0003D74C File Offset: 0x0003BB4C
-		private float GetAngleIncPerSecond(object[] args)
-		{
-			return (args.Length <= 0) ? 15f : ((float)args[0]);
-		}
+	private TorsionSpringMode mode = TorsionSpringMode.Spring;
 
-		// Token: 0x060008C5 RID: 2245 RVA: 0x0003D778 File Offset: 0x0003BB78
-		private void Charge(object[] args, float arg1 = 1f)
-		{
-			if (this.joint == null)
-			{
-				return;
-			}
-			float num = (this.springLimit <= 0f) ? 90f : this.springLimit;
-			float num2 = arg1 * Blocksworld.fixedDeltaTime * this.GetAngleIncPerSecond(args);
-			this.angleOffset = Mathf.Clamp(this.angleOffset + num2, -num, num);
-			this.charging = (Mathf.Abs(this.angleOffset) < 89f);
-			this.mode = BlockAbstractTorsionSpring.TorsionSpringMode.Spring;
-			if (this._limitedRange)
-			{
-				float limitedRangeRealAngle = this._limitedRangeRealAngle;
-				if (this.charging)
-				{
-					this._limitedRangeRealAngle = Mathf.Clamp(this.angleOffset, -num, num);
-				}
-				else
-				{
-					this._limitedRangeRealAngle = Mathf.Clamp(num2 - this.GetRealAngle(), -num, num);
-				}
-				if (limitedRangeRealAngle != this._limitedRangeRealAngle)
-				{
-					this.SetSpringLimits(this._limitedRangeRealAngle - this._limitedRangeAngle, this._limitedRangeRealAngle + this._limitedRangeAngle);
-				}
-			}
-		}
+	private int treatAsVehicleStatus = -1;
 
-		// Token: 0x060008C6 RID: 2246 RVA: 0x0003D875 File Offset: 0x0003BC75
-		public TileResultCode SetSpringStiffness(ScriptRowExecutionInfo eInfo, object[] args)
-		{
-			this.springStiffness = Util.GetFloatArg(args, 0, 1f);
-			return TileResultCode.True;
-		}
+	private const float angleEpsilon = 0.05f;
 
-		// Token: 0x060008C7 RID: 2247 RVA: 0x0003D88C File Offset: 0x0003BC8C
-		public TileResultCode SetRigidity(ScriptRowExecutionInfo eInfo, object[] args)
+	private const float anglesPerSecond = 90f;
+
+	private float targetAngle;
+
+	private float currentAngle;
+
+	private float lastRealAngle;
+
+	private float springStiffness = 1f;
+
+	private float springLimit;
+
+	private float angleOffset;
+
+	private int halfRevolutions;
+
+	private float turnLoopPitch = 1f;
+
+	private float turnLoopVol;
+
+	private float stretchSoundTime;
+
+	private Chunk rotorChunk;
+
+	private float chunkMi = 1f;
+
+	private float rotorChunkMi = 1f;
+
+	private bool chunkKinematic;
+
+	private bool rotorChunkKinematic;
+
+	private bool released;
+
+	private bool charging;
+
+	private bool _limitedRange;
+
+	private float _limitedRangeAngle = 0.05f;
+
+	private float _limitedRangeRealAngle;
+
+	private GameObject rotor;
+
+	private Transform rotorT;
+
+	private GameObject fakeRotor;
+
+	private GameObject axle;
+
+	public ConfigurableJoint joint;
+
+	private Vector3 pausedVelocityAxle;
+
+	private Vector3 pausedAngularVelocityAxle;
+
+	private AudioSource axleAudioSource;
+
+	private int sfxLoopUpdateCounter;
+
+	private const int SFX_LOOP_UPDATE_INTERVAL = 5;
+
+	private bool locked;
+
+	private bool wasLocked;
+
+	private float lockedAngleOffset;
+
+	private float rotorAngleVecMultiplier = 1f;
+
+	private int rotorAngleVecType;
+
+	public Rigidbody jointToJointConnection;
+
+	private Vector3 jointOffset = Vector3.zero;
+
+	public BlockAbstractTorsionSpring(List<List<Tile>> tiles, string axleName, float angleLimit)
+		: base(tiles)
+	{
+		axle = goT.Find(axleName).gameObject;
+		loopName = "Torsion Spring Loop";
+		sfxLoopUpdateCounter = Random.Range(0, 5);
+		springLimit = angleLimit;
+	}
+
+	private float GetAngleIncPerSecond(object[] args)
+	{
+		if (args.Length != 0)
 		{
-			if (this.joint == null)
+			return (float)args[0];
+		}
+		return 15f;
+	}
+
+	private void Charge(object[] args, float arg1 = 1f)
+	{
+		if (joint == null)
+		{
+			return;
+		}
+		float num = ((springLimit <= 0f) ? 90f : springLimit);
+		float num2 = arg1 * Blocksworld.fixedDeltaTime * GetAngleIncPerSecond(args);
+		angleOffset = Mathf.Clamp(angleOffset + num2, 0f - num, num);
+		charging = Mathf.Abs(angleOffset) < 89f;
+		mode = TorsionSpringMode.Spring;
+		if (_limitedRange)
+		{
+			float limitedRangeRealAngle = _limitedRangeRealAngle;
+			if (charging)
 			{
-				return TileResultCode.True;
-			}
-			float num = (args.Length <= 0) ? 1f : ((float)args[0]);
-			float num2 = 90f;
-			if (num > 0.9f)
-			{
-				num2 = 0.05f;
-			}
-			else if (num > 0.8f)
-			{
-				num2 = 0.25f;
-			}
-			else if (num > 0.7f)
-			{
-				num2 = 0.7f;
-			}
-			else if (num > 0.6f)
-			{
-				num2 = 1.4f;
-			}
-			else if (num > 0.5f)
-			{
-				num2 = 2.5f;
-			}
-			else if (num > 0.4f)
-			{
-				num2 = 4.75f;
-			}
-			else if (num > 0.3f)
-			{
-				num2 = 7f;
-			}
-			else if (num > 0.2f)
-			{
-				num2 = 10f;
-			}
-			else if (num > 0.1f)
-			{
-				num2 = 14f;
-			}
-			else if (num > 0f)
-			{
-				num2 = 20f;
-			}
-			else if (this.springLimit > 0f)
-			{
-				num2 = this.springLimit;
-			}
-			if (this._limitedRange || num > 0f)
-			{
-				bool flag = false;
-				if (!this._limitedRange)
-				{
-					flag = true;
-					this._limitedRange = true;
-					this._limitedRangeAngle = num2;
-					this._limitedRangeRealAngle = -this.GetRealAngle();
-				}
-				else if (this._limitedRangeAngle != num2)
-				{
-					flag = true;
-					this._limitedRangeAngle = num2;
-				}
-				if (flag)
-				{
-					this.SetSpringLimits(this._limitedRangeRealAngle - this._limitedRangeAngle, this._limitedRangeRealAngle + this._limitedRangeAngle);
-				}
-			}
-			else if (this.springLimit > 0f)
-			{
-				this.SetSpringLimits(-this.springLimit, this.springLimit);
+				_limitedRangeRealAngle = Mathf.Clamp(angleOffset, 0f - num, num);
 			}
 			else
 			{
-				this.SetSpringLimits(-90f, 90f);
+				_limitedRangeRealAngle = Mathf.Clamp(num2 - GetRealAngle(), 0f - num, num);
 			}
-			if (this.springLimit <= 0f)
+			if (limitedRangeRealAngle != _limitedRangeRealAngle)
 			{
-				if (this._limitedRange)
-				{
-					this.joint.angularXMotion = ConfigurableJointMotion.Limited;
-				}
-				else
-				{
-					this.joint.angularXMotion = ConfigurableJointMotion.Free;
-				}
+				SetSpringLimits(_limitedRangeRealAngle - _limitedRangeAngle, _limitedRangeRealAngle + _limitedRangeAngle);
 			}
+		}
+	}
+
+	public TileResultCode SetSpringStiffness(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		springStiffness = Util.GetFloatArg(args, 0, 1f);
+		return TileResultCode.True;
+	}
+
+	public TileResultCode SetRigidity(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		if (joint == null)
+		{
 			return TileResultCode.True;
 		}
-
-		// Token: 0x060008C8 RID: 2248 RVA: 0x0003DAB7 File Offset: 0x0003BEB7
-		public TileResultCode Charge(ScriptRowExecutionInfo eInfo, object[] args)
+		float num = ((args.Length == 0) ? 1f : ((float)args[0]));
+		float num2 = 90f;
+		if (num > 0.9f)
 		{
-			this.Charge(args, eInfo.floatArg);
-			return TileResultCode.True;
+			num2 = 0.05f;
 		}
-
-		// Token: 0x060008C9 RID: 2249 RVA: 0x0003DAC7 File Offset: 0x0003BEC7
-		public TileResultCode StepCharge(ScriptRowExecutionInfo eInfo, object[] args)
+		else if (num > 0.8f)
 		{
-			if (eInfo.timer >= 0.25f)
-			{
-				return TileResultCode.True;
-			}
-			this.Charge(args, eInfo.floatArg);
-			return TileResultCode.Delayed;
+			num2 = 0.25f;
 		}
-
-		// Token: 0x060008CA RID: 2250 RVA: 0x0003DAEC File Offset: 0x0003BEEC
-		public TileResultCode FreeSpin(ScriptRowExecutionInfo eInfo, object[] args)
+		else if (num > 0.7f)
 		{
-			if (this.joint == null)
-			{
-				return TileResultCode.True;
-			}
-			this.mode = BlockAbstractTorsionSpring.TorsionSpringMode.FreeSpin;
-			if (this._limitedRange)
-			{
-				if (this.springLimit > 0f)
-				{
-					this.SetSpringLimits(-this.springLimit, this.springLimit);
-				}
-				else
-				{
-					this.SetSpringLimits(-90f, 90f);
-				}
-			}
-			this._limitedRange = false;
-			this._limitedRangeAngle = 0.05f;
-			this._limitedRangeRealAngle = 0f;
-			return TileResultCode.True;
+			num2 = 0.7f;
 		}
-
-		// Token: 0x060008CB RID: 2251 RVA: 0x0003DB74 File Offset: 0x0003BF74
-		public TileResultCode Release(ScriptRowExecutionInfo eInfo, object[] args)
+		else if (num > 0.6f)
 		{
-			if (this.joint == null)
-			{
-				return TileResultCode.True;
-			}
-			this.released = (Mathf.Abs(this.angleOffset) > 0f);
-			this.angleOffset = 0f;
-			this.mode = BlockAbstractTorsionSpring.TorsionSpringMode.Spring;
-			if (this._limitedRange)
-			{
-				this.SetSpringLimits(-this._limitedRangeAngle, this._limitedRangeAngle);
-				this._limitedRangeRealAngle = 0f;
-			}
-			return TileResultCode.True;
+			num2 = 1.4f;
 		}
-
-		// Token: 0x060008CC RID: 2252 RVA: 0x0003DBE8 File Offset: 0x0003BFE8
-		public TileResultCode ChargeGreaterThan(ScriptRowExecutionInfo eInfo, object[] args)
+		else if (num > 0.5f)
 		{
-			float num = (args.Length <= 0) ? 45f : ((float)args[0]);
-			bool flag = args.Length <= 1 || (bool)args[1];
-			if (((!flag) ? this.angleOffset : Mathf.Abs(this.angleOffset)) >= num)
-			{
-				return TileResultCode.True;
-			}
-			return TileResultCode.False;
+			num2 = 2.5f;
 		}
-
-		// Token: 0x060008CD RID: 2253 RVA: 0x0003DC4E File Offset: 0x0003C04E
-		public override void Play2()
+		else if (num > 0.4f)
 		{
-			base.Play2();
-			base.CreateFakeRigidbodyBetweenJoints();
+			num2 = 4.75f;
 		}
-
-		// Token: 0x060008CE RID: 2254 RVA: 0x0003DC5C File Offset: 0x0003C05C
-		public override void Play()
+		else if (num > 0.3f)
 		{
-			base.Play();
-			this.treatAsVehicleStatus = -1;
-			List<Block> list = base.ConnectionsOfType(2, true);
-			this.fakeRotor = null;
-			if (this.jointToJointConnection != null)
+			num2 = 7f;
+		}
+		else if (num > 0.2f)
+		{
+			num2 = 10f;
+		}
+		else if (num > 0.1f)
+		{
+			num2 = 14f;
+		}
+		else if (num > 0f)
+		{
+			num2 = 20f;
+		}
+		else if (springLimit > 0f)
+		{
+			num2 = springLimit;
+		}
+		if (_limitedRange || num > 0f)
+		{
+			bool flag = false;
+			if (!_limitedRange)
 			{
-				this.rotor = this.jointToJointConnection.gameObject;
+				flag = true;
+				_limitedRange = true;
+				_limitedRangeAngle = num2;
+				_limitedRangeRealAngle = 0f - GetRealAngle();
 			}
-			else if (list.Count > 0)
+			else if (_limitedRangeAngle != num2)
 			{
-				Chunk chunk = list[0].chunk;
-				this.rotorChunk = chunk;
-				this.rotor = this.rotorChunk.go;
-				ConfigurableJoint[] components = this.chunk.go.GetComponents<ConfigurableJoint>();
-				if (components.Length > 0)
-				{
-					this.jointToJointConnection = chunk.rb;
-					this.jointOffset = this.goT.localEulerAngles;
-				}
+				flag = true;
+				_limitedRangeAngle = num2;
+			}
+			if (flag)
+			{
+				SetSpringLimits(_limitedRangeRealAngle - _limitedRangeAngle, _limitedRangeRealAngle + _limitedRangeAngle);
+			}
+		}
+		else if (springLimit > 0f)
+		{
+			SetSpringLimits(0f - springLimit, springLimit);
+		}
+		else
+		{
+			SetSpringLimits(-90f, 90f);
+		}
+		if (springLimit <= 0f)
+		{
+			if (_limitedRange)
+			{
+				joint.angularXMotion = ConfigurableJointMotion.Limited;
 			}
 			else
 			{
-				this.fakeRotor = new GameObject(this.go.name + " Fake Rotor");
-				this.fakeRotor.transform.position = this.goT.position;
-				Rigidbody rigidbody = this.fakeRotor.AddComponent<Rigidbody>();
-				if (Blocksworld.interpolateRigidBodies)
-				{
-					rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
-				}
-				rigidbody.mass = 1f;
-				this.axle.transform.parent = this.fakeRotor.transform;
-				this.rotor = this.fakeRotor;
+				joint.angularXMotion = ConfigurableJointMotion.Free;
 			}
-			this.rotorT = this.rotor.transform;
-			this.axleAudioSource = this.axle.GetComponent<AudioSource>();
-			if (this.axleAudioSource == null)
-			{
-				this.axleAudioSource = this.axle.AddComponent<AudioSource>();
-				this.axleAudioSource.playOnAwake = false;
-				this.axleAudioSource.clip = Sound.GetSfx("Torsion Spring Stretch");
-				Sound.SetWorldAudioSourceParams(this.axleAudioSource, 5f, 150f, AudioRolloffMode.Logarithmic);
-			}
-			this.CreateJoint();
-			this.targetAngle = 0f;
-			this.currentAngle = 0f;
-			this.lastRealAngle = 0f;
-			this._limitedRange = false;
-			this._limitedRangeAngle = 0.05f;
-			this.CalculateMassDistributions();
-			this.angleOffset = 0f;
-			this.lockedAngleOffset = 0f;
-			this.locked = false;
-			this.wasLocked = false;
-			this.halfRevolutions = 0;
-			this.CalculateRotorAngleVecType();
-			this.mode = BlockAbstractTorsionSpring.TorsionSpringMode.Spring;
 		}
+		return TileResultCode.True;
+	}
 
-		// Token: 0x060008CF RID: 2255 RVA: 0x0003DE98 File Offset: 0x0003C298
-		private void SetSpringLimits(float lowLimit, float highLimit)
+	public TileResultCode Charge(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		Charge(args, eInfo.floatArg);
+		return TileResultCode.True;
+	}
+
+	public TileResultCode StepCharge(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		if (eInfo.timer >= 0.25f)
 		{
-			SoftJointLimit softJointLimit = default(SoftJointLimit);
-			softJointLimit.bounciness = 0f;
-			softJointLimit.limit = lowLimit;
-			this.joint.lowAngularXLimit = softJointLimit;
-			softJointLimit.bounciness = 0f;
-			softJointLimit.limit = highLimit;
-			this.joint.highAngularXLimit = softJointLimit;
+			return TileResultCode.True;
 		}
+		Charge(args, eInfo.floatArg);
+		return TileResultCode.Delayed;
+	}
 
-		// Token: 0x060008D0 RID: 2256 RVA: 0x0003DEF0 File Offset: 0x0003C2F0
-		private void CreateJoint()
+	public TileResultCode FreeSpin(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		if (joint == null)
 		{
-			if (this.chunk.go == this.rotor)
+			return TileResultCode.True;
+		}
+		mode = TorsionSpringMode.FreeSpin;
+		if (_limitedRange)
+		{
+			if (springLimit > 0f)
 			{
-				return;
-			}
-			this.joint = this.chunk.go.AddComponent<ConfigurableJoint>();
-			this.joint.anchor = this.goT.localPosition;
-			this.joint.axis = this.goT.right;
-			this.joint.xMotion = ConfigurableJointMotion.Locked;
-			this.joint.yMotion = ConfigurableJointMotion.Locked;
-			this.joint.zMotion = ConfigurableJointMotion.Locked;
-			if (this.springLimit > 0f)
-			{
-				this.joint.angularXMotion = ConfigurableJointMotion.Limited;
+				SetSpringLimits(0f - springLimit, springLimit);
 			}
 			else
 			{
-				this.joint.angularXMotion = ConfigurableJointMotion.Free;
-			}
-			this.joint.angularYMotion = ConfigurableJointMotion.Locked;
-			this.joint.angularZMotion = ConfigurableJointMotion.Locked;
-			this.joint.connectedBody = this.rotor.GetComponent<Rigidbody>();
-			if (this.springLimit > 0f)
-			{
-				this.SetSpringLimits(-this.springLimit, this.springLimit);
+				SetSpringLimits(-90f, 90f);
 			}
 		}
+		_limitedRange = false;
+		_limitedRangeAngle = 0.05f;
+		_limitedRangeRealAngle = 0f;
+		return TileResultCode.True;
+	}
 
-		// Token: 0x060008D1 RID: 2257 RVA: 0x0003E000 File Offset: 0x0003C400
-		private void CalculateMassDistributions()
+	public TileResultCode Release(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		if (joint == null)
 		{
-			Chunk chunk = this.chunk;
-			this.chunkMi = base.CalculateMassDistribution(chunk, this.goT.up, this.rotorChunk);
-			this.chunkKinematic = base.ConnectedToKinematicChunk(chunk, this.rotorChunk);
-			this.rotorChunkMi = this.chunkMi;
-			if (this.rotorChunk != null)
+			return TileResultCode.True;
+		}
+		released = Mathf.Abs(angleOffset) > 0f;
+		angleOffset = 0f;
+		mode = TorsionSpringMode.Spring;
+		if (_limitedRange)
+		{
+			SetSpringLimits(0f - _limitedRangeAngle, _limitedRangeAngle);
+			_limitedRangeRealAngle = 0f;
+		}
+		return TileResultCode.True;
+	}
+
+	public TileResultCode ChargeGreaterThan(ScriptRowExecutionInfo eInfo, object[] args)
+	{
+		float num = ((args.Length == 0) ? 45f : ((float)args[0]));
+		if (((args.Length > 1 && !(bool)args[1]) ? angleOffset : Mathf.Abs(angleOffset)) >= num)
+		{
+			return TileResultCode.True;
+		}
+		return TileResultCode.False;
+	}
+
+	public override void Play2()
+	{
+		base.Play2();
+		CreateFakeRigidbodyBetweenJoints();
+	}
+
+	public override void Play()
+	{
+		base.Play();
+		treatAsVehicleStatus = -1;
+		List<Block> list = ConnectionsOfType(2, directed: true);
+		fakeRotor = null;
+		if (jointToJointConnection != null)
+		{
+			rotor = jointToJointConnection.gameObject;
+		}
+		else if (list.Count > 0)
+		{
+			Chunk chunk = (rotorChunk = list[0].chunk);
+			rotor = rotorChunk.go;
+			ConfigurableJoint[] components = base.chunk.go.GetComponents<ConfigurableJoint>();
+			if (components.Length != 0)
 			{
-				this.rotorChunkMi = base.CalculateMassDistribution(this.rotorChunk, this.goT.up, chunk);
-				this.rotorChunkKinematic = base.ConnectedToKinematicChunk(this.rotorChunk, chunk);
+				jointToJointConnection = chunk.rb;
+				jointOffset = goT.localEulerAngles;
 			}
 		}
-
-		// Token: 0x060008D2 RID: 2258 RVA: 0x0003E090 File Offset: 0x0003C490
-		public override void ChunkInModelFrozen()
+		else
 		{
-			base.ChunkInModelFrozen();
-			this.chunkKinematic = base.ConnectedToKinematicChunk(this.chunk, this.rotorChunk);
-			if (this.rotorChunk != null)
+			fakeRotor = new GameObject(go.name + " Fake Rotor");
+			fakeRotor.transform.position = goT.position;
+			Rigidbody rigidbody = fakeRotor.AddComponent<Rigidbody>();
+			if (Blocksworld.interpolateRigidBodies)
 			{
-				this.rotorChunkKinematic = base.ConnectedToKinematicChunk(this.rotorChunk, this.chunk);
+				rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 			}
+			rigidbody.mass = 1f;
+			axle.transform.parent = fakeRotor.transform;
+			rotor = fakeRotor;
 		}
-
-		// Token: 0x060008D3 RID: 2259 RVA: 0x0003E0E0 File Offset: 0x0003C4E0
-		public override void ChunkInModelUnfrozen()
+		rotorT = rotor.transform;
+		axleAudioSource = axle.GetComponent<AudioSource>();
+		if (axleAudioSource == null)
 		{
-			base.ChunkInModelUnfrozen();
-			this.chunkKinematic = base.ConnectedToKinematicChunk(this.chunk, this.rotorChunk);
-			if (this.rotorChunk != null)
-			{
-				this.rotorChunkKinematic = base.ConnectedToKinematicChunk(this.rotorChunk, this.chunk);
-			}
+			axleAudioSource = axle.AddComponent<AudioSource>();
+			axleAudioSource.playOnAwake = false;
+			axleAudioSource.clip = Sound.GetSfx("Torsion Spring Stretch");
+			Sound.SetWorldAudioSourceParams(axleAudioSource);
 		}
+		CreateJoint();
+		targetAngle = 0f;
+		currentAngle = 0f;
+		lastRealAngle = 0f;
+		_limitedRange = false;
+		_limitedRangeAngle = 0.05f;
+		CalculateMassDistributions();
+		angleOffset = 0f;
+		lockedAngleOffset = 0f;
+		locked = false;
+		wasLocked = false;
+		halfRevolutions = 0;
+		CalculateRotorAngleVecType();
+		mode = TorsionSpringMode.Spring;
+	}
 
-		// Token: 0x060008D4 RID: 2260 RVA: 0x0003E12E File Offset: 0x0003C52E
-		private void DestroyJoint()
+	private void SetSpringLimits(float lowLimit, float highLimit)
+	{
+		SoftJointLimit softJointLimit = new SoftJointLimit
 		{
-			if (this.joint != null)
-			{
-				UnityEngine.Object.Destroy(this.joint);
-				this.joint = null;
-				base.DestroyFakeRigidbodies();
-			}
-		}
+			bounciness = 0f,
+			limit = lowLimit
+		};
+		joint.lowAngularXLimit = softJointLimit;
+		softJointLimit.bounciness = 0f;
+		softJointLimit.limit = highLimit;
+		joint.highAngularXLimit = softJointLimit;
+	}
 
-		// Token: 0x060008D5 RID: 2261 RVA: 0x0003E15C File Offset: 0x0003C55C
-		public override void Stop(bool resetBlock = true)
+	private void CreateJoint()
+	{
+		if (!(chunk.go == rotor))
 		{
-			this.DestroyJoint();
-			if (this.fakeRotor != null)
+			joint = chunk.go.AddComponent<ConfigurableJoint>();
+			joint.anchor = goT.localPosition;
+			joint.axis = goT.right;
+			joint.xMotion = ConfigurableJointMotion.Locked;
+			joint.yMotion = ConfigurableJointMotion.Locked;
+			joint.zMotion = ConfigurableJointMotion.Locked;
+			if (springLimit > 0f)
 			{
-				if (this.axle.GetComponent<Collider>() != null)
-				{
-					UnityEngine.Object.Destroy(this.axle.GetComponent<Collider>());
-				}
-				this.DestroyFakeRotor();
-			}
-			this.jointToJointConnection = null;
-			this.axle.transform.localRotation = default(Quaternion);
-			this.axle.transform.localScale = Vector3.one;
-			this.axle.GetComponent<Renderer>().enabled = true;
-			this.PlayLoopSound(false, base.GetLoopClip(), 1f, null, 1f);
-			base.Stop(resetBlock);
-		}
-
-		// Token: 0x060008D6 RID: 2262 RVA: 0x0003E214 File Offset: 0x0003C614
-		public override void Pause()
-		{
-			if (this.fakeRotor != null)
-			{
-				this.pausedVelocityAxle = this.fakeRotor.GetComponent<Rigidbody>().velocity;
-				this.pausedAngularVelocityAxle = this.fakeRotor.GetComponent<Rigidbody>().angularVelocity;
-				this.fakeRotor.GetComponent<Rigidbody>().isKinematic = true;
-			}
-			this.PlayLoopSound(false, base.GetLoopClip(), 1f, null, 1f);
-		}
-
-		// Token: 0x060008D7 RID: 2263 RVA: 0x0003E288 File Offset: 0x0003C688
-		public override void Resume()
-		{
-			if (this.fakeRotor != null)
-			{
-				this.fakeRotor.GetComponent<Rigidbody>().isKinematic = false;
-				this.fakeRotor.GetComponent<Rigidbody>().velocity = this.pausedVelocityAxle;
-				this.fakeRotor.GetComponent<Rigidbody>().angularVelocity = this.pausedAngularVelocityAxle;
-			}
-		}
-
-		// Token: 0x060008D8 RID: 2264 RVA: 0x0003E2E4 File Offset: 0x0003C6E4
-		public override void Break(Vector3 chunkPos, Vector3 chunkVel, Vector3 chunkAngVel)
-		{
-			base.Break(chunkPos, chunkVel, chunkAngVel);
-			if (this.fakeRotor != null)
-			{
-				this.axle.AddComponent<BoxCollider>();
-				Block.AddExplosiveForce(this.fakeRotor.GetComponent<Rigidbody>(), this.fakeRotor.transform.position, chunkPos, chunkVel, chunkAngVel, 1f);
-			}
-			this.DestroyJoint();
-		}
-
-		// Token: 0x060008D9 RID: 2265 RVA: 0x0003E348 File Offset: 0x0003C748
-		public override void Update()
-		{
-			base.Update();
-			if (Blocksworld.CurrentState == State.Play && this.fakeRotor == null && this.rotor != null && !this.vanished)
-			{
-				if (this.jointToJointConnection != null)
-				{
-					Quaternion rotation = (!(this.jointOffset == Vector3.zero)) ? (this.jointToJointConnection.rotation * Quaternion.Euler(this.jointOffset)) : Quaternion.LookRotation(this.jointToJointConnection.transform.position - this.goT.position, this.axle.transform.up);
-					this.axle.transform.rotation = rotation;
-				}
-				else
-				{
-					float realAngle = this.GetRealAngle();
-					this.axle.transform.localRotation = Quaternion.Euler(new Vector3(-realAngle, 0f, 0f));
-				}
-			}
-		}
-
-		// Token: 0x060008DA RID: 2266 RVA: 0x0003E454 File Offset: 0x0003C854
-		private float GetRealAngle()
-		{
-			Vector3 forward = this.goT.forward;
-			Vector3 planeNormal = Vector3.Cross(forward, this.goT.up);
-			Vector3 vector = this.GetRotorAngleVec();
-			vector = Util.ProjectOntoPlane(vector, planeNormal).normalized;
-			return Util.AngleBetween(vector, forward, this.goT.right);
-		}
-
-		// Token: 0x060008DB RID: 2267 RVA: 0x0003E4A8 File Offset: 0x0003C8A8
-		private void CheckAndSet(Vector3 v2, int type)
-		{
-			Vector3 forward = this.goT.forward;
-			float f = Vector3.Dot(forward, v2);
-			float num = Mathf.Sign(f);
-			if (Mathf.Abs(f) > 0.5f)
-			{
-				this.rotorAngleVecType = type;
-				this.rotorAngleVecMultiplier = num;
-			}
-		}
-
-		// Token: 0x060008DC RID: 2268 RVA: 0x0003E4EE File Offset: 0x0003C8EE
-		private void CalculateRotorAngleVecType()
-		{
-			this.CheckAndSet(this.rotorT.forward, 0);
-			this.CheckAndSet(this.rotorT.up, 1);
-			this.CheckAndSet(this.rotorT.right, 2);
-		}
-
-		// Token: 0x060008DD RID: 2269 RVA: 0x0003E528 File Offset: 0x0003C928
-		public Vector3 GetRotorAngleVec()
-		{
-			if (this.rotorT == null)
-			{
-				BWLog.Info("rotorT null!");
-				return this.rotorAngleVecMultiplier * Vector3.forward;
-			}
-			int num = this.rotorAngleVecType;
-			if (num == 0)
-			{
-				return this.rotorAngleVecMultiplier * this.rotorT.forward;
-			}
-			if (num == 1)
-			{
-				return this.rotorAngleVecMultiplier * this.rotorT.up;
-			}
-			if (num != 2)
-			{
-				return this.rotorAngleVecMultiplier * this.rotorT.forward;
-			}
-			return this.rotorAngleVecMultiplier * this.rotorT.right;
-		}
-
-		// Token: 0x060008DE RID: 2270 RVA: 0x0003E5DC File Offset: 0x0003C9DC
-		public override void FixedUpdate()
-		{
-			base.FixedUpdate();
-			this.UpdateTorsionSpringLoopSound();
-			if (this.isTreasure)
-			{
-				return;
-			}
-			if (this.joint == null)
-			{
-				return;
-			}
-			if (this.joint.connectedBody == null)
-			{
-				this.DestroyJoint();
-				return;
-			}
-			if (this.rotor == null)
-			{
-				this.SetMotorVelocity(0f, 10f);
-				return;
-			}
-			float realAngle = this.GetRealAngle();
-			float f = realAngle - this.lastRealAngle;
-			if (Mathf.Abs(f) > 90f)
-			{
-				if (this.lastRealAngle < 0f)
-				{
-					this.halfRevolutions--;
-				}
-				else
-				{
-					this.halfRevolutions++;
-				}
-			}
-			this.lastRealAngle = realAngle;
-			this.currentAngle = realAngle + (float)this.halfRevolutions * 360f;
-			if (this.locked && !this.wasLocked)
-			{
-				this.lockedAngleOffset = this.angleOffset;
-			}
-			if (!this.locked)
-			{
-				this.currentAngle += this.angleOffset;
-				this.lockedAngleOffset = 0f;
+				joint.angularXMotion = ConfigurableJointMotion.Limited;
 			}
 			else
 			{
-				this.currentAngle += this.lockedAngleOffset;
+				joint.angularXMotion = ConfigurableJointMotion.Free;
 			}
-			float f2 = this.targetAngle - this.currentAngle;
-			if (this.released && Sound.sfxEnabled && !this.vanished)
+			joint.angularYMotion = ConfigurableJointMotion.Locked;
+			joint.angularZMotion = ConfigurableJointMotion.Locked;
+			joint.connectedBody = rotor.GetComponent<Rigidbody>();
+			if (springLimit > 0f)
 			{
-				this.axleAudioSource.pitch = 0.8f + UnityEngine.Random.value * 0.4f;
-				this.axleAudioSource.PlayOneShot(Sound.GetSfx("Torsion Spring Stretch"), 0.5f);
+				SetSpringLimits(0f - springLimit, springLimit);
 			}
-			float num = Mathf.Max(this.chunkMi, this.rotorChunkMi);
-			Rigidbody rb = this.chunk.rb;
-			if (rb != null && !this.chunkKinematic)
+		}
+	}
+
+	private void CalculateMassDistributions()
+	{
+		Chunk ignoreChunk = chunk;
+		chunkMi = CalculateMassDistribution(ignoreChunk, goT.up, rotorChunk);
+		chunkKinematic = ConnectedToKinematicChunk(ignoreChunk, rotorChunk);
+		rotorChunkMi = chunkMi;
+		if (rotorChunk != null)
+		{
+			rotorChunkMi = CalculateMassDistribution(rotorChunk, goT.up, ignoreChunk);
+			rotorChunkKinematic = ConnectedToKinematicChunk(rotorChunk, ignoreChunk);
+		}
+	}
+
+	public override void ChunkInModelFrozen()
+	{
+		base.ChunkInModelFrozen();
+		chunkKinematic = ConnectedToKinematicChunk(chunk, rotorChunk);
+		if (rotorChunk != null)
+		{
+			rotorChunkKinematic = ConnectedToKinematicChunk(rotorChunk, chunk);
+		}
+	}
+
+	public override void ChunkInModelUnfrozen()
+	{
+		base.ChunkInModelUnfrozen();
+		chunkKinematic = ConnectedToKinematicChunk(chunk, rotorChunk);
+		if (rotorChunk != null)
+		{
+			rotorChunkKinematic = ConnectedToKinematicChunk(rotorChunk, chunk);
+		}
+	}
+
+	private void DestroyJoint()
+	{
+		if (joint != null)
+		{
+			Object.Destroy(joint);
+			joint = null;
+			DestroyFakeRigidbodies();
+		}
+	}
+
+	public override void Stop(bool resetBlock = true)
+	{
+		DestroyJoint();
+		if (fakeRotor != null)
+		{
+			if (axle.GetComponent<Collider>() != null)
 			{
-				num = Mathf.Min(num, this.chunkMi);
+				Object.Destroy(axle.GetComponent<Collider>());
 			}
-			Rigidbody component = this.rotor.GetComponent<Rigidbody>();
-			if (component != null && !this.rotorChunkKinematic)
+			DestroyFakeRotor();
+		}
+		jointToJointConnection = null;
+		axle.transform.localRotation = default(Quaternion);
+		axle.transform.localScale = Vector3.one;
+		axle.GetComponent<Renderer>().enabled = true;
+		PlayLoopSound(play: false, GetLoopClip());
+		base.Stop(resetBlock);
+	}
+
+	public override void Pause()
+	{
+		if (fakeRotor != null)
+		{
+			pausedVelocityAxle = fakeRotor.GetComponent<Rigidbody>().velocity;
+			pausedAngularVelocityAxle = fakeRotor.GetComponent<Rigidbody>().angularVelocity;
+			fakeRotor.GetComponent<Rigidbody>().isKinematic = true;
+		}
+		PlayLoopSound(play: false, GetLoopClip());
+	}
+
+	public override void Resume()
+	{
+		if (fakeRotor != null)
+		{
+			fakeRotor.GetComponent<Rigidbody>().isKinematic = false;
+			fakeRotor.GetComponent<Rigidbody>().velocity = pausedVelocityAxle;
+			fakeRotor.GetComponent<Rigidbody>().angularVelocity = pausedAngularVelocityAxle;
+		}
+	}
+
+	public override void Break(Vector3 chunkPos, Vector3 chunkVel, Vector3 chunkAngVel)
+	{
+		base.Break(chunkPos, chunkVel, chunkAngVel);
+		if (fakeRotor != null)
+		{
+			axle.AddComponent<BoxCollider>();
+			Block.AddExplosiveForce(fakeRotor.GetComponent<Rigidbody>(), fakeRotor.transform.position, chunkPos, chunkVel, chunkAngVel);
+		}
+		DestroyJoint();
+	}
+
+	public override void Update()
+	{
+		base.Update();
+		if (Blocksworld.CurrentState == State.Play && fakeRotor == null && rotor != null && !vanished)
+		{
+			if (jointToJointConnection != null)
 			{
-				num = Mathf.Min(num, this.rotorChunkMi);
+				Quaternion rotation = ((!(jointOffset == Vector3.zero)) ? (jointToJointConnection.rotation * Quaternion.Euler(jointOffset)) : Quaternion.LookRotation(jointToJointConnection.transform.position - goT.position, axle.transform.up));
+				axle.transform.rotation = rotation;
 			}
-			float num2 = 0.07f * Mathf.Sqrt(3f * num + 0.3f);
-			float maxForce = 0f;
-			float v = 0f;
-			BlockAbstractTorsionSpring.TorsionSpringMode torsionSpringMode = this.mode;
-			if (torsionSpringMode != BlockAbstractTorsionSpring.TorsionSpringMode.FreeSpin)
+			else
 			{
-				if (torsionSpringMode == BlockAbstractTorsionSpring.TorsionSpringMode.Spring)
-				{
-					maxForce = num2 * this.springStiffness * Mathf.Min(1200f, Mathf.Abs(f2));
-					v = Mathf.Sign(f2) * 50f;
-				}
+				float realAngle = GetRealAngle();
+				axle.transform.localRotation = Quaternion.Euler(new Vector3(0f - realAngle, 0f, 0f));
 			}
-			else if (Mathf.Abs(f2) >= 90f)
+		}
+	}
+
+	private float GetRealAngle()
+	{
+		Vector3 forward = goT.forward;
+		Vector3 planeNormal = Vector3.Cross(forward, goT.up);
+		Vector3 rotorAngleVec = GetRotorAngleVec();
+		rotorAngleVec = Util.ProjectOntoPlane(rotorAngleVec, planeNormal).normalized;
+		return Util.AngleBetween(rotorAngleVec, forward, goT.right);
+	}
+
+	private void CheckAndSet(Vector3 v2, int type)
+	{
+		Vector3 forward = goT.forward;
+		float f = Vector3.Dot(forward, v2);
+		float num = Mathf.Sign(f);
+		if (Mathf.Abs(f) > 0.5f)
+		{
+			rotorAngleVecType = type;
+			rotorAngleVecMultiplier = num;
+		}
+	}
+
+	private void CalculateRotorAngleVecType()
+	{
+		CheckAndSet(rotorT.forward, 0);
+		CheckAndSet(rotorT.up, 1);
+		CheckAndSet(rotorT.right, 2);
+	}
+
+	public Vector3 GetRotorAngleVec()
+	{
+		if (rotorT == null)
+		{
+			BWLog.Info("rotorT null!");
+			return rotorAngleVecMultiplier * Vector3.forward;
+		}
+		return rotorAngleVecType switch
+		{
+			0 => rotorAngleVecMultiplier * rotorT.forward, 
+			1 => rotorAngleVecMultiplier * rotorT.up, 
+			2 => rotorAngleVecMultiplier * rotorT.right, 
+			_ => rotorAngleVecMultiplier * rotorT.forward, 
+		};
+	}
+
+	public override void FixedUpdate()
+	{
+		base.FixedUpdate();
+		UpdateTorsionSpringLoopSound();
+		if (isTreasure || joint == null)
+		{
+			return;
+		}
+		if (joint.connectedBody == null)
+		{
+			DestroyJoint();
+			return;
+		}
+		if (rotor == null)
+		{
+			SetMotorVelocity(0f, 10f);
+			return;
+		}
+		float realAngle = GetRealAngle();
+		float f = realAngle - lastRealAngle;
+		if (Mathf.Abs(f) > 90f)
+		{
+			if (lastRealAngle < 0f)
 			{
-				maxForce = num2 * this.springStiffness * (Mathf.Abs(f2) - 90f);
+				halfRevolutions--;
+			}
+			else
+			{
+				halfRevolutions++;
+			}
+		}
+		lastRealAngle = realAngle;
+		currentAngle = realAngle + (float)halfRevolutions * 360f;
+		if (locked && !wasLocked)
+		{
+			lockedAngleOffset = angleOffset;
+		}
+		if (!locked)
+		{
+			currentAngle += angleOffset;
+			lockedAngleOffset = 0f;
+		}
+		else
+		{
+			currentAngle += lockedAngleOffset;
+		}
+		float f2 = targetAngle - currentAngle;
+		if (released && Sound.sfxEnabled && !vanished)
+		{
+			axleAudioSource.pitch = 0.8f + Random.value * 0.4f;
+			axleAudioSource.PlayOneShot(Sound.GetSfx("Torsion Spring Stretch"), 0.5f);
+		}
+		float num = Mathf.Max(chunkMi, rotorChunkMi);
+		Rigidbody rb = chunk.rb;
+		if (rb != null && !chunkKinematic)
+		{
+			num = Mathf.Min(num, chunkMi);
+		}
+		Rigidbody component = rotor.GetComponent<Rigidbody>();
+		if (component != null && !rotorChunkKinematic)
+		{
+			num = Mathf.Min(num, rotorChunkMi);
+		}
+		float num2 = 0.07f * Mathf.Sqrt(3f * num + 0.3f);
+		float maxForce = 0f;
+		float v = 0f;
+		switch (mode)
+		{
+		case TorsionSpringMode.Spring:
+			maxForce = num2 * springStiffness * Mathf.Min(1200f, Mathf.Abs(f2));
+			v = Mathf.Sign(f2) * 50f;
+			break;
+		case TorsionSpringMode.FreeSpin:
+			if (Mathf.Abs(f2) >= 90f)
+			{
+				maxForce = num2 * springStiffness * (Mathf.Abs(f2) - 90f);
 				v = Mathf.Sign(f2) * 50f;
 			}
-			this.SetMotorVelocity(v, maxForce);
-			this.wasLocked = this.locked;
-			this.locked = false;
-			this.released = false;
-			this.charging = false;
+			break;
 		}
+		SetMotorVelocity(v, maxForce);
+		wasLocked = locked;
+		locked = false;
+		released = false;
+		charging = false;
+	}
 
-		// Token: 0x060008DF RID: 2271 RVA: 0x0003E8D8 File Offset: 0x0003CCD8
-		private void SetMotorVelocity(float v, float maxForce = 1000f)
+	private void SetMotorVelocity(float v, float maxForce = 1000f)
+	{
+		JointDrive angularXDrive = default(JointDrive);
+		float num = (angularXDrive.maximumForce = maxForce * 100f * 0.5f);
+		angularXDrive.positionDamper = ((mode != TorsionSpringMode.FreeSpin) ? num : 0f);
+		joint.targetAngularVelocity = new Vector3(v, 0f, 0f);
+		joint.angularXDrive = angularXDrive;
+		Rigidbody rb = chunk.rb;
+		if (rb.IsSleeping())
 		{
-			JointDrive angularXDrive = default(JointDrive);
-			float num = maxForce * 100f * 0.5f;
-			angularXDrive.maximumForce = num;
-			angularXDrive.positionDamper = ((this.mode != BlockAbstractTorsionSpring.TorsionSpringMode.FreeSpin) ? num : 0f);
-			this.joint.targetAngularVelocity = new Vector3(v, 0f, 0f);
-			this.joint.angularXDrive = angularXDrive;
-			Rigidbody rb = this.chunk.rb;
-			if (rb.IsSleeping())
-			{
-				rb.WakeUp();
-			}
-			Rigidbody connectedBody = this.joint.connectedBody;
-			if (connectedBody.IsSleeping())
-			{
-				connectedBody.WakeUp();
-			}
+			rb.WakeUp();
 		}
-
-		// Token: 0x060008E0 RID: 2272 RVA: 0x0003E984 File Offset: 0x0003CD84
-		private void UpdateTorsionSpringLoopSound()
+		Rigidbody connectedBody = joint.connectedBody;
+		if (connectedBody.IsSleeping())
 		{
-			float num = 0.03f;
-			if (!this.charging || this.broken || this.vanished || this.isTreasure)
-			{
-				num *= -1f;
-			}
-			this.turnLoopVol = Mathf.Clamp(this.turnLoopVol + num, 0f, 0.5f);
-			if (this.sfxLoopUpdateCounter % 5 == 0)
-			{
-				this.PlayLoopSound(this.turnLoopVol > 0.01f, base.GetLoopClip(), this.turnLoopVol, null, this.turnLoopPitch);
-				base.UpdateWithinWaterLPFilter(null);
-				base.UpdateWithinWaterLPFilter(this.axle);
-			}
-			this.sfxLoopUpdateCounter++;
+			connectedBody.WakeUp();
 		}
+	}
 
-		// Token: 0x060008E1 RID: 2273 RVA: 0x0003EA3C File Offset: 0x0003CE3C
-		protected override void Appearing(float scale)
+	private void UpdateTorsionSpringLoopSound()
+	{
+		float num = 0.03f;
+		if (!charging || broken || vanished || isTreasure)
 		{
-			base.Appearing(scale);
-			if (this.fakeRotor != null)
-			{
-				this.axle.GetComponent<Renderer>().enabled = true;
-				this.axle.transform.localScale = Vector3.one * scale;
-			}
+			num *= -1f;
 		}
-
-		// Token: 0x060008E2 RID: 2274 RVA: 0x0003EA8D File Offset: 0x0003CE8D
-		protected override void Vanishing(float scale)
+		turnLoopVol = Mathf.Clamp(turnLoopVol + num, 0f, 0.5f);
+		if (sfxLoopUpdateCounter % 5 == 0)
 		{
-			base.Vanishing(scale);
-			if (this.fakeRotor != null)
-			{
-				this.axle.transform.localScale = Vector3.one * scale;
-			}
+			PlayLoopSound(turnLoopVol > 0.01f, GetLoopClip(), turnLoopVol, null, turnLoopPitch);
+			UpdateWithinWaterLPFilter();
+			UpdateWithinWaterLPFilter(axle);
 		}
+		sfxLoopUpdateCounter++;
+	}
 
-		// Token: 0x060008E3 RID: 2275 RVA: 0x0003EAC2 File Offset: 0x0003CEC2
-		public override void Vanished()
+	protected override void Appearing(float scale)
+	{
+		base.Appearing(scale);
+		if (fakeRotor != null)
 		{
-			base.Vanished();
-			if (this.fakeRotor != null)
-			{
-				this.axle.GetComponent<Renderer>().enabled = false;
-			}
+			axle.GetComponent<Renderer>().enabled = true;
+			axle.transform.localScale = Vector3.one * scale;
 		}
+	}
 
-		// Token: 0x060008E4 RID: 2276 RVA: 0x0003EAEC File Offset: 0x0003CEEC
-		public override void Appeared()
+	protected override void Vanishing(float scale)
+	{
+		base.Vanishing(scale);
+		if (fakeRotor != null)
 		{
-			base.Appeared();
-			if (this.fakeRotor != null)
-			{
-				this.axle.GetComponent<Renderer>().enabled = true;
-				this.axle.transform.localScale = Vector3.one;
-			}
+			axle.transform.localScale = Vector3.one * scale;
 		}
+	}
 
-		// Token: 0x060008E5 RID: 2277 RVA: 0x0003EB2C File Offset: 0x0003CF2C
-		private void DestroyFakeRotor()
+	public override void Vanished()
+	{
+		base.Vanished();
+		if (fakeRotor != null)
 		{
-			if (this.fakeRotor != null)
-			{
-				Util.UnparentTransformSafely(this.axle.transform);
-				this.axle.transform.position = this.goT.position;
-				this.axle.transform.rotation = this.goT.rotation;
-				this.axle.transform.parent = this.goT;
-				UnityEngine.Object.Destroy(this.fakeRotor);
-				this.fakeRotor = null;
-			}
+			axle.GetComponent<Renderer>().enabled = false;
 		}
+	}
 
-		// Token: 0x060008E6 RID: 2278 RVA: 0x0003EBB8 File Offset: 0x0003CFB8
-		public override void BecameTreasure()
+	public override void Appeared()
+	{
+		base.Appeared();
+		if (fakeRotor != null)
 		{
-			base.BecameTreasure();
-			this.DestroyFakeRotor();
+			axle.GetComponent<Renderer>().enabled = true;
+			axle.transform.localScale = Vector3.one;
 		}
+	}
 
-		// Token: 0x060008E7 RID: 2279 RVA: 0x0003EBC6 File Offset: 0x0003CFC6
-		public override bool TreatAsVehicleLikeBlock()
+	private void DestroyFakeRotor()
+	{
+		if (fakeRotor != null)
 		{
-			return base.TreatAsVehicleLikeBlockWithStatus(ref this.treatAsVehicleStatus);
+			Util.UnparentTransformSafely(axle.transform);
+			axle.transform.position = goT.position;
+			axle.transform.rotation = goT.rotation;
+			axle.transform.parent = goT;
+			Object.Destroy(fakeRotor);
+			fakeRotor = null;
 		}
+	}
 
-		// Token: 0x060008E8 RID: 2280 RVA: 0x0003EBD4 File Offset: 0x0003CFD4
-		public override void ChunksAndJointsModified(Dictionary<Joint, Joint> oldToNew, Dictionary<Chunk, Chunk> oldToNewChunks, Dictionary<Chunk, Chunk> newToOldChunks)
+	public override void BecameTreasure()
+	{
+		base.BecameTreasure();
+		DestroyFakeRotor();
+	}
+
+	public override bool TreatAsVehicleLikeBlock()
+	{
+		return TreatAsVehicleLikeBlockWithStatus(ref treatAsVehicleStatus);
+	}
+
+	public override void ChunksAndJointsModified(Dictionary<Joint, Joint> oldToNew, Dictionary<Chunk, Chunk> oldToNewChunks, Dictionary<Chunk, Chunk> newToOldChunks)
+	{
+		if (!broken && !isTreasure && !(joint == null))
 		{
-			if (this.broken || this.isTreasure || this.joint == null)
+			if (oldToNew.TryGetValue(joint, out var value))
 			{
-				return;
+				joint = (ConfigurableJoint)value;
 			}
-			Joint joint;
-			if (oldToNew.TryGetValue(this.joint, out joint))
-			{
-				this.joint = (ConfigurableJoint)joint;
-			}
-			this.rotor = this.joint.connectedBody.gameObject;
-			this.rotorT = this.rotor.transform;
-			List<Block> list = base.ConnectionsOfType(2, true);
+			rotor = joint.connectedBody.gameObject;
+			rotorT = rotor.transform;
+			List<Block> list = ConnectionsOfType(2, directed: true);
 			if (list.Count > 0)
 			{
-				this.rotorChunk = list[0].chunk;
+				rotorChunk = list[0].chunk;
 			}
 		}
+	}
 
-		// Token: 0x060008E9 RID: 2281 RVA: 0x0003EC76 File Offset: 0x0003D076
-		public override void Deactivate()
+	public override void Deactivate()
+	{
+		base.Deactivate();
+		if (fakeRotor != null)
 		{
-			base.Deactivate();
-			if (this.fakeRotor != null)
-			{
-				this.fakeRotor.SetActive(false);
-			}
-		}
-
-		// Token: 0x040006CE RID: 1742
-		private BlockAbstractTorsionSpring.TorsionSpringMode mode = BlockAbstractTorsionSpring.TorsionSpringMode.Spring;
-
-		// Token: 0x040006CF RID: 1743
-		private int treatAsVehicleStatus = -1;
-
-		// Token: 0x040006D0 RID: 1744
-		private const float angleEpsilon = 0.05f;
-
-		// Token: 0x040006D1 RID: 1745
-		private const float anglesPerSecond = 90f;
-
-		// Token: 0x040006D2 RID: 1746
-		private float targetAngle;
-
-		// Token: 0x040006D3 RID: 1747
-		private float currentAngle;
-
-		// Token: 0x040006D4 RID: 1748
-		private float lastRealAngle;
-
-		// Token: 0x040006D5 RID: 1749
-		private float springStiffness = 1f;
-
-		// Token: 0x040006D6 RID: 1750
-		private float springLimit;
-
-		// Token: 0x040006D7 RID: 1751
-		private float angleOffset;
-
-		// Token: 0x040006D8 RID: 1752
-		private int halfRevolutions;
-
-		// Token: 0x040006D9 RID: 1753
-		private float turnLoopPitch = 1f;
-
-		// Token: 0x040006DA RID: 1754
-		private float turnLoopVol;
-
-		// Token: 0x040006DB RID: 1755
-		private float stretchSoundTime;
-
-		// Token: 0x040006DC RID: 1756
-		private Chunk rotorChunk;
-
-		// Token: 0x040006DD RID: 1757
-		private float chunkMi = 1f;
-
-		// Token: 0x040006DE RID: 1758
-		private float rotorChunkMi = 1f;
-
-		// Token: 0x040006DF RID: 1759
-		private bool chunkKinematic;
-
-		// Token: 0x040006E0 RID: 1760
-		private bool rotorChunkKinematic;
-
-		// Token: 0x040006E1 RID: 1761
-		private bool released;
-
-		// Token: 0x040006E2 RID: 1762
-		private bool charging;
-
-		// Token: 0x040006E3 RID: 1763
-		private bool _limitedRange;
-
-		// Token: 0x040006E4 RID: 1764
-		private float _limitedRangeAngle = 0.05f;
-
-		// Token: 0x040006E5 RID: 1765
-		private float _limitedRangeRealAngle;
-
-		// Token: 0x040006E6 RID: 1766
-		private GameObject rotor;
-
-		// Token: 0x040006E7 RID: 1767
-		private Transform rotorT;
-
-		// Token: 0x040006E8 RID: 1768
-		private GameObject fakeRotor;
-
-		// Token: 0x040006E9 RID: 1769
-		private GameObject axle;
-
-		// Token: 0x040006EA RID: 1770
-		public ConfigurableJoint joint;
-
-		// Token: 0x040006EB RID: 1771
-		private Vector3 pausedVelocityAxle;
-
-		// Token: 0x040006EC RID: 1772
-		private Vector3 pausedAngularVelocityAxle;
-
-		// Token: 0x040006ED RID: 1773
-		private AudioSource axleAudioSource;
-
-		// Token: 0x040006EE RID: 1774
-		private int sfxLoopUpdateCounter;
-
-		// Token: 0x040006EF RID: 1775
-		private const int SFX_LOOP_UPDATE_INTERVAL = 5;
-
-		// Token: 0x040006F0 RID: 1776
-		private bool locked;
-
-		// Token: 0x040006F1 RID: 1777
-		private bool wasLocked;
-
-		// Token: 0x040006F2 RID: 1778
-		private float lockedAngleOffset;
-
-		// Token: 0x040006F3 RID: 1779
-		private float rotorAngleVecMultiplier = 1f;
-
-		// Token: 0x040006F4 RID: 1780
-		private int rotorAngleVecType;
-
-		// Token: 0x040006F5 RID: 1781
-		public Rigidbody jointToJointConnection;
-
-		// Token: 0x040006F6 RID: 1782
-		private Vector3 jointOffset = Vector3.zero;
-
-		// Token: 0x0200006E RID: 110
-		private enum TorsionSpringMode
-		{
-			// Token: 0x040006F8 RID: 1784
-			FreeSpin,
-			// Token: 0x040006F9 RID: 1785
-			Spring
+			fakeRotor.SetActive(value: false);
 		}
 	}
 }

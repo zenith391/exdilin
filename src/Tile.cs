@@ -1,13 +1,67 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Blocks;
 using SimpleJSON;
 using UnityEngine;
 
-// Token: 0x020002C9 RID: 713
 public class Tile
 {
-	// Token: 0x06002075 RID: 8309 RVA: 0x000EE2D0 File Offset: 0x000EC6D0
+	public GAF gaf;
+
+	public TileObject tileObject;
+
+	private Transform tileObjectAssignedParent;
+
+	public float time;
+
+	public bool doubleWidth;
+
+	public int subParameterIndex;
+
+	public int subParameterCount = 1;
+
+	public static string[] tagNames;
+
+	public static string[] shortTagNames;
+
+	public static string iconBasePath;
+
+	public Panel parentPanel;
+
+	public Vector3 positionInPanel;
+
+	public bool visibleInPanel;
+
+	public int panelSection;
+
+	private bool isEnabled = true;
+
+	private Vector3 cachedPosition;
+
+	private Vector3 cachedLocalPosition;
+
+	private Color cachedBackgroundColor = Color.clear;
+
+	private Color cachedForegroundColor = Color.white;
+
+	private string _uniqueID;
+
+	public static Dictionary<string, Vector4> buttonExtensions;
+
+	public const int hitMargin = -7;
+
+	public string UniqueID
+	{
+		get
+		{
+			if (_uniqueID == null)
+			{
+				_uniqueID = gaf.ToString();
+			}
+			return _uniqueID;
+		}
+	}
+
 	public Tile(GAF gaf)
 	{
 		if (gaf == null)
@@ -17,422 +71,388 @@ public class Tile
 		this.gaf = gaf;
 		if (gaf.Predicate != null && gaf.Predicate.EditableParameter != null)
 		{
-			this.subParameterCount = gaf.Predicate.EditableParameter.subParameterCount;
+			subParameterCount = gaf.Predicate.EditableParameter.subParameterCount;
 		}
 	}
 
-	// Token: 0x06002076 RID: 8310 RVA: 0x000EE358 File Offset: 0x000EC758
 	public Tile(Predicate pred, params object[] args)
 	{
-		this.gaf = new GAF(pred, args);
-		if (this.gaf.Predicate.EditableParameter != null)
+		gaf = new GAF(pred, args);
+		if (gaf.Predicate.EditableParameter != null)
 		{
-			this.subParameterCount = this.gaf.Predicate.EditableParameter.subParameterCount;
+			subParameterCount = gaf.Predicate.EditableParameter.subParameterCount;
 		}
 	}
 
-	// Token: 0x06002077 RID: 8311 RVA: 0x000EE3CC File Offset: 0x000EC7CC
 	public Tile(TileObject tileObject)
 	{
-		this.gaf = new GAF(Block.predicateUI, null);
+		gaf = new GAF(Block.predicateUI, null);
 		this.tileObject = tileObject;
 	}
 
-	// Token: 0x06002078 RID: 8312 RVA: 0x000EE41B File Offset: 0x000EC81B
 	public void AssignToPanel(Panel panel)
 	{
-		this.parentPanel = panel;
+		parentPanel = panel;
 	}
 
-	// Token: 0x17000156 RID: 342
-	// (get) Token: 0x06002079 RID: 8313 RVA: 0x000EE424 File Offset: 0x000EC824
-	public string UniqueID
-	{
-		get
-		{
-			if (this._uniqueID == null)
-			{
-				this._uniqueID = this.gaf.ToString();
-			}
-			return this._uniqueID;
-		}
-	}
-
-	// Token: 0x0600207A RID: 8314 RVA: 0x000EE448 File Offset: 0x000EC848
 	public virtual Tile Clone()
 	{
-		return new Tile(this.gaf.Clone())
+		return new Tile(gaf.Clone())
 		{
-			cachedBackgroundColor = this.cachedBackgroundColor,
-			cachedForegroundColor = this.cachedForegroundColor
+			cachedBackgroundColor = cachedBackgroundColor,
+			cachedForegroundColor = cachedForegroundColor
 		};
 	}
 
-	// Token: 0x0600207B RID: 8315 RVA: 0x000EE47F File Offset: 0x000EC87F
 	public string GetLabelText()
 	{
-		return TileIconManager.Instance.GetLabelStr(this.gaf);
+		return TileIconManager.Instance.GetLabelStr(gaf);
 	}
 
-	// Token: 0x0600207C RID: 8316 RVA: 0x000EE494 File Offset: 0x000EC894
 	public void ToJSON(JSONStreamEncoder encoder, bool compact = false)
 	{
 		if (compact)
 		{
-			this.gaf.ToJSONCompact(encoder);
+			gaf.ToJSONCompact(encoder);
+			return;
 		}
-		else
-		{
-			encoder.BeginObject();
-			encoder.WriteKey("type");
-			encoder.WriteString("tile");
-			encoder.WriteKey("gaf");
-			this.gaf.ToJSON(encoder);
-			encoder.EndObject();
-		}
+		encoder.BeginObject();
+		encoder.WriteKey("type");
+		encoder.WriteString("tile");
+		encoder.WriteKey("gaf");
+		gaf.ToJSON(encoder);
+		encoder.EndObject();
 	}
 
-	// Token: 0x0600207D RID: 8317 RVA: 0x000EE4F4 File Offset: 0x000EC8F4
 	public static Tile FromJSON(JObject obj)
 	{
 		if (obj.ObjectValue == null)
 		{
-			GAF gaf = GAF.FromJSON(obj, false, true);
-			if (gaf == null)
+			GAF gAF = GAF.FromJSON(obj);
+			if (gAF == null)
 			{
 				return null;
 			}
-			if (gaf.IsSemanticallyValid())
+			if (gAF.IsSemanticallyValid())
 			{
-				return (gaf != null) ? new Tile(gaf) : null;
+				if (gAF == null)
+				{
+					return null;
+				}
+				return new Tile(gAF);
 			}
 			if (!BW.isUnityEditor || !Options.CreateErrorGafs)
 			{
 				return null;
 			}
-			if (!gaf.FixSemanticallyInvalidness())
+			if (!gAF.FixSemanticallyInvalidness())
 			{
 				BWLog.Error("Could not fix semantic issue");
 				return null;
 			}
-			return new Tile(gaf);
+			return new Tile(gAF);
 		}
-		else
+		if (obj.ObjectValue.ContainsKey("sym"))
 		{
-			if (obj.ObjectValue.ContainsKey("sym"))
-			{
-				return new Tile(SymbolCompat.ToGaf(obj));
-			}
-			GAF gaf2 = GAF.FromJSON(obj["gaf"], false, true);
-			if (gaf2 == null)
-			{
-				return null;
-			}
-			if (gaf2.IsSemanticallyValid())
-			{
-				return (gaf2 != null) ? new Tile(gaf2) : null;
-			}
-			if (!BW.isUnityEditor || !Options.CreateErrorGafs)
-			{
-				return null;
-			}
-			if (!gaf2.FixSemanticallyInvalidness())
-			{
-				BWLog.Error("Could not fix semantic issue");
-				return null;
-			}
-			return new Tile(gaf2);
+			return new Tile(SymbolCompat.ToGaf(obj));
 		}
+		GAF gAF2 = GAF.FromJSON(obj["gaf"]);
+		if (gAF2 == null)
+		{
+			return null;
+		}
+		if (gAF2.IsSemanticallyValid())
+		{
+			if (gAF2 == null)
+			{
+				return null;
+			}
+			return new Tile(gAF2);
+		}
+		if (!BW.isUnityEditor || !Options.CreateErrorGafs)
+		{
+			return null;
+		}
+		if (!gAF2.FixSemanticallyInvalidness())
+		{
+			BWLog.Error("Could not fix semantic issue");
+			return null;
+		}
+		return new Tile(gAF2);
 	}
 
-	// Token: 0x0600207E RID: 8318 RVA: 0x000EE5FE File Offset: 0x000EC9FE
 	public void Destroy()
 	{
-		this.DestroyPhysical();
+		DestroyPhysical();
 	}
 
-	// Token: 0x0600207F RID: 8319 RVA: 0x000EE606 File Offset: 0x000ECA06
 	public override string ToString()
 	{
-		return this.gaf.ToString();
+		return gaf.ToString();
 	}
 
-	// Token: 0x06002080 RID: 8320 RVA: 0x000EE613 File Offset: 0x000ECA13
 	public bool IsThen()
 	{
-		return this.gaf.Predicate == Block.predicateThen;
+		return gaf.Predicate == Block.predicateThen;
 	}
 
-	// Token: 0x06002081 RID: 8321 RVA: 0x000EE627 File Offset: 0x000ECA27
 	public bool IsCreate()
 	{
-		return this.gaf.Predicate == Block.predicateCreate;
+		return gaf.Predicate == Block.predicateCreate;
 	}
 
-	// Token: 0x06002082 RID: 8322 RVA: 0x000EE63B File Offset: 0x000ECA3B
 	public bool IsCreateModel()
 	{
-		return this.gaf.Predicate == Block.predicateCreateModel;
+		return gaf.Predicate == Block.predicateCreateModel;
 	}
 
-	// Token: 0x06002083 RID: 8323 RVA: 0x000EE64F File Offset: 0x000ECA4F
 	public bool IsPaint()
 	{
-		return this.gaf.Predicate == Block.predicatePaintTo;
+		return gaf.Predicate == Block.predicatePaintTo;
 	}
 
-	// Token: 0x06002084 RID: 8324 RVA: 0x000EE663 File Offset: 0x000ECA63
 	public bool IsScriptGear()
 	{
-		return this.tileObject != null && this.tileObject.IconName() == UIQuickSelect.scriptButtonIconName;
+		if (tileObject != null)
+		{
+			return tileObject.IconName() == UIQuickSelect.scriptButtonIconName;
+		}
+		return false;
 	}
 
-	// Token: 0x06002085 RID: 8325 RVA: 0x000EE68E File Offset: 0x000ECA8E
 	public bool IsCopiedModel()
 	{
-		return this.tileObject != null && this.tileObject.IconName() == UIQuickSelect.modelButtonIconName;
+		if (tileObject != null)
+		{
+			return tileObject.IconName() == UIQuickSelect.modelButtonIconName;
+		}
+		return false;
 	}
 
-	// Token: 0x06002086 RID: 8326 RVA: 0x000EE6B9 File Offset: 0x000ECAB9
 	public bool IsUIOnly()
 	{
-		return this.gaf.Predicate == Block.predicateUI;
+		return gaf.Predicate == Block.predicateUI;
 	}
 
-	// Token: 0x06002087 RID: 8327 RVA: 0x000EE6CD File Offset: 0x000ECACD
 	public bool IsTexture()
 	{
-		return this.gaf.Predicate == Block.predicateTextureTo;
+		return gaf.Predicate == Block.predicateTextureTo;
 	}
 
-	// Token: 0x06002088 RID: 8328 RVA: 0x000EE6E1 File Offset: 0x000ECAE1
 	public bool IsSfx()
 	{
-		return this.gaf.Predicate == Block.predicatePlaySoundDurational;
+		return gaf.Predicate == Block.predicatePlaySoundDurational;
 	}
 
-	// Token: 0x06002089 RID: 8329 RVA: 0x000EE6F5 File Offset: 0x000ECAF5
 	public bool IsSkyBox()
 	{
-		return this.gaf.Predicate == BlockSky.predicateSkyBoxTo;
+		return gaf.Predicate == BlockSky.predicateSkyBoxTo;
 	}
 
-	// Token: 0x0600208A RID: 8330 RVA: 0x000EE709 File Offset: 0x000ECB09
 	public bool IsLocked()
 	{
-		return this.gaf.Predicate == PredicateRegistry.ByName("Block.Locked", true);
+		return gaf.Predicate == PredicateRegistry.ByName("Block.Locked");
 	}
 
-	// Token: 0x0600208B RID: 8331 RVA: 0x000EE723 File Offset: 0x000ECB23
 	public void MoveTo(float x, float y)
 	{
-		this.MoveTo(new Vector3(x, y), true);
+		MoveTo(new Vector3(x, y), useExistingZ: true);
 	}
 
-	// Token: 0x0600208C RID: 8332 RVA: 0x000EE733 File Offset: 0x000ECB33
 	public void MoveTo(float x, float y, float z)
 	{
-		this.MoveTo(new Vector3(x, y, z), false);
+		MoveTo(new Vector3(x, y, z));
 	}
 
-	// Token: 0x0600208D RID: 8333 RVA: 0x000EE744 File Offset: 0x000ECB44
 	public void MoveTo(Vector3 pos, bool useExistingZ = false)
 	{
-		if (this.parentPanel != null)
+		if (parentPanel != null)
 		{
-			Vector3 position = this.parentPanel.GetTransform().position;
-			this.LocalMoveTo(pos - position, useExistingZ);
-			if (this.tileObject != null)
+			Vector3 position = parentPanel.GetTransform().position;
+			LocalMoveTo(pos - position, useExistingZ);
+			if (tileObject != null)
 			{
-				this.tileObject.SetPosition(pos);
+				tileObject.SetPosition(pos);
 			}
 			else
 			{
-				this.cachedPosition = pos;
+				cachedPosition = pos;
 			}
-			return;
 		}
-		if (this.tileObjectAssignedParent != null)
+		else if (tileObjectAssignedParent != null)
 		{
-			Vector3 position2 = this.tileObjectAssignedParent.position;
-			this.LocalMoveTo(pos - position2, useExistingZ);
-			if (this.tileObject != null)
+			Vector3 position2 = tileObjectAssignedParent.position;
+			LocalMoveTo(pos - position2, useExistingZ);
+			if (tileObject != null)
 			{
-				this.tileObject.SetPosition(pos);
+				tileObject.SetPosition(pos);
 			}
 			else
 			{
-				this.cachedPosition = pos;
+				cachedPosition = pos;
 			}
-			return;
 		}
-		if (this.IsShowing())
+		else if (IsShowing())
 		{
 			if (useExistingZ)
 			{
-				pos.z = this.tileObject.GetPosition().z;
+				pos.z = tileObject.GetPosition().z;
 			}
 			pos = new Vector3(Mathf.Floor(pos.x), Mathf.Floor(pos.y), pos.z);
-			this.tileObject.SetPosition(pos);
+			tileObject.SetPosition(pos);
 		}
 		else
 		{
 			if (useExistingZ)
 			{
-				pos.z = this.cachedPosition.z;
+				pos.z = cachedPosition.z;
 			}
-			this.cachedPosition = new Vector3(Mathf.Floor(pos.x), Mathf.Floor(pos.y), pos.z);
+			cachedPosition = new Vector3(Mathf.Floor(pos.x), Mathf.Floor(pos.y), pos.z);
 		}
 	}
 
-	// Token: 0x0600208E RID: 8334 RVA: 0x000EE8A0 File Offset: 0x000ECCA0
 	public void SmoothMoveTo(Vector3 pos)
 	{
-		if (this.parentPanel != null)
+		if (parentPanel != null)
 		{
-			Vector3 position = this.parentPanel.GetTransform().position;
-			this.LocalMoveTo(pos - position, false);
+			Vector3 position = parentPanel.GetTransform().position;
+			LocalMoveTo(pos - position);
 			return;
 		}
-		bool flag = this.tileObject == null;
-		if (flag)
+		if (tileObject == null)
 		{
-			this.Show(true);
+			Show(show: true);
 		}
-		this.tileObject.SetPosition(pos);
+		tileObject.SetPosition(pos);
 	}
 
-	// Token: 0x0600208F RID: 8335 RVA: 0x000EE8FE File Offset: 0x000ECCFE
 	public void LocalMoveTo(float x, float y)
 	{
-		this.LocalMoveTo(new Vector3(x, y), true);
+		LocalMoveTo(new Vector3(x, y), useExistingZ: true);
 	}
 
-	// Token: 0x06002090 RID: 8336 RVA: 0x000EE90E File Offset: 0x000ECD0E
 	public void LocalMoveTo(float x, float y, float z)
 	{
-		this.LocalMoveTo(new Vector3(x, y, z), false);
+		LocalMoveTo(new Vector3(x, y, z));
 	}
 
-	// Token: 0x06002091 RID: 8337 RVA: 0x000EE920 File Offset: 0x000ECD20
 	public void LocalMoveTo(Vector3 pos, bool useExistingZ = false)
 	{
-		if (this.parentPanel != null)
+		if (parentPanel != null)
 		{
-			this.positionInPanel = new Vector3(pos.x, pos.y, (!useExistingZ) ? pos.z : this.positionInPanel.z);
+			positionInPanel = new Vector3(pos.x, pos.y, (!useExistingZ) ? pos.z : positionInPanel.z);
 		}
-		else if (this.tileObject != null)
+		else if (tileObject != null)
 		{
 			if (useExistingZ)
 			{
-				pos.z = this.tileObject.GetLocalPosition().z;
+				pos.z = tileObject.GetLocalPosition().z;
 			}
-			this.tileObject.SetLocalPosition(new Vector3(Mathf.Floor(pos.x), Mathf.Floor(pos.y), pos.z));
+			tileObject.SetLocalPosition(new Vector3(Mathf.Floor(pos.x), Mathf.Floor(pos.y), pos.z));
 		}
-		this.cachedLocalPosition = pos;
+		cachedLocalPosition = pos;
 	}
 
-	// Token: 0x06002092 RID: 8338 RVA: 0x000EE9DC File Offset: 0x000ECDDC
 	public Vector3 GetPosition()
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			return this.tileObject.GetPosition();
+			return tileObject.GetPosition();
 		}
-		if (this.parentPanel != null)
+		if (parentPanel != null)
 		{
-			Vector3 position = this.parentPanel.GetTransform().position;
-			return position + this.positionInPanel;
+			Vector3 position = parentPanel.GetTransform().position;
+			return position + positionInPanel;
 		}
-		return this.cachedPosition;
+		return cachedPosition;
 	}
 
-	// Token: 0x06002093 RID: 8339 RVA: 0x000EEA35 File Offset: 0x000ECE35
 	public Vector3 GetLocalPosition()
 	{
-		return this.cachedLocalPosition;
+		return cachedLocalPosition;
 	}
 
-	// Token: 0x06002094 RID: 8340 RVA: 0x000EEA40 File Offset: 0x000ECE40
 	public Vector3 GetCenterPosition()
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			return this.tileObject.GetCenterPosition();
+			return tileObject.GetCenterPosition();
 		}
-		return this.cachedPosition + new Vector3(33f, 33f, 0f) * NormalizedScreen.scale;
+		return cachedPosition + new Vector3(33f, 33f, 0f) * NormalizedScreen.scale;
 	}
 
-	// Token: 0x06002095 RID: 8341 RVA: 0x000EEA93 File Offset: 0x000ECE93
 	public Vector3 GetScale()
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			return this.tileObject.GetScale();
+			return tileObject.GetScale();
 		}
 		return 80f * Vector3.one;
 	}
 
-	// Token: 0x06002096 RID: 8342 RVA: 0x000EEAC6 File Offset: 0x000ECEC6
 	public bool HitControlButton(Vector3 v)
 	{
-		return this.HitControlButton((string)this.gaf.Args[0], v);
+		return HitControlButton((string)gaf.Args[0], v);
 	}
 
-	// Token: 0x06002097 RID: 8343 RVA: 0x000EEAE4 File Offset: 0x000ECEE4
 	public bool HitControlButton(string symbol, Vector3 v)
 	{
-		Vector4 vector;
-		return Tile.buttonExtensions.TryGetValue(symbol, out vector) && this.HitExtended(v, vector.x, vector.y, vector.z, vector.w, false);
+		if (buttonExtensions.TryGetValue(symbol, out var value))
+		{
+			return HitExtended(v, value.x, value.y, value.z, value.w);
+		}
+		return false;
 	}
 
-	// Token: 0x06002098 RID: 8344 RVA: 0x000EEB29 File Offset: 0x000ECF29
 	public bool Hit(Vector3 v, bool allowDisabledTiles = false)
 	{
-		return !(this.tileObject == null) && this.tileObject.Hit(v, allowDisabledTiles);
+		if (!(tileObject == null))
+		{
+			return tileObject.Hit(v, allowDisabledTiles);
+		}
+		return false;
 	}
 
-	// Token: 0x06002099 RID: 8345 RVA: 0x000EEB4C File Offset: 0x000ECF4C
 	public Bounds GetHitBounds()
 	{
 		Vector3 vector = Vector3.zero;
-		if (this.parentPanel != null)
+		if (parentPanel != null)
 		{
-			vector = this.parentPanel.GetTransform().position + this.positionInPanel;
+			vector = parentPanel.GetTransform().position + positionInPanel;
 		}
-		else if (this.tileObject != null)
+		else if (tileObject != null)
 		{
-			vector = this.tileObject.GetPosition();
+			vector = tileObject.GetPosition();
 		}
 		float num = -7f * NormalizedScreen.pixelScale;
-		Vector3 scale = this.GetScale();
-		Vector3 b = new Vector3(vector.x - num, vector.y - num, -99999f);
-		Vector3 a = new Vector3(vector.x + (float)((!this.doubleWidth) ? 1 : 2) * (scale.x + num), vector.y + scale.y + num, 99999f);
-		return new Bounds(0.5f * (a + b), a - b);
+		Vector3 scale = GetScale();
+		Vector3 vector2 = new Vector3(vector.x - num, vector.y - num, -99999f);
+		Vector3 vector3 = new Vector3(vector.x + (float)((!doubleWidth) ? 1 : 2) * (scale.x + num), vector.y + scale.y + num, 99999f);
+		return new Bounds(0.5f * (vector3 + vector2), vector3 - vector2);
 	}
 
-	// Token: 0x0600209A RID: 8346 RVA: 0x000EEC3A File Offset: 0x000ED03A
 	public bool HitExtended(Vector3 v, float extendXMin, float extendXMax, float extendYMin, float extendYMax, bool allowDisabledTiles = false)
 	{
-		return !(this.tileObject == null) && this.tileObject.HitExtended(v, extendXMin, extendXMax, extendYMin, extendYMax, allowDisabledTiles);
+		if (!(tileObject == null))
+		{
+			return tileObject.HitExtended(v, extendXMin, extendXMax, extendYMin, extendYMax, allowDisabledTiles);
+		}
+		return false;
 	}
 
-	// Token: 0x0600209B RID: 8347 RVA: 0x000EEC63 File Offset: 0x000ED063
 	public TileResultCode Condition(Block obj, ScriptRowExecutionInfo eInfo)
 	{
-		return this.gaf.RunSensor(obj, eInfo);
+		return gaf.RunSensor(obj, eInfo);
 	}
 
-	// Token: 0x0600209C RID: 8348 RVA: 0x000EEC72 File Offset: 0x000ED072
 	public TileResultCode Execute(Block obj, ScriptRowExecutionInfo eInfo)
 	{
-		return this.gaf.RunAction(obj, eInfo);
+		return gaf.RunAction(obj, eInfo);
 	}
 
-	// Token: 0x0600209D RID: 8349 RVA: 0x000EEC84 File Offset: 0x000ED084
 	public static void CreateAntigravityArgumentConverters()
 	{
-		Vector3[] array = new Vector3[]
+		Vector3[] array = new Vector3[6]
 		{
 			Vector3.up,
 			Vector3.down,
@@ -443,30 +463,18 @@ public class Tile
 		};
 		List<List<string>> list = new List<List<string>>
 		{
-			new List<string>
-			{
-				"AntiGravityColumn.IncreaseLocalVelocityChunk",
-				"AntiGravity.IncreaseLocalVelocityChunk",
-				"FlightYoke.IncreaseLocalVelocityChunk"
-			},
-			new List<string>
-			{
-				"AntiGravityColumn.IncreaseLocalTorqueChunk",
-				"AntiGravity.IncreaseLocalTorqueChunk",
-				"FlightYoke.IncreaseLocalTorqueChunk"
-			}
+			new List<string> { "AntiGravityColumn.IncreaseLocalVelocityChunk", "AntiGravity.IncreaseLocalVelocityChunk", "FlightYoke.IncreaseLocalVelocityChunk" },
+			new List<string> { "AntiGravityColumn.IncreaseLocalTorqueChunk", "AntiGravity.IncreaseLocalTorqueChunk", "FlightYoke.IncreaseLocalTorqueChunk" }
 		};
 		Dictionary<string, List<GAF>> dictionary = new Dictionary<string, List<GAF>>();
-		foreach (List<string> list2 in list)
+		foreach (List<string> item2 in list)
 		{
-			foreach (string predicateName in list2)
+			foreach (string item3 in item2)
 			{
-				foreach (Vector3 vector in array)
+				Vector3[] array2 = array;
+				foreach (Vector3 vector in array2)
 				{
-					GAF item = new GAF(predicateName, new object[]
-					{
-						vector
-					});
+					GAF item = new GAF(item3, vector);
 					string pathToIcon = TileIconManager.Instance.GetPathToIcon(item);
 					if (pathToIcon != null)
 					{
@@ -479,19 +487,19 @@ public class Tile
 				}
 			}
 		}
-		foreach (KeyValuePair<string, List<GAF>> keyValuePair in dictionary)
+		foreach (KeyValuePair<string, List<GAF>> item4 in dictionary)
 		{
-			foreach (GAF gaf in keyValuePair.Value)
+			foreach (GAF item5 in item4.Value)
 			{
-				foreach (GAF gaf2 in keyValuePair.Value)
+				foreach (GAF item6 in item4.Value)
 				{
-					if (gaf != gaf2)
+					if (item5 != item6)
 					{
-						Vector3 vector2 = (Vector3)gaf.Args[0];
-						Vector3 vector3 = (Vector3)gaf2.Args[0];
+						Vector3 vector2 = (Vector3)item5.Args[0];
+						Vector3 vector3 = (Vector3)item6.Args[0];
 						if (vector2 != vector3)
 						{
-							Tile.AddVectorArgConverter(gaf.Predicate, gaf2.Predicate, vector2, vector3);
+							AddVectorArgConverter(item5.Predicate, item6.Predicate, vector2, vector3);
 						}
 					}
 				}
@@ -499,7 +507,6 @@ public class Tile
 		}
 	}
 
-	// Token: 0x0600209E RID: 8350 RVA: 0x000EEF94 File Offset: 0x000ED394
 	private static void AddVectorArgConverter(Predicate p1, Predicate p2, Vector3 v1, Vector3 v2)
 	{
 		PredicateRegistry.AddEquivalentPredicateArgumentConverter(p1, p2, delegate(object[] args)
@@ -513,80 +520,79 @@ public class Tile
 		});
 	}
 
-	// Token: 0x0600209F RID: 8351 RVA: 0x000EEFC8 File Offset: 0x000ED3C8
 	public static void UpdateTileParameterSettings()
 	{
 		TileParameterSettings component = Blocksworld.blocksworldDataContainer.GetComponent<TileParameterSettings>();
-		TileParameterEditor tileParameterEditor = (!(Blocksworld.bw != null)) ? null : Blocksworld.bw.tileParameterEditor;
-
+		TileParameterEditor tileParameterEditor = ((!(Blocksworld.bw != null)) ? null : Blocksworld.bw.tileParameterEditor);
 		if (tileParameterEditor != null && tileParameterEditor.enabled)
 		{
 			Blocksworld.bw.parameterEditGesture.Cancel();
 			tileParameterEditor.StopEditing();
 		}
-		foreach (TileParameterSetting tileParameterSetting in component.settings)
+		TileParameterSetting[] settings = component.settings;
+		foreach (TileParameterSetting tileParameterSetting in settings)
 		{
-			if (tileParameterSetting.activated)
+			if (!tileParameterSetting.activated)
 			{
-				foreach (string name in tileParameterSetting.matchingPredicateNames)
+				continue;
+			}
+			string[] matchingPredicateNames = tileParameterSetting.matchingPredicateNames;
+			foreach (string name in matchingPredicateNames)
+			{
+				Predicate predicate = PredicateRegistry.ByName(name);
+				if (predicate != null)
 				{
-					Predicate predicate = PredicateRegistry.ByName(name, true);
-
-					if (predicate != null)
+					bool flag = false;
+					switch (tileParameterSetting.type)
 					{
-						bool flag = false;
-                        switch (tileParameterSetting.type)
-						{
-						case TileParameterType.IntSlider:
-							predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, null, false, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
-							break;
-						case TileParameterType.IntPresentingFloatSlider:
-							predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, Tile.GetBidiIntFloatConverter(tileParameterSetting), tileParameterSetting.intOnlyShowPositive, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
-							flag = true;
-							break;
-						case TileParameterType.FloatSlider:
-							predicate.EditableParameter = new FloatTileParameter(tileParameterSetting.floatMinValue, tileParameterSetting.floatMaxValue, tileParameterSetting.floatStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, tileParameterSetting.floatOnlyShowPositive, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
-							flag = true;
-							break;
-						case TileParameterType.TimeSlider:
-							predicate.EditableParameter = new TimeTileParameter(tileParameterSetting.parameterIndex, tileParameterSetting.sliderSensitivity);
-							flag = true;
-							break;
-						case TileParameterType.StringSingleLine:
-							predicate.EditableParameter = new StringTileParameter(tileParameterSetting.parameterIndex, false, tileParameterSetting.stringAcceptAny, tileParameterSetting.stringAcceptAnyHint);
-                            break;
-						case TileParameterType.StringMultiLine:
-							predicate.EditableParameter = new StringTileParameter(tileParameterSetting.parameterIndex, true, tileParameterSetting.stringAcceptAny, tileParameterSetting.stringAcceptAnyHint);
-							break;
-						case TileParameterType.ColorSlider:
-							predicate.EditableParameter = new ColorTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, 2);
-							break;
-						case TileParameterType.ScoreSlider:
-							predicate.EditableParameter = new ScoreTileParameter(tileParameterSetting.parameterIndex);
-							break;
-						case TileParameterType.WorldId:
-							predicate.EditableParameter = new UserWorldTileParameter(tileParameterSetting.parameterIndex);
-							break;
-						case TileParameterType.EnumerationSlider:
-							predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, Tile.GetBidiIntStringConverter(tileParameterSetting));
-							break;
-						}
-						if (flag && (tileParameterSetting.setGafArgumentIfNotExists || tileParameterSetting.overwriteGafArgumentInBuildPanel))
-						{
-							predicate.argumentExtender = Tile.CreateArgumentExtender(tileParameterSetting, predicate);
-						}
-						if (predicate.EditableParameter != null)
-						{
-							predicate.EditableParameter.settings = tileParameterSetting;
-						}
-						predicate.canHaveOverlay = true;
+					case TileParameterType.IntSlider:
+						predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, null, onlyShowPositive: false, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
+						break;
+					case TileParameterType.IntPresentingFloatSlider:
+						predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, GetBidiIntFloatConverter(tileParameterSetting), tileParameterSetting.intOnlyShowPositive, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
+						flag = true;
+						break;
+					case TileParameterType.FloatSlider:
+						predicate.EditableParameter = new FloatTileParameter(tileParameterSetting.floatMinValue, tileParameterSetting.floatMaxValue, tileParameterSetting.floatStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, tileParameterSetting.floatOnlyShowPositive, tileParameterSetting.prefixValueString, tileParameterSetting.postfixValueString);
+						flag = true;
+						break;
+					case TileParameterType.TimeSlider:
+						predicate.EditableParameter = new TimeTileParameter(tileParameterSetting.parameterIndex, tileParameterSetting.sliderSensitivity);
+						flag = true;
+						break;
+					case TileParameterType.StringSingleLine:
+						predicate.EditableParameter = new StringTileParameter(tileParameterSetting.parameterIndex, multiline: false, tileParameterSetting.stringAcceptAny, tileParameterSetting.stringAcceptAnyHint);
+						break;
+					case TileParameterType.StringMultiLine:
+						predicate.EditableParameter = new StringTileParameter(tileParameterSetting.parameterIndex, multiline: true, tileParameterSetting.stringAcceptAny, tileParameterSetting.stringAcceptAnyHint);
+						break;
+					case TileParameterType.ColorSlider:
+						predicate.EditableParameter = new ColorTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex);
+						break;
+					case TileParameterType.ScoreSlider:
+						predicate.EditableParameter = new ScoreTileParameter(tileParameterSetting.parameterIndex);
+						break;
+					case TileParameterType.WorldId:
+						predicate.EditableParameter = new UserWorldTileParameter(tileParameterSetting.parameterIndex);
+						break;
+					case TileParameterType.EnumerationSlider:
+						predicate.EditableParameter = new IntTileParameter(tileParameterSetting.intMinValue, tileParameterSetting.intMaxValue, tileParameterSetting.intStep, tileParameterSetting.sliderSensitivity, tileParameterSetting.parameterIndex, GetBidiIntStringConverter(tileParameterSetting));
+						break;
 					}
+					if (flag && (tileParameterSetting.setGafArgumentIfNotExists || tileParameterSetting.overwriteGafArgumentInBuildPanel))
+					{
+						predicate.argumentExtender = CreateArgumentExtender(tileParameterSetting, predicate);
+					}
+					if (predicate.EditableParameter != null)
+					{
+						predicate.EditableParameter.settings = tileParameterSetting;
+					}
+					predicate.canHaveOverlay = true;
 				}
 			}
 		}
 	}
 
-	// Token: 0x060020A0 RID: 8352 RVA: 0x000EF2F4 File Offset: 0x000ED6F4
 	private static Func<object[], bool, object[]> CreateArgumentExtender(TileParameterSetting setting, Predicate pred)
 	{
 		return delegate(object[] args, bool overwrite)
@@ -602,15 +608,13 @@ public class Tile
 					{
 						array[i] = args[i];
 					}
-					object obj = (setting.parameterIndex >= args.Length) ? null : args[setting.parameterIndex];
+					object obj = ((setting.parameterIndex >= args.Length) ? null : args[setting.parameterIndex]);
 					switch (setting.type)
 					{
 					case TileParameterType.IntPresentingFloatSlider:
-					{
-						IntTileParameter intTileParameter = pred.EditableParameter as IntTileParameter;
-						if (intTileParameter != null && intTileParameter.converter != null)
+						if (pred.EditableParameter is IntTileParameter { converter: not null } intTileParameter)
 						{
-							int num = (!intTileParameter.onlyShowPositive || obj == null) ? 1 : ((int)Mathf.Sign((float)obj));
+							int num = ((!intTileParameter.onlyShowPositive || obj == null) ? 1 : ((int)Mathf.Sign((float)obj)));
 							array[setting.parameterIndex] = (float)num * intTileParameter.converter.intToFloat(setting.intDefaultValue);
 						}
 						else
@@ -618,26 +622,19 @@ public class Tile
 							BWLog.Info("Could not find converter for int-presenting slider");
 						}
 						break;
-					}
 					case TileParameterType.FloatSlider:
-					{
-						FloatTileParameter floatTileParameter = pred.EditableParameter as FloatTileParameter;
-						if (floatTileParameter != null)
+						if (pred.EditableParameter is FloatTileParameter floatTileParameter)
 						{
-							float num2 = (!floatTileParameter.onlyShowPositive || obj == null) ? 1f : Mathf.Sign((float)obj);
+							float num2 = ((!floatTileParameter.onlyShowPositive || obj == null) ? 1f : Mathf.Sign((float)obj));
 							array[setting.parameterIndex] = num2 * setting.floatDefaultValue;
 						}
 						break;
-					}
 					case TileParameterType.TimeSlider:
-					{
-						TimeTileParameter timeTileParameter = pred.EditableParameter as TimeTileParameter;
-						if (timeTileParameter != null)
+						if (pred.EditableParameter is TimeTileParameter)
 						{
 							array[setting.parameterIndex] = setting.floatDefaultValue;
 						}
 						break;
-					}
 					default:
 						BWLog.Info("Argument extension not supported for type " + setting.type);
 						break;
@@ -647,13 +644,7 @@ public class Tile
 				{
 					if (array[j] == null)
 					{
-						BWLog.Warning(string.Concat(new object[]
-						{
-							"Argument extension was trying to set an argument to null for predicate ",
-							pred.Name,
-							" and index ",
-							j
-						}));
+						BWLog.Warning("Argument extension was trying to set an argument to null for predicate " + pred.Name + " and index " + j);
 						return args;
 					}
 				}
@@ -663,393 +654,286 @@ public class Tile
 		};
 	}
 
-	// Token: 0x060020A1 RID: 8353 RVA: 0x000EF321 File Offset: 0x000ED721
 	private static BidiIntStringConverter GetBidiIntStringConverter(TileParameterSetting setting)
 	{
 		return new BidiIntStringConverter(setting.tableConverterStringValues, setting.intMinValue, setting.intStep);
 	}
 
-	// Token: 0x060020A2 RID: 8354 RVA: 0x000EF33C File Offset: 0x000ED73C
 	private static BidiIntFloatConverter GetBidiIntFloatConverter(TileParameterSetting setting)
 	{
-		switch (setting.bidiIntFloatConverterType)
+		return setting.bidiIntFloatConverterType switch
 		{
-		case BidiIntFloatConverterType.Affine:
-			return new AffineBidiIntFloatConverter
+			BidiIntFloatConverterType.Affine => new AffineBidiIntFloatConverter
 			{
 				bias = setting.affineConverterBias,
 				multiplier = setting.affineConverterMultiplier
-			};
-		case BidiIntFloatConverterType.Range:
-			return AffineBidiIntFloatConverter.FromRange(setting.rangeConverterFrom, setting.rangeConverterTo, setting.intMinValue, setting.intMaxValue);
-		case BidiIntFloatConverterType.Table:
-			return new TableBidiIntFloatConverter(setting.tableConverterFloatValues, setting.intMinValue, setting.intMaxValue, setting.intOnlyShowPositive);
-		case BidiIntFloatConverterType.PiecewiseLinear:
-			return new PiecewiseLinearIntFloatConverter(setting.piecewiseLinearConverterIntValues, setting.piecewiseLinearConverterFloatValues, setting.intOnlyShowPositive);
-		default:
-			return null;
-		}
+			}, 
+			BidiIntFloatConverterType.Range => AffineBidiIntFloatConverter.FromRange(setting.rangeConverterFrom, setting.rangeConverterTo, setting.intMinValue, setting.intMaxValue), 
+			BidiIntFloatConverterType.Table => new TableBidiIntFloatConverter(setting.tableConverterFloatValues, setting.intMinValue, setting.intMaxValue, setting.intOnlyShowPositive), 
+			BidiIntFloatConverterType.PiecewiseLinear => new PiecewiseLinearIntFloatConverter(setting.piecewiseLinearConverterIntValues, setting.piecewiseLinearConverterFloatValues, setting.intOnlyShowPositive), 
+			_ => null, 
+		};
 	}
 
-	// Token: 0x060020A3 RID: 8355 RVA: 0x000EF3E0 File Offset: 0x000ED7E0
 	public void Enable(bool enabled)
 	{
-		this.isEnabled = enabled;
-		if (this.tileObject != null)
+		isEnabled = enabled;
+		if (tileObject != null)
 		{
 			if (enabled)
 			{
-				this.tileObject.Enable();
+				tileObject.Enable();
 			}
 			else
 			{
-				this.tileObject.Disable();
+				tileObject.Disable();
 			}
 		}
 	}
 
-	// Token: 0x060020A4 RID: 8356 RVA: 0x000EF41B File Offset: 0x000ED81B
 	public bool IsEnabled()
 	{
-		return this.isEnabled;
+		return isEnabled;
 	}
 
-	// Token: 0x060020A5 RID: 8357 RVA: 0x000EF424 File Offset: 0x000ED824
 	public void Show(bool show)
 	{
-		if (this.gaf.Predicate == Block.predicateUI)
+		if (gaf.Predicate == Block.predicateUI)
 		{
-			this.tileObject.Show(show);
-			return;
+			tileObject.Show(show);
 		}
-		if (this.parentPanel != null)
+		else if (parentPanel != null)
 		{
-			this.visibleInPanel = show;
-			return;
+			visibleInPanel = show;
 		}
-		if (show)
+		else if (show)
 		{
-			if (this.tileObject == null)
+			if (tileObject == null)
 			{
-				this.CreatePhysical();
-				this.tileObject.SetPosition(this.cachedPosition);
-				this.tileObject.SetLocalPosition(this.cachedLocalPosition);
-				if (this.isEnabled)
+				CreatePhysical();
+				tileObject.SetPosition(cachedPosition);
+				tileObject.SetLocalPosition(cachedLocalPosition);
+				if (isEnabled)
 				{
-					this.tileObject.Enable();
+					tileObject.Enable();
 				}
 				else
 				{
-					this.tileObject.Disable();
+					tileObject.Disable();
 				}
 			}
 		}
 		else
 		{
-			if (this.tileObject != null)
+			if (tileObject != null)
 			{
-				this.cachedPosition = this.tileObject.GetPosition();
+				cachedPosition = tileObject.GetPosition();
 			}
-			this.DestroyPhysical();
+			DestroyPhysical();
 		}
 	}
 
-	// Token: 0x060020A6 RID: 8358 RVA: 0x000EF4F8 File Offset: 0x000ED8F8
 	public void CreatePhysical()
 	{
-		if (this.tileObject == null)
+		if (tileObject == null)
 		{
-			GAF gaf = (!this.gaf.HasDynamicLabel()) ? Scarcity.GetNormalizedGaf(this.gaf, false) : this.gaf;
-			this.UpdateDynamicLabelIfNecessary();
-			if (this.IsCreateModel())
+			GAF gAF = ((!gaf.HasDynamicLabel()) ? Scarcity.GetNormalizedGaf(gaf) : gaf);
+			UpdateDynamicLabelIfNecessary();
+			if (IsCreateModel())
 			{
-				this.tileObject = Blocksworld.modelTilePool.GetTileObject(gaf, this.isEnabled, false);
+				tileObject = Blocksworld.modelTilePool.GetTileObject(gAF, isEnabled);
 			}
-			else if (this.parentPanel != null)
+			else if (parentPanel != null)
 			{
-				this.tileObject = this.parentPanel.tileObjectPool.GetTileObject(gaf, this.isEnabled, false);
+				tileObject = parentPanel.tileObjectPool.GetTileObject(gAF, isEnabled);
 			}
 			else
 			{
-				this.tileObject = Blocksworld.tilePool.GetTileObject(gaf, this.isEnabled, false);
-				if (this.tileObjectAssignedParent != null)
+				tileObject = Blocksworld.tilePool.GetTileObject(gAF, isEnabled);
+				if (tileObjectAssignedParent != null)
 				{
-					this.tileObject.SetParent(this.tileObjectAssignedParent);
+					tileObject.SetParent(tileObjectAssignedParent);
 				}
 			}
-			if (this.cachedBackgroundColor != Color.clear)
+			if (cachedBackgroundColor != Color.clear)
 			{
-				this.tileObject.OverrideBackgroundColor(this.cachedBackgroundColor);
+				tileObject.OverrideBackgroundColor(cachedBackgroundColor);
 			}
-			this.tileObject.OverrideForegroundColor(this.cachedForegroundColor);
+			tileObject.OverrideForegroundColor(cachedForegroundColor);
 		}
-		this.tileObject.Show();
+		tileObject.Show();
 	}
 
-	// Token: 0x060020A7 RID: 8359 RVA: 0x000EF618 File Offset: 0x000EDA18
 	public void DestroyPhysical()
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			if (this.tileObject.obtainedFromPool != null)
+			if (tileObject.obtainedFromPool != null)
 			{
-				this.tileObject.ReturnToPool();
+				tileObject.ReturnToPool();
 			}
 			else
 			{
-				UnityEngine.Object.Destroy(this.tileObject.GetGameObject());
+				UnityEngine.Object.Destroy(tileObject.GetGameObject());
 			}
-			this.tileObject = null;
+			tileObject = null;
 		}
 	}
 
-	// Token: 0x060020A8 RID: 8360 RVA: 0x000EF670 File Offset: 0x000EDA70
 	public bool UpdateDynamicLabelIfNecessary()
 	{
-		if (this.gaf.IsCreateModel() || !this.gaf.HasDynamicLabel())
+		if (gaf.IsCreateModel() || !gaf.HasDynamicLabel())
 		{
 			return false;
 		}
-		string dynamicLabel = this.gaf.GetDynamicLabel();
+		string dynamicLabel = gaf.GetDynamicLabel();
 		if (string.IsNullOrEmpty(dynamicLabel))
 		{
 			return false;
 		}
 		TileIconManager.Instance.labelAtlas.AddNewLabel(dynamicLabel);
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.Setup(this.gaf, this.isEnabled);
+			tileObject.Setup(gaf, isEnabled);
 		}
 		return true;
 	}
 
-	// Token: 0x060020A9 RID: 8361 RVA: 0x000EF6F1 File Offset: 0x000EDAF1
 	public bool IsShowing()
 	{
-		return this.tileObject != null;
+		return tileObject != null;
 	}
 
-	// Token: 0x060020AA RID: 8362 RVA: 0x000EF6FF File Offset: 0x000EDAFF
 	public void SetTileBackgroundColor(Color bgColor)
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.OverrideBackgroundColor(bgColor);
+			tileObject.OverrideBackgroundColor(bgColor);
 		}
-		this.cachedBackgroundColor = bgColor;
+		cachedBackgroundColor = bgColor;
 	}
 
-	// Token: 0x060020AB RID: 8363 RVA: 0x000EF725 File Offset: 0x000EDB25
 	public void SetTileForegroundColor(Color fgColor)
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.OverrideForegroundColor(fgColor);
+			tileObject.OverrideForegroundColor(fgColor);
 		}
-		this.cachedForegroundColor = fgColor;
+		cachedForegroundColor = fgColor;
 	}
 
-	// Token: 0x060020AC RID: 8364 RVA: 0x000EF74B File Offset: 0x000EDB4B
 	public void SetTileScale(Vector3 scale)
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.SetScale(scale);
+			tileObject.SetScale(scale);
 		}
 	}
 
-	// Token: 0x060020AD RID: 8365 RVA: 0x000EF76A File Offset: 0x000EDB6A
 	public void SetTileScale(float scale)
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.SetScale(scale * Vector3.one);
+			tileObject.SetScale(scale * Vector3.one);
 		}
 	}
 
-	// Token: 0x060020AE RID: 8366 RVA: 0x000EF793 File Offset: 0x000EDB93
 	public void SetParent(Transform p)
 	{
-		if (this.tileObject != null)
+		if (tileObject != null)
 		{
-			this.tileObject.SetParent(p);
+			tileObject.SetParent(p);
 		}
-		this.tileObjectAssignedParent = p;
+		tileObjectAssignedParent = p;
 	}
 
-	// Token: 0x060020AF RID: 8367 RVA: 0x000EF7B9 File Offset: 0x000EDBB9
 	private static Color[] GradientToColors(Color[] colors)
 	{
-		return Tile.GradientToColors(colors[0], colors[1]);
+		return GradientToColors(colors[0], colors[1]);
 	}
 
-	// Token: 0x060020B0 RID: 8368 RVA: 0x000EF7D8 File Offset: 0x000EDBD8
 	private static Color[] GradientToColors(Color top, Color bottom)
 	{
-		return new Color[]
-		{
-			top,
-			bottom,
-			bottom,
-			top
-		};
+		return new Color[4] { top, bottom, bottom, top };
 	}
 
-	// Token: 0x060020B1 RID: 8369 RVA: 0x000EF814 File Offset: 0x000EDC14
 	public bool UpdatesIconOnArgumentChange()
 	{
-		return this.gaf.UpdatesIconOnArgumentChange();
+		return gaf.UpdatesIconOnArgumentChange();
 	}
 
-	// Token: 0x060020B2 RID: 8370 RVA: 0x000EF821 File Offset: 0x000EDC21
 	public void StepSubParameterIndex()
 	{
-		this.subParameterIndex = (this.subParameterIndex + 1) % this.subParameterCount;
-		if (this.subParameterCount > 1)
+		subParameterIndex = (subParameterIndex + 1) % subParameterCount;
+		if (subParameterCount > 1)
 		{
-			Sound.PlayOneShotSound("Slider Handle Grabbed", 1f);
+			Sound.PlayOneShotSound("Slider Handle Grabbed");
 		}
 	}
 
-	// Token: 0x04001BB7 RID: 7095
-	public GAF gaf;
-
-	// Token: 0x04001BB8 RID: 7096
-	public TileObject tileObject;
-
-	// Token: 0x04001BB9 RID: 7097
-	private Transform tileObjectAssignedParent;
-
-	// Token: 0x04001BBA RID: 7098
-	public float time;
-
-	// Token: 0x04001BBB RID: 7099
-	public bool doubleWidth;
-
-	// Token: 0x04001BBC RID: 7100
-	public int subParameterIndex;
-
-	// Token: 0x04001BBD RID: 7101
-	public int subParameterCount = 1;
-
-	// Token: 0x04001BBE RID: 7102
-	public static string[] tagNames = new string[]
+	static Tile()
 	{
-		"Circle",
-		"Triangle",
-		"Square",
-		"Diamond",
-		"Heart",
-		"Star",
-		"Hexagon",
-		"X",
-		"Target",
-		"Hero",
-		"Villain"
-	};
-
-	// Token: 0x04001BBF RID: 7103
-	public static string[] shortTagNames = new string[]
-	{
-		"0",
-		"1",
-		"2",
-		"3",
-		"4",
-		"5",
-		"6",
-		"7",
-		"8",
-		"A",
-		"B"
-	};
-
-	// Token: 0x04001BC0 RID: 7104
-	public static string iconBasePath = Application.dataPath + "/..";
-
-	// Token: 0x04001BC1 RID: 7105
-	public Panel parentPanel;
-
-	// Token: 0x04001BC2 RID: 7106
-	public Vector3 positionInPanel;
-
-	// Token: 0x04001BC3 RID: 7107
-	public bool visibleInPanel;
-
-	// Token: 0x04001BC4 RID: 7108
-	public int panelSection;
-
-	// Token: 0x04001BC5 RID: 7109
-	private bool isEnabled = true;
-
-	// Token: 0x04001BC6 RID: 7110
-	private Vector3 cachedPosition;
-
-	// Token: 0x04001BC7 RID: 7111
-	private Vector3 cachedLocalPosition;
-
-	// Token: 0x04001BC8 RID: 7112
-	private Color cachedBackgroundColor = Color.clear;
-
-	// Token: 0x04001BC9 RID: 7113
-	private Color cachedForegroundColor = Color.white;
-
-	// Token: 0x04001BCA RID: 7114
-	private string _uniqueID;
-
-	// Token: 0x04001BCB RID: 7115
-	public static Dictionary<string, Vector4> buttonExtensions = new Dictionary<string, Vector4>
-	{
+		tagNames = new string[12]
 		{
-			"L",
-			new Vector4(38f, 38f, 18f, 38f)
-		},
+			"Circle", "Triangle", "Square", "Diamond", "Heart", "Star", "Hexagon", "X", "Target", "Hero",
+			"Player", "Villain"
+		};
+		shortTagNames = new string[12]
 		{
-			"L Pressed",
-			new Vector4(38f, 38f, 18f, 38f)
-		},
+			"0", "1", "2", "3", "4", "5", "6", "7", "8", "C",
+			"A", "B"
+		};
+		iconBasePath = Application.dataPath + "/..";
+		buttonExtensions = new Dictionary<string, Vector4>
 		{
-			"Left",
-			new Vector4(38f, 18f, 38f, 18f)
-		},
-		{
-			"Left Pressed",
-			new Vector4(38f, 18f, 38f, 18f)
-		},
-		{
-			"Right",
-			new Vector4(18f, 38f, 38f, 18f)
-		},
-		{
-			"Right Pressed",
-			new Vector4(18f, 38f, 38f, 18f)
-		},
-		{
-			"Up",
-			new Vector4(18f, 38f, 38f, 18f)
-		},
-		{
-			"Up Pressed",
-			new Vector4(18f, 38f, 38f, 18f)
-		},
-		{
-			"Down",
-			new Vector4(38f, 18f, 38f, 18f)
-		},
-		{
-			"Down Pressed",
-			new Vector4(38f, 18f, 38f, 18f)
-		},
-		{
-			"R",
-			new Vector4(38f, 38f, 18f, 38f)
-		},
-		{
-			"R Pressed",
-			new Vector4(38f, 38f, 18f, 38f)
-		}
-	};
-
-	// Token: 0x04001BCC RID: 7116
-	public const int hitMargin = -7;
+			{
+				"L",
+				new Vector4(38f, 38f, 18f, 38f)
+			},
+			{
+				"L Pressed",
+				new Vector4(38f, 38f, 18f, 38f)
+			},
+			{
+				"Left",
+				new Vector4(38f, 18f, 38f, 18f)
+			},
+			{
+				"Left Pressed",
+				new Vector4(38f, 18f, 38f, 18f)
+			},
+			{
+				"Right",
+				new Vector4(18f, 38f, 38f, 18f)
+			},
+			{
+				"Right Pressed",
+				new Vector4(18f, 38f, 38f, 18f)
+			},
+			{
+				"Up",
+				new Vector4(18f, 38f, 38f, 18f)
+			},
+			{
+				"Up Pressed",
+				new Vector4(18f, 38f, 38f, 18f)
+			},
+			{
+				"Down",
+				new Vector4(38f, 18f, 38f, 18f)
+			},
+			{
+				"Down Pressed",
+				new Vector4(38f, 18f, 38f, 18f)
+			},
+			{
+				"R",
+				new Vector4(38f, 38f, 18f, 38f)
+			},
+			{
+				"R Pressed",
+				new Vector4(38f, 38f, 18f, 38f)
+			}
+		};
+	}
 }

@@ -1,0 +1,9 @@
+namespace Exdilin;
+
+public enum PredicateType
+{
+	NORMAL,
+	BLOCK_VARIABLE_OPERATION,
+	GLOBAL_VARIABLE_OPERATION,
+	BLOCK_VARIABLE_OPERATION_ON_OTHER
+}

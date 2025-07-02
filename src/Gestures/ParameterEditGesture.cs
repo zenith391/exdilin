@@ -1,143 +1,127 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Gestures
+namespace Gestures;
+
+public class ParameterEditGesture : BaseGesture
 {
-	// Token: 0x02000183 RID: 387
-	public class ParameterEditGesture : BaseGesture
+	private Vector2 startPosition;
+
+	private NumericHandleTileParameter targetParameter;
+
+	private bool holdingHandle;
+
+	public void StartEditing(NumericHandleTileParameter parameter)
 	{
-		// Token: 0x0600161B RID: 5659 RVA: 0x0009B9AF File Offset: 0x00099DAF
-		public void StartEditing(NumericHandleTileParameter parameter)
-		{
-			this.targetParameter = parameter;
-			this.IsEnabled = true;
-			base.EnterState(GestureState.Possible);
-			this.holdingHandle = false;
-		}
+		targetParameter = parameter;
+		IsEnabled = true;
+		EnterState(GestureState.Possible);
+		holdingHandle = false;
+	}
 
-		// Token: 0x0600161C RID: 5660 RVA: 0x0009B9CD File Offset: 0x00099DCD
-		private void StopEditor()
+	private void StopEditor()
+	{
+		if (Blocksworld.bw.tileParameterEditor.IsEditing())
 		{
-			if (Blocksworld.bw.tileParameterEditor.IsEditing())
-			{
-				Sound.PlayOneShotSound("Slider Parameter Changed", 1f);
-				Blocksworld.bw.tileParameterEditor.StopEditing();
-			}
+			Sound.PlayOneShotSound("Slider Parameter Changed");
+			Blocksworld.bw.tileParameterEditor.StopEditing();
 		}
+	}
 
-		// Token: 0x0600161D RID: 5661 RVA: 0x0009BA04 File Offset: 0x00099E04
-		public override void TouchesBegan(List<Touch> allTouches)
+	public override void TouchesBegan(List<Touch> allTouches)
+	{
+		if (targetParameter == null || Blocksworld.CurrentState != State.Build)
 		{
-			if (this.targetParameter == null || Blocksworld.CurrentState != State.Build)
-			{
-				base.EnterState(GestureState.Failed);
-				return;
-			}
-			if (allTouches.Count > 1)
-			{
-				base.EnterState(GestureState.Failed);
-				this.StopEditor();
-				return;
-			}
-			Touch touch = allTouches[0];
-			if (touch.Phase != TouchPhase.Began)
-			{
-				return;
-			}
+			EnterState(GestureState.Failed);
+			return;
+		}
+		if (allTouches.Count > 1)
+		{
+			EnterState(GestureState.Failed);
+			StopEditor();
+			return;
+		}
+		Touch touch = allTouches[0];
+		if (touch.Phase == TouchPhase.Began)
+		{
 			Vector2 position = touch.Position;
-			if (this.targetParameter.handle.Hit(position, false))
+			if (targetParameter.handle.Hit(position))
 			{
-				base.EnterState(GestureState.Active);
-				this.targetParameter.GrabHandle(position);
-				this.holdingHandle = true;
+				EnterState(GestureState.Active);
+				targetParameter.GrabHandle(position);
+				holdingHandle = true;
 			}
-			else if (this.targetParameter.tile.Hit(position, false) || this.targetParameter.rightSide.Hit(position, true))
+			else if (targetParameter.tile.Hit(position) || targetParameter.rightSide.Hit(position, allowDisabledTiles: true))
 			{
-				base.EnterState(GestureState.Active);
+				EnterState(GestureState.Active);
 			}
 			else
 			{
-				this.StopEditor();
-				base.EnterState(GestureState.Cancelled);
+				StopEditor();
+				EnterState(GestureState.Cancelled);
 			}
 		}
+	}
 
-		// Token: 0x0600161E RID: 5662 RVA: 0x0009BAEF File Offset: 0x00099EEF
-		public override void TouchesMoved(List<Touch> allTouches)
+	public override void TouchesMoved(List<Touch> allTouches)
+	{
+		if (targetParameter == null)
 		{
-			if (this.targetParameter == null)
-			{
-				this.StopEditor();
-				base.EnterState(GestureState.Failed);
-				return;
-			}
-			if (this.holdingHandle)
-			{
-				this.targetParameter.HoldHandle(allTouches[0].Position);
-			}
+			StopEditor();
+			EnterState(GestureState.Failed);
 		}
-
-		// Token: 0x0600161F RID: 5663 RVA: 0x0009BB2C File Offset: 0x00099F2C
-		public override void TouchesStationary(List<Touch> allTouches)
+		else if (holdingHandle)
 		{
-			if (this.targetParameter == null)
-			{
-				base.EnterState(GestureState.Failed);
-				return;
-			}
-			if (this.holdingHandle)
-			{
-				this.targetParameter.HoldHandle(allTouches[0].Position);
-			}
+			targetParameter.HoldHandle(allTouches[0].Position);
 		}
+	}
 
-		// Token: 0x06001620 RID: 5664 RVA: 0x0009BB64 File Offset: 0x00099F64
-		public override void TouchesEnded(List<Touch> allTouches)
+	public override void TouchesStationary(List<Touch> allTouches)
+	{
+		if (targetParameter == null)
 		{
-			if (this.targetParameter == null)
-			{
-				base.EnterState(GestureState.Failed);
-				this.StopEditor();
-				return;
-			}
-			base.EnterState(GestureState.Possible);
-			Vector2 position = allTouches[0].Position;
-			if (this.holdingHandle)
-			{
-				this.targetParameter.ReleaseHandle();
-				this.holdingHandle = false;
-			}
-			else if (this.targetParameter.tile.Hit(position, false) || this.targetParameter.rightSide.Hit(position, true))
-			{
-				this.targetParameter.tile.StepSubParameterIndex();
-				Blocksworld.BlockPanelTileTapped(this.targetParameter.tile);
-			}
-			bool flag = Tutorial.state == TutorialState.SetParameter;
-			Tutorial.Step();
-			if (flag && Tutorial.state != TutorialState.SetParameter && Tutorial.state != TutorialState.TapTile)
-			{
-				Blocksworld.bw.tileParameterEditor.StopEditing();
-				base.EnterState(GestureState.Cancelled);
-			}
-			TBox.UpdateCopyButtonVisibility();
+			EnterState(GestureState.Failed);
 		}
-
-		// Token: 0x06001621 RID: 5665 RVA: 0x0009BC5F File Offset: 0x0009A05F
-		public override void Reset()
+		else if (holdingHandle)
 		{
-			this.targetParameter = null;
-			this.holdingHandle = false;
-			base.EnterState(GestureState.Possible);
+			targetParameter.HoldHandle(allTouches[0].Position);
 		}
+	}
 
-		// Token: 0x04001133 RID: 4403
-		private Vector2 startPosition;
+	public override void TouchesEnded(List<Touch> allTouches)
+	{
+		if (targetParameter == null)
+		{
+			EnterState(GestureState.Failed);
+			StopEditor();
+			return;
+		}
+		EnterState(GestureState.Possible);
+		Vector2 position = allTouches[0].Position;
+		if (holdingHandle)
+		{
+			targetParameter.ReleaseHandle();
+			holdingHandle = false;
+		}
+		else if (targetParameter.tile.Hit(position) || targetParameter.rightSide.Hit(position, allowDisabledTiles: true))
+		{
+			targetParameter.tile.StepSubParameterIndex();
+			Blocksworld.BlockPanelTileTapped(targetParameter.tile);
+		}
+		bool flag = Tutorial.state == TutorialState.SetParameter;
+		Tutorial.Step();
+		if (flag && Tutorial.state != TutorialState.SetParameter && Tutorial.state != TutorialState.TapTile)
+		{
+			Blocksworld.bw.tileParameterEditor.StopEditing();
+			EnterState(GestureState.Cancelled);
+		}
+		TBox.UpdateCopyButtonVisibility();
+	}
 
-		// Token: 0x04001134 RID: 4404
-		private NumericHandleTileParameter targetParameter;
-
-		// Token: 0x04001135 RID: 4405
-		private bool holdingHandle;
+	public override void Reset()
+	{
+		targetParameter = null;
+		holdingHandle = false;
+		EnterState(GestureState.Possible);
 	}
 }

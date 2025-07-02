@@ -1,17 +1,18 @@
-﻿using System;
+using System;
 
-namespace Exdilin
+namespace Exdilin;
+
+public class BlockEntry
 {
-    public class BlockEntry
-    {
-        public string id;
-        public string modelName;
-        public BlockMetaData metaData;
-        public Type blockType;
-        public bool hasDefaultTiles;
-		/// <summary>
-		/// The mod that created the block entry
-		/// </summary>
-		public Mod originator;
-    }
+	public string id;
+
+	public string modelName;
+
+	public BlockMetaData metaData;
+
+	public Type blockType;
+
+	public bool hasDefaultTiles;
+
+	public Mod originator;
 }

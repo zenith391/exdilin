@@ -1,104 +1,88 @@
-﻿using System;
-using SimpleJSON;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 
-// Token: 0x02000455 RID: 1109
 public class UIReportModelPanel : MonoBehaviour
 {
-	// Token: 0x06002F19 RID: 12057 RVA: 0x0014DE1C File Offset: 0x0014C21C
+	public Button reportButton;
+
+	public Button noActionButton;
+
+	public Toggle disclosureToggle;
+
+	public Toggle hateSpeechToggle;
+
+	public Toggle sexToggle;
+
+	public Toggle drugsToggle;
+
+	public Toggle violenceToggle;
+
+	private string modelID;
+
+	private string reportReason;
+
 	public void Setup(string modelID)
 	{
 		this.modelID = modelID;
-		this.reportReason = string.Empty;
-		this.disclosureToggle.onValueChanged.AddListener(new UnityAction<bool>(this.ReasonToggleHandler));
-		this.hateSpeechToggle.onValueChanged.AddListener(new UnityAction<bool>(this.ReasonToggleHandler));
-		this.sexToggle.onValueChanged.AddListener(new UnityAction<bool>(this.ReasonToggleHandler));
-		this.drugsToggle.onValueChanged.AddListener(new UnityAction<bool>(this.ReasonToggleHandler));
-		this.violenceToggle.onValueChanged.AddListener(new UnityAction<bool>(this.ReasonToggleHandler));
-		this.reportButton.onClick.AddListener(new UnityAction(this.ReportModel));
+		reportReason = string.Empty;
+		disclosureToggle.onValueChanged.AddListener(ReasonToggleHandler);
+		hateSpeechToggle.onValueChanged.AddListener(ReasonToggleHandler);
+		sexToggle.onValueChanged.AddListener(ReasonToggleHandler);
+		drugsToggle.onValueChanged.AddListener(ReasonToggleHandler);
+		violenceToggle.onValueChanged.AddListener(ReasonToggleHandler);
+		reportButton.onClick.AddListener(ReportModel);
 	}
 
-	// Token: 0x06002F1A RID: 12058 RVA: 0x0014DEE4 File Offset: 0x0014C2E4
 	public void ReasonToggleHandler(bool status)
 	{
-		if (this.disclosureToggle.isOn)
+		if (disclosureToggle.isOn)
 		{
-			this.reportReason = "Personal information";
+			reportReason = "Personal information";
 		}
-		else if (this.hateSpeechToggle.isOn)
+		else if (hateSpeechToggle.isOn)
 		{
-			this.reportReason = "Hate Speech or Harassment";
+			reportReason = "Hate Speech or Harassment";
 		}
-		else if (this.sexToggle.isOn)
+		else if (sexToggle.isOn)
 		{
-			this.reportReason = "Nudity";
+			reportReason = "Nudity";
 		}
-		else if (this.drugsToggle.isOn)
+		else if (drugsToggle.isOn)
 		{
-			this.reportReason = "Drugs or Alcohol";
+			reportReason = "Drugs or Alcohol";
 		}
-		else if (this.violenceToggle.isOn)
+		else if (violenceToggle.isOn)
 		{
-			this.reportReason = "Violence";
+			reportReason = "Violence";
 		}
-		if (string.IsNullOrEmpty(this.reportReason))
+		if (string.IsNullOrEmpty(reportReason))
 		{
-			this.reportButton.gameObject.SetActive(false);
-			this.noActionButton.gameObject.SetActive(true);
+			reportButton.gameObject.SetActive(value: false);
+			noActionButton.gameObject.SetActive(value: true);
 		}
 		else
 		{
-			this.reportButton.gameObject.SetActive(true);
-			this.noActionButton.gameObject.SetActive(false);
+			reportButton.gameObject.SetActive(value: true);
+			noActionButton.gameObject.SetActive(value: false);
 		}
 	}
 
-	// Token: 0x06002F1B RID: 12059 RVA: 0x0014DFE8 File Offset: 0x0014C3E8
 	private void ReportModel()
 	{
-		BWUserDataManager.Instance.ReportModel(this.modelID);
-		string path = string.Format("/api/v1/u2u_models/{0}/abuse", this.modelID);
-		BWAPIRequestBase bwapirequestBase = BW.API.CreateRequest("POST", path);
-		bwapirequestBase.AddParam("description", this.reportReason);
-		bwapirequestBase.onSuccess = delegate(JObject resp)
+		BWUserDataManager.Instance.ReportModel(modelID);
+		string path = $"/api/v1/u2u_models/{modelID}/abuse";
+		BWAPIRequestBase bWAPIRequestBase = BW.API.CreateRequest("POST", path);
+		bWAPIRequestBase.AddParam("description", reportReason);
+		bWAPIRequestBase.onSuccess = delegate
 		{
-			BWStandalone.Overlays.SetUIBusy(false);
+			BWStandalone.Overlays.SetUIBusy(busy: false);
 			BWStandalone.Overlays.ShowMessage(BWMenuTextEnum.ModelReportSucessMessage);
 		};
-		bwapirequestBase.onFailure = delegate(BWAPIRequestError error)
+		bWAPIRequestBase.onFailure = delegate
 		{
-			BWStandalone.Overlays.SetUIBusy(false);
+			BWStandalone.Overlays.SetUIBusy(busy: false);
 		};
-		BWStandalone.Overlays.SetUIBusy(true);
-		bwapirequestBase.SendOwnerCoroutine(this);
+		BWStandalone.Overlays.SetUIBusy(busy: true);
+		bWAPIRequestBase.SendOwnerCoroutine(this);
 	}
-
-	// Token: 0x04002781 RID: 10113
-	public Button reportButton;
-
-	// Token: 0x04002782 RID: 10114
-	public Button noActionButton;
-
-	// Token: 0x04002783 RID: 10115
-	public Toggle disclosureToggle;
-
-	// Token: 0x04002784 RID: 10116
-	public Toggle hateSpeechToggle;
-
-	// Token: 0x04002785 RID: 10117
-	public Toggle sexToggle;
-
-	// Token: 0x04002786 RID: 10118
-	public Toggle drugsToggle;
-
-	// Token: 0x04002787 RID: 10119
-	public Toggle violenceToggle;
-
-	// Token: 0x04002788 RID: 10120
-	private string modelID;
-
-	// Token: 0x04002789 RID: 10121
-	private string reportReason;
 }

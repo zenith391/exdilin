@@ -1,13 +1,19 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x0200012A RID: 298
 public class DelayedBreakCharacterCommand : DelayedCommand
 {
-	// Token: 0x06001412 RID: 5138 RVA: 0x0008C4DE File Offset: 0x0008A8DE
-	public DelayedBreakCharacterCommand(Block block, Vector3 chunkPos, Vector3 chunkVel, Vector3 chunkAngVel) : base(1)
+	private Block block;
+
+	private Vector3 chunkPos;
+
+	private Vector3 chunkVel;
+
+	private Vector3 chunkAngVel;
+
+	public DelayedBreakCharacterCommand(Block block, Vector3 chunkPos, Vector3 chunkVel, Vector3 chunkAngVel)
+		: base(1)
 	{
 		this.block = block;
 		this.chunkPos = chunkPos;
@@ -15,21 +21,19 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 		this.chunkAngVel = chunkAngVel;
 	}
 
-	// Token: 0x06001413 RID: 5139 RVA: 0x0008C504 File Offset: 0x0008A904
 	protected override void DelayedExecute()
 	{
 		base.DelayedExecute();
-		if (this.block is BlockCharacter)
+		if (block is BlockCharacter)
 		{
-			this.CharacterBreak(this.block as BlockCharacter);
+			CharacterBreak(block as BlockCharacter);
 		}
-		else if (this.block is BlockAnimatedCharacter)
+		else if (block is BlockAnimatedCharacter)
 		{
-			this.AnimatedCharacterBreak(this.block as BlockAnimatedCharacter);
+			AnimatedCharacterBreak(block as BlockAnimatedCharacter);
 		}
 	}
 
-	// Token: 0x06001414 RID: 5140 RVA: 0x0008C560 File Offset: 0x0008A960
 	protected void CharacterBreak(BlockCharacter character)
 	{
 		FootInfo[] feet = character.feet;
@@ -49,13 +53,12 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 			}
 			rigidbody.mass = 0.5f;
 			gameObject.GetComponent<Collider>().enabled = true;
-			Block.AddExplosiveForce(rigidbody, gameObject.transform.position, this.chunkPos, this.chunkVel, this.chunkAngVel, 1f);
+			Block.AddExplosiveForce(rigidbody, gameObject.transform.position, chunkPos, chunkVel, chunkAngVel);
 			FootInfo footInfo = feet[i];
 			if (footInfo.rb == null)
 			{
 				Util.UnparentTransformSafely(footInfo.go.transform);
-				Rigidbody rigidbody2 = footInfo.go.AddComponent<Rigidbody>();
-				footInfo.rb = rigidbody2;
+				Rigidbody rigidbody2 = (footInfo.rb = footInfo.go.AddComponent<Rigidbody>());
 				if (Blocksworld.interpolateRigidBodies)
 				{
 					rigidbody2.interpolation = RigidbodyInterpolation.Interpolate;
@@ -65,7 +68,7 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 				{
 					footInfo.collider.enabled = true;
 				}
-				Block.AddExplosiveForce(rigidbody2, footInfo.go.transform.position, this.chunkPos, this.chunkVel, this.chunkAngVel, 1f);
+				Block.AddExplosiveForce(rigidbody2, footInfo.go.transform.position, chunkPos, chunkVel, chunkAngVel);
 			}
 		}
 		GameObject middle = character.middle;
@@ -80,30 +83,29 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 			rigidbody3.interpolation = RigidbodyInterpolation.Interpolate;
 		}
 		rigidbody3.mass = 0.75f;
-		Block.AddExplosiveForce(rigidbody3, middle.transform.position, this.chunkPos, this.chunkVel, this.chunkAngVel, 1f);
+		Block.AddExplosiveForce(rigidbody3, middle.transform.position, chunkPos, chunkVel, chunkAngVel);
 		if (character.BlockType().EndsWith("Headless"))
 		{
 			Blocksworld.blocksworldCamera.Unfollow(character.chunk);
 			Blocksworld.chunks.Remove(character.chunk);
-			character.chunk.Destroy(true);
-			character.go.SetActive(false);
+			character.chunk.Destroy(delayed: true);
+			character.go.SetActive(value: false);
 		}
 		else if (character.collider != null)
 		{
 			character.collider.size = Vector3.one;
 			character.collider.center = new Vector3(0f, 0.5f, -0.05f);
-			character.chunk.UpdateCenterOfMass(true);
+			character.chunk.UpdateCenterOfMass();
 		}
 	}
 
-	// Token: 0x06001415 RID: 5141 RVA: 0x0008C7D4 File Offset: 0x0008ABD4
 	protected void AnimatedCharacterBreak(BlockAnimatedCharacter animCharacter)
 	{
-		foreach (BlocksterBody.BodyPart bodyPart in BlocksterBody.AllLimbs)
+		foreach (BlocksterBody.BodyPart allLimb in BlocksterBody.AllLimbs)
 		{
-			foreach (BlocksterBody.Bone bone in BlocksterBody.GetBonesForBodyPart(bodyPart))
+			foreach (BlocksterBody.Bone item in BlocksterBody.GetBonesForBodyPart(allLimb))
 			{
-				List<GameObject> objectsForBone = animCharacter.bodyParts.GetObjectsForBone(bone);
+				List<GameObject> objectsForBone = animCharacter.bodyParts.GetObjectsForBone(item);
 				GameObject gameObject = null;
 				for (int i = 0; i < objectsForBone.Count; i++)
 				{
@@ -136,7 +138,7 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 						rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
 					}
 					rigidbody.mass = 0.5f;
-					Block.AddExplosiveForce(rigidbody, gameObject.transform.position, this.chunkPos, this.chunkVel, this.chunkAngVel, 1f);
+					Block.AddExplosiveForce(rigidbody, gameObject.transform.position, chunkPos, chunkVel, chunkAngVel);
 				}
 			}
 		}
@@ -153,29 +155,17 @@ public class DelayedBreakCharacterCommand : DelayedCommand
 		}
 		rigidbody2.mass = 0.75f;
 		middle.GetComponent<Collider>().enabled = true;
-		Block.AddExplosiveForce(rigidbody2, middle.transform.position, this.chunkPos, this.chunkVel, this.chunkAngVel, 1f);
+		Block.AddExplosiveForce(rigidbody2, middle.transform.position, chunkPos, chunkVel, chunkAngVel);
 		BoxCollider component = animCharacter.go.GetComponent<BoxCollider>();
 		if (component != null)
 		{
 			component.size = Vector3.one;
 			component.center = new Vector3(0f, 0.5f, 0f);
-			animCharacter.chunk.UpdateCenterOfMass(true);
+			animCharacter.chunk.UpdateCenterOfMass();
 		}
 		else
 		{
 			BWLog.Warning("No collider found when blowing up character");
 		}
 	}
-
-	// Token: 0x04000FB0 RID: 4016
-	private Block block;
-
-	// Token: 0x04000FB1 RID: 4017
-	private Vector3 chunkPos;
-
-	// Token: 0x04000FB2 RID: 4018
-	private Vector3 chunkVel;
-
-	// Token: 0x04000FB3 RID: 4019
-	private Vector3 chunkAngVel;
 }

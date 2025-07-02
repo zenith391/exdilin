@@ -1,15 +1,12 @@
-﻿using System;
+namespace Exdilin;
 
-namespace Exdilin
+public enum RegisterType
 {
-    public enum RegisterType
-    {
-        TILE_PARAMETERS,
-        BLOCKS,
-        BLOCK_ITEMS,
-		PREDICATES,
-        ASSETS,
-        SETTINGS,
-		TEXTURES
-    }
+	TILE_PARAMETERS,
+	BLOCKS,
+	BLOCK_ITEMS,
+	PREDICATES,
+	ASSETS,
+	SETTINGS,
+	TEXTURES
 }

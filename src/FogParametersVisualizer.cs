@@ -1,68 +1,59 @@
-﻿using System;
 using Blocks;
 
-// Token: 0x0200023E RID: 574
 public class FogParametersVisualizer : ParameterValueVisualizer
 {
-	// Token: 0x06001AFA RID: 6906 RVA: 0x000C5B24 File Offset: 0x000C3F24
+	private string _defaultFogColor = string.Empty;
+
+	private float _defaultFogStart = -1f;
+
+	private float _defaultFogEnd = -1f;
+
 	public override void Update()
 	{
-		if (string.IsNullOrEmpty(this._defaultFogColor))
+		if (string.IsNullOrEmpty(_defaultFogColor))
 		{
-			this._defaultFogColor = WorldEnvironmentManager.GetFogPaint();
+			_defaultFogColor = WorldEnvironmentManager.GetFogPaint();
 		}
-		if (this._defaultFogStart < 0f)
+		if (_defaultFogStart < 0f)
 		{
-			this._defaultFogStart = Blocksworld.fogStart;
-			this._defaultFogEnd = Blocksworld.fogEnd;
+			_defaultFogStart = Blocksworld.fogStart;
+			_defaultFogEnd = Blocksworld.fogEnd;
 		}
 		Tile selectedTile = Blocksworld.bw.tileParameterEditor.selectedTile;
 		EditableTileParameter parameter = Blocksworld.bw.tileParameterEditor.parameter;
 		if (selectedTile.gaf.Predicate.Name == "Master.FogColorTo")
 		{
 			Blocksworld.worldSky.SetFogColor((string)selectedTile.gaf.Args[1]);
+			return;
+		}
+		float num = Blocksworld.fogStart;
+		float fogEnd = Blocksworld.fogEnd;
+		if (selectedTile.gaf.Predicate.Name == "Master.FogDensityTo")
+		{
+			float num2 = (float)parameter.objectValue;
+			WorldEnvironmentManager.OverrideFogDensityTemporarily(num2);
+			fogEnd = WorldEnvironmentManager.ComputeFogEnd(num, num2);
 		}
 		else
 		{
-			float num = Blocksworld.fogStart;
-			float num2 = Blocksworld.fogEnd;
-			if (selectedTile.gaf.Predicate.Name == "Master.FogDensityTo")
-			{
-				float num3 = (float)parameter.objectValue;
-				WorldEnvironmentManager.OverrideFogDensityTemporarily(num3);
-				num2 = WorldEnvironmentManager.ComputeFogEnd(num, num3);
-			}
-			else
-			{
-				float num4 = (float)parameter.objectValue;
-				num2 += num4 - num;
-				num = num4;
-				WorldEnvironmentManager.OverrideFogStartTemporarily(num);
-			}
-			Blocksworld.bw.SetFog(num, num2);
+			float num3 = (float)parameter.objectValue;
+			fogEnd += num3 - num;
+			num = num3;
+			WorldEnvironmentManager.OverrideFogStartTemporarily(num);
 		}
+		Blocksworld.bw.SetFog(num, fogEnd);
 	}
 
-	// Token: 0x06001AFB RID: 6907 RVA: 0x000C5C48 File Offset: 0x000C4048
 	public override void Destroy()
 	{
-		if (!string.IsNullOrEmpty(this._defaultFogColor))
+		if (!string.IsNullOrEmpty(_defaultFogColor))
 		{
-			Blocksworld.worldSky.SetFogColor(this._defaultFogColor);
+			Blocksworld.worldSky.SetFogColor(_defaultFogColor);
 		}
-		if (this._defaultFogStart >= 0f && this._defaultFogEnd >= 0f)
+		if (_defaultFogStart >= 0f && _defaultFogEnd >= 0f)
 		{
-			Blocksworld.bw.SetFog(this._defaultFogStart, this._defaultFogEnd);
+			Blocksworld.bw.SetFog(_defaultFogStart, _defaultFogEnd);
 		}
 		base.Destroy();
 	}
-
-	// Token: 0x040016A1 RID: 5793
-	private string _defaultFogColor = string.Empty;
-
-	// Token: 0x040016A2 RID: 5794
-	private float _defaultFogStart = -1f;
-
-	// Token: 0x040016A3 RID: 5795
-	private float _defaultFogEnd = -1f;
 }

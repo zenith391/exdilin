@@ -1,60 +1,56 @@
-﻿using System;
 using System.Collections.Generic;
 
-// Token: 0x020003E7 RID: 999
 public class UIDataSourceLocalModelList : UIDataSource
 {
-	// Token: 0x06002C21 RID: 11297 RVA: 0x0013D632 File Offset: 0x0013BA32
-	public UIDataSourceLocalModelList(UIDataManager dataManager) : base(dataManager)
+	public delegate bool ModelFilter(BWUserModel model);
+
+	private ModelFilter filter;
+
+	public UIDataSourceLocalModelList(UIDataManager dataManager)
+		: base(dataManager)
 	{
-		BWUserModelsDataManager.Instance.AddListener(new ModelsListChangedEventHandler(this.OnModelListChanged));
+		BWUserModelsDataManager.Instance.AddListener(OnModelListChanged);
 	}
 
-	// Token: 0x06002C22 RID: 11298 RVA: 0x0013D654 File Offset: 0x0013BA54
 	public static UIDataSourceLocalModelList CurrentUserUnpublishedModels(UIDataManager dataManager)
 	{
-		UIDataSourceLocalModelList uidataSourceLocalModelList = new UIDataSourceLocalModelList(dataManager);
-		uidataSourceLocalModelList.filter = ((BWUserModel model) => !model.isPublished);
-		return uidataSourceLocalModelList;
+		UIDataSourceLocalModelList uIDataSourceLocalModelList = new UIDataSourceLocalModelList(dataManager);
+		uIDataSourceLocalModelList.filter = (BWUserModel model) => !model.isPublished;
+		return uIDataSourceLocalModelList;
 	}
 
-	// Token: 0x06002C23 RID: 11299 RVA: 0x0013D68C File Offset: 0x0013BA8C
 	public static UIDataSourceLocalModelList CurrentUserPublishedModels(UIDataManager dataManager)
 	{
-		UIDataSourceLocalModelList uidataSourceLocalModelList = new UIDataSourceLocalModelList(dataManager);
-		uidataSourceLocalModelList.filter = ((BWUserModel model) => model.isPublished);
-		return uidataSourceLocalModelList;
+		UIDataSourceLocalModelList uIDataSourceLocalModelList = new UIDataSourceLocalModelList(dataManager);
+		uIDataSourceLocalModelList.filter = (BWUserModel model) => model.isPublished;
+		return uIDataSourceLocalModelList;
 	}
 
-	// Token: 0x06002C24 RID: 11300 RVA: 0x0013D6C4 File Offset: 0x0013BAC4
 	public override void Refresh()
 	{
 		base.Refresh();
 		if (BWUserModelsDataManager.Instance.localModelsLoaded)
 		{
-			this.OnModelListChanged();
-			base.loadState = UIDataSource.LoadState.Loaded;
+			OnModelListChanged();
+			base.loadState = LoadState.Loaded;
 		}
 		else
 		{
-			base.ClearData();
+			ClearData();
 			BWUserModelsDataManager.Instance.LoadAllModelsMetadata();
 		}
 	}
 
-	// Token: 0x06002C25 RID: 11301 RVA: 0x0013D6FD File Offset: 0x0013BAFD
 	public override string GetPlayButtonMessage()
 	{
 		return "UserModelPreview";
 	}
 
-	// Token: 0x06002C26 RID: 11302 RVA: 0x0013D704 File Offset: 0x0013BB04
 	public override void OverwriteData(string id, string dataKey, string newValueStr)
 	{
 		base.OverwriteData(id, dataKey, newValueStr);
 		BWUserModel modelWithLocalId = BWUserModelsDataManager.Instance.GetModelWithLocalId(id);
-		bool flag = modelWithLocalId.OverwriteMetadata(base.Data[id]);
-		if (flag)
+		if (modelWithLocalId.OverwriteMetadata(base.Data[id]))
 		{
 			BWUserModelsDataManager.Instance.SaveModelMetadata(modelWithLocalId);
 			if (!modelWithLocalId.isPublished)
@@ -65,42 +61,33 @@ public class UIDataSourceLocalModelList : UIDataSource
 		}
 	}
 
-	// Token: 0x06002C27 RID: 11303 RVA: 0x0013D76C File Offset: 0x0013BB6C
 	private void OnModelListChanged()
 	{
-		base.ClearData();
-		foreach (BWUserModel bwuserModel in BWUserModelsDataManager.Instance.localModels)
+		ClearData();
+		foreach (BWUserModel localModel in BWUserModelsDataManager.Instance.localModels)
 		{
-			if (this.filter(bwuserModel))
+			if (filter(localModel))
 			{
-				if (string.IsNullOrEmpty(bwuserModel.localID))
+				if (string.IsNullOrEmpty(localModel.localID))
 				{
 					BWLog.Info("Invalid model data, ignoring");
+					continue;
 				}
-				else if (base.Keys.Contains(bwuserModel.localID))
+				if (base.Keys.Contains(localModel.localID))
 				{
-					BWLog.Info("Duplicate modelID " + bwuserModel.localID);
+					BWLog.Info("Duplicate modelID " + localModel.localID);
+					continue;
 				}
-				else
-				{
-					Dictionary<string, string> dictionary = bwuserModel.AttributesForMenuUI();
-					dictionary["author_username"] = BWUser.currentUser.username;
-					dictionary["author_id"] = BWUser.currentUser.userID.ToString();
-					dictionary["author_profile_image_url"] = BWUser.currentUser.profileImageURL;
-					dictionary["created_by_current_user"] = true.ToString();
-					base.Keys.Add(bwuserModel.localID);
-					base.Data.Add(bwuserModel.localID, dictionary);
-				}
+				Dictionary<string, string> dictionary = localModel.AttributesForMenuUI();
+				dictionary["author_username"] = BWUser.currentUser.username;
+				dictionary["author_id"] = BWUser.currentUser.userID.ToString();
+				dictionary["author_profile_image_url"] = BWUser.currentUser.profileImageURL;
+				dictionary["created_by_current_user"] = true.ToString();
+				base.Keys.Add(localModel.localID);
+				base.Data.Add(localModel.localID, dictionary);
 			}
 		}
-		base.loadState = UIDataSource.LoadState.Loaded;
-		base.NotifyListeners();
+		base.loadState = LoadState.Loaded;
+		NotifyListeners();
 	}
-
-	// Token: 0x0400252B RID: 9515
-	private UIDataSourceLocalModelList.ModelFilter filter;
-
-	// Token: 0x020003E8 RID: 1000
-	// (Invoke) Token: 0x06002C2B RID: 11307
-	public delegate bool ModelFilter(BWUserModel model);
 }

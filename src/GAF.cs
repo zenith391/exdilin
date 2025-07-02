@@ -1,73 +1,105 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Blocks;
 using SimpleJSON;
 using UnityEngine;
 
-// Token: 0x02000164 RID: 356
 public class GAF
 {
-	// Token: 0x06001548 RID: 5448 RVA: 0x00094B08 File Offset: 0x00092F08
+	public bool Rare;
+
+	public readonly Predicate Predicate;
+
+	public readonly object[] Args;
+
+	private readonly int _hashCode;
+
+	private int _blockItemId;
+
+	private static HashSet<Predicate> dynamicLabelPredicates;
+
+	private static HashSet<Predicate> paintPredicates;
+
+	public int BlockItemId
+	{
+		get
+		{
+			if (_blockItemId == 0)
+			{
+				_blockItemId = GafToBlockItem.Find(this);
+			}
+			return _blockItemId;
+		}
+	}
+
+	public bool HasBuildPanelLabel
+	{
+		get
+		{
+			if ((Predicate == Block.predicateCreate || Predicate == Block.predicateTextureTo || Predicate == Block.predicatePaintTo || Blocksworld.globalGafs.Contains(this)) && Predicate != Block.predicateButton)
+			{
+				return Predicate == Block.predicateThen;
+			}
+			return true;
+		}
+	}
+
 	public GAF(BlockItem blockItem)
 	{
-		this._blockItemId = blockItem.Id;
-		this.Predicate = PredicateRegistry.ByName(blockItem.GafPredicateName, true);
+		_blockItemId = blockItem.Id;
+		Predicate = PredicateRegistry.ByName(blockItem.GafPredicateName);
 		if (blockItem.GafDefaultArgs == null)
 		{
-			this.Args = new object[1];
+			Args = new object[1];
 		}
 		else
 		{
-			this.Args = new object[blockItem.GafDefaultArgs.Length];
-			for (int i = 0; i < this.Args.Length; i++)
+			Args = new object[blockItem.GafDefaultArgs.Length];
+			for (int i = 0; i < Args.Length; i++)
 			{
-				this.Args[i] = blockItem.GafDefaultArgs[i];
+				Args[i] = blockItem.GafDefaultArgs[i];
 			}
 		}
-		this._hashCode = this.CalculateHashCode();
+		_hashCode = CalculateHashCode();
 	}
 
-	// Token: 0x06001549 RID: 5449 RVA: 0x00094B9D File Offset: 0x00092F9D
 	public GAF(string predicateName, params object[] args)
 	{
 		if (args == null)
 		{
 			args = new object[1];
 		}
-		this.Predicate = PredicateRegistry.ByName(predicateName, true);
-		this.Args = args;
-		this._hashCode = this.CalculateHashCode();
+		Predicate = PredicateRegistry.ByName(predicateName);
+		Args = args;
+		_hashCode = CalculateHashCode();
 	}
 
-	// Token: 0x0600154A RID: 5450 RVA: 0x00094BD3 File Offset: 0x00092FD3
 	public GAF(Predicate predicate, object[] args, bool dummy)
 	{
-		this.Predicate = predicate;
+		Predicate = predicate;
 		if (args == null)
 		{
 			args = new object[1];
 		}
-		this.Args = args;
-		this._hashCode = this.CalculateHashCode();
+		Args = args;
+		_hashCode = CalculateHashCode();
 	}
 
-	// Token: 0x0600154B RID: 5451 RVA: 0x00094C03 File Offset: 0x00093003
 	public GAF(Predicate predicate, params object[] args)
 	{
-		this.Predicate = predicate;
+		Predicate = predicate;
 		if (args == null)
 		{
 			args = new object[1];
 		}
-		this.Args = args;
-		this._hashCode = this.CalculateHashCode();
+		Args = args;
+		_hashCode = CalculateHashCode();
 	}
 
-	// Token: 0x0600154C RID: 5452 RVA: 0x00094C34 File Offset: 0x00093034
 	private int CalculateHashCode()
 	{
-		int num = (this.Predicate == null) ? 17 : this.Predicate.GetHashCode();
-		object[] args = this.Args;
+		int num = ((Predicate == null) ? 17 : Predicate.GetHashCode());
+		object[] args = Args;
 		for (int i = 0; i < args.Length; i++)
 		{
 			if (args[i] != null)
@@ -75,198 +107,160 @@ public class GAF
 				num ^= args[i].GetHashCode() << i;
 			}
 		}
-		if (args.Length > this.Predicate.ArgTypes.Length)
+		if (args.Length > Predicate.ArgTypes.Length)
 		{
-			BWLog.Warning(string.Concat(new object[]
-			{
-				"Found a GAF with more arguments than its predicate supports. Pred name: '",
-				this.Predicate.Name,
-				"',  Args.Length: ",
-				args.Length,
-				", Predicate.ArgTypes.Length: ",
-				this.Predicate.ArgTypes.Length
-			}));
+			BWLog.Warning("Found a GAF with more arguments than its predicate supports. Pred name: '" + Predicate.Name + "',  Args.Length: " + args.Length + ", Predicate.ArgTypes.Length: " + Predicate.ArgTypes.Length);
 		}
 		return num;
 	}
 
-	// Token: 0x0600154D RID: 5453 RVA: 0x00094D04 File Offset: 0x00093104
 	public GAF Clone()
 	{
-		object[] array = new object[this.Args.Length];
+		object[] array = new object[Args.Length];
 		for (int i = 0; i < array.Length; i++)
 		{
-			array[i] = this.Args[i];
+			array[i] = Args[i];
 		}
-		return new GAF(this.Predicate, array)
+		return new GAF(Predicate, array)
 		{
-			_blockItemId = this._blockItemId
+			_blockItemId = _blockItemId
 		};
 	}
 
-	// Token: 0x0600154E RID: 5454 RVA: 0x00094D58 File Offset: 0x00093158
 	public GAF ClonePart(int argCount)
 	{
 		object[] array = new object[argCount];
 		for (int i = 0; i < argCount; i++)
 		{
-			array[i] = this.Args[i];
+			array[i] = Args[i];
 		}
-		return new GAF(this.Predicate, array)
+		return new GAF(Predicate, array)
 		{
-			_blockItemId = this._blockItemId
+			_blockItemId = _blockItemId
 		};
 	}
 
-	// Token: 0x17000060 RID: 96
-	// (get) Token: 0x0600154F RID: 5455 RVA: 0x00094DA3 File Offset: 0x000931A3
-	public int BlockItemId
-	{
-		get
-		{
-			if (this._blockItemId == 0)
-			{
-				this._blockItemId = GafToBlockItem.Find(this);
-			}
-			return this._blockItemId;
-		}
-	}
-
-	// Token: 0x06001550 RID: 5456 RVA: 0x00094DC4 File Offset: 0x000931C4
 	public bool HasDynamicLabel()
 	{
-		if (this.Predicate == Block.predicateSendCustomSignal || this.Predicate == Block.predicateSendCustomSignalModel)
+		if (Predicate == Block.predicateSendCustomSignal || Predicate == Block.predicateSendCustomSignalModel)
 		{
-			string stringArgSafe = Util.GetStringArgSafe(this.Args, 0, "*");
+			string stringArgSafe = Util.GetStringArgSafe(Args, 0, "*");
 			return stringArgSafe != "*";
 		}
-		if (Block.customVariablePredicates.Contains(this.Predicate))
+		if (Block.customVariablePredicates.Contains(Predicate))
 		{
-			string stringArgSafe2 = Util.GetStringArgSafe(this.Args, 0, "*");
+			string stringArgSafe2 = Util.GetStringArgSafe(Args, 0, "*");
 			return stringArgSafe2 != "*";
 		}
-		if (GAF.dynamicLabelPredicates == null)
+		if (dynamicLabelPredicates == null)
 		{
-			GAF.dynamicLabelPredicates = new HashSet<Predicate>
+			dynamicLabelPredicates = new HashSet<Predicate>
 			{
 				Block.predicateCreateModel,
 				Block.predicateCustomTag
 			};
 		}
-		return GAF.dynamicLabelPredicates.Contains(this.Predicate);
+		return dynamicLabelPredicates.Contains(Predicate);
 	}
 
-	// Token: 0x06001551 RID: 5457 RVA: 0x00094E80 File Offset: 0x00093280
 	public string GetDynamicLabel()
 	{
-		string text = Util.GetStringArgSafe(this.Args, 0, string.Empty);
-		if (Block.blockVariableOperationsOnGlobals.Contains(this.Predicate))
+		string text = Util.GetStringArgSafe(Args, 0, string.Empty);
+		if (Block.blockVariableOperationsOnGlobals.Contains(Predicate))
 		{
-			string stringArgSafe = Util.GetStringArgSafe(this.Args, 1, string.Empty);
-			text = Block.GetLabelForPredicate(this.Predicate, text, stringArgSafe);
+			string stringArgSafe = Util.GetStringArgSafe(Args, 1, string.Empty);
+			text = Block.GetLabelForPredicate(Predicate, text, stringArgSafe);
 		}
-		else if (Block.blockVariableOperationsOnOtherBlockVars.Contains(this.Predicate))
+		else if (Block.blockVariableOperationsOnOtherBlockVars.Contains(Predicate))
 		{
-			string stringArgSafe2 = Util.GetStringArgSafe(this.Args, 1, string.Empty);
-			text = Block.GetLabelForPredicate(this.Predicate, text, stringArgSafe2);
+			string stringArgSafe2 = Util.GetStringArgSafe(Args, 1, string.Empty);
+			text = Block.GetLabelForPredicate(Predicate, text, stringArgSafe2);
 		}
 		return text;
 	}
 
-	// Token: 0x06001552 RID: 5458 RVA: 0x00094F0F File Offset: 0x0009330F
 	public TileResultCode RunSensor(Block block, ScriptRowExecutionInfo eInfo)
 	{
-		return this.Predicate.RunSensor(block, eInfo, this.Args);
+		return Predicate.RunSensor(block, eInfo, Args);
 	}
 
-	// Token: 0x06001553 RID: 5459 RVA: 0x00094F24 File Offset: 0x00093324
 	public TileResultCode RunAction(Block block, ScriptRowExecutionInfo eInfo)
 	{
-		return this.Predicate.RunAction(block, eInfo, this.Args);
+		return Predicate.RunAction(block, eInfo, Args);
 	}
 
-	// Token: 0x06001554 RID: 5460 RVA: 0x00094F39 File Offset: 0x00093339
 	public bool UpdatesIconOnArgumentChange()
 	{
-		return this.Predicate.updatesIconOnArgumentChange;
+		return Predicate.updatesIconOnArgumentChange;
 	}
 
-	// Token: 0x06001555 RID: 5461 RVA: 0x00094F46 File Offset: 0x00093346
 	public bool CanBeAction()
 	{
-		return this.Predicate.Action != null;
+		return Predicate.Action != null;
 	}
 
-	// Token: 0x06001556 RID: 5462 RVA: 0x00094F59 File Offset: 0x00093359
 	public bool CanBeCondition()
 	{
-		return this.Predicate.Sensor != null;
+		return Predicate.Sensor != null;
 	}
 
-	// Token: 0x06001557 RID: 5463 RVA: 0x00094F6C File Offset: 0x0009336C
 	public bool AllowTilesAfter()
 	{
-		return !Block.noTilesAfterPredicates.Contains(this.Predicate);
+		return !Block.noTilesAfterPredicates.Contains(Predicate);
 	}
 
-	// Token: 0x06001558 RID: 5464 RVA: 0x00094F81 File Offset: 0x00093381
 	public bool IsRare()
 	{
-		return this.Rare;
+		return Rare;
 	}
 
-	// Token: 0x06001559 RID: 5465 RVA: 0x00094F89 File Offset: 0x00093389
 	public bool IsCreateModel()
 	{
-		return this.Predicate == Block.predicateCreateModel;
+		return Predicate == Block.predicateCreateModel;
 	}
 
-	// Token: 0x0600155A RID: 5466 RVA: 0x00094F98 File Offset: 0x00093398
 	public bool IsButtonInput()
 	{
-		return this.Predicate.Name == "Block.ButtonInput";
+		return Predicate.Name == "Block.ButtonInput";
 	}
 
-	// Token: 0x0600155B RID: 5467 RVA: 0x00094FB0 File Offset: 0x000933B0
 	public bool IsPaint()
 	{
-		if (GAF.paintPredicates == null)
+		if (paintPredicates == null)
 		{
-			GAF.paintPredicates = new HashSet<Predicate>
+			paintPredicates = new HashSet<Predicate>
 			{
 				Block.predicatePaintTo,
-				PredicateRegistry.ByName("Block.PaintSkyTo", true),
-				PredicateRegistry.ByName("Master.PaintSkyTo", true),
-				PredicateRegistry.ByName("Master.PaintTerrainTo", true)
+				PredicateRegistry.ByName("Block.PaintSkyTo"),
+				PredicateRegistry.ByName("Master.PaintSkyTo"),
+				PredicateRegistry.ByName("Master.PaintTerrainTo")
 			};
 		}
-		return GAF.paintPredicates.Contains(this.Predicate);
+		return paintPredicates.Contains(Predicate);
 	}
 
-	// Token: 0x0600155C RID: 5468 RVA: 0x00095028 File Offset: 0x00093428
 	public bool Matches(GAF other)
 	{
-		if (other.Predicate != this.Predicate)
+		if (other.Predicate != Predicate)
 		{
 			return false;
 		}
-		if (this.Predicate == Block.predicateCreateModel)
+		if (Predicate == Block.predicateCreateModel)
 		{
-			int intArg = Util.GetIntArg(this.Args, 0, -1);
+			int intArg = Util.GetIntArg(Args, 0, -1);
 			int intArg2 = Util.GetIntArg(other.Args, 0, -2);
 			return intArg == intArg2;
 		}
-		return other.BlockItemId == this.BlockItemId;
+		return other.BlockItemId == BlockItemId;
 	}
 
-	// Token: 0x0600155D RID: 5469 RVA: 0x00095090 File Offset: 0x00093490
 	public bool MatchesAny(HashSet<GAF> gafs)
 	{
 		if (gafs != null)
 		{
 			foreach (GAF gaf in gafs)
 			{
-				if (gaf != null && this.Matches(gaf))
+				if (gaf != null && Matches(gaf))
 				{
 					return true;
 				}
@@ -276,25 +270,24 @@ public class GAF
 		return false;
 	}
 
-	// Token: 0x0600155E RID: 5470 RVA: 0x00095104 File Offset: 0x00093504
 	public override bool Equals(object other)
 	{
 		if (!(other is GAF))
 		{
 			return false;
 		}
-		GAF gaf = (GAF)other;
-		if (gaf.Predicate != this.Predicate)
+		GAF gAF = (GAF)other;
+		if (gAF.Predicate != Predicate)
 		{
 			return false;
 		}
-		if (this.Args.Length != gaf.Args.Length)
+		if (Args.Length != gAF.Args.Length)
 		{
 			return false;
 		}
-		for (int i = 0; i < this.Args.Length; i++)
+		for (int i = 0; i < Args.Length; i++)
 		{
-			if (gaf.Args[i] != this.Args[i] && !gaf.Args[i].Equals(this.Args[i]))
+			if (gAF.Args[i] != Args[i] && !gAF.Args[i].Equals(Args[i]))
 			{
 				return false;
 			}
@@ -302,102 +295,97 @@ public class GAF
 		return true;
 	}
 
-	// Token: 0x0600155F RID: 5471 RVA: 0x0009519A File Offset: 0x0009359A
 	public bool EqualsInTutorial(GAF g2)
 	{
 		return Tutorial.GAFsEqualInTutorial(this, g2);
 	}
 
-	// Token: 0x06001560 RID: 5472 RVA: 0x000951A3 File Offset: 0x000935A3
 	public override int GetHashCode()
 	{
-		return this._hashCode;
+		return _hashCode;
 	}
 
-	// Token: 0x06001561 RID: 5473 RVA: 0x000951AC File Offset: 0x000935AC
 	public override string ToString()
 	{
-		string str = this.Predicate.Name + "(";
-		for (int i = 0; i < this.Args.Length; i++)
+		string text = Predicate.Name + "(";
+		for (int i = 0; i < Args.Length; i++)
 		{
 			if (i != 0)
 			{
-				str += ",";
+				text += ",";
 			}
-			object obj = this.Args[i];
-			string str2;
+			object obj = Args[i];
+			string text2;
 			if (obj == null)
 			{
-				str2 = "*";
+				text2 = "*";
 			}
 			else if (obj is float || obj is int || obj is bool || obj is string || obj is Vector3 || obj is Quaternion)
 			{
-				str2 = obj.ToString();
+				text2 = obj.ToString();
 			}
 			else
 			{
-				BWLog.Error(string.Format("Don't know how to serialize this object: {0}", obj.GetType().ToString()));
-				str2 = obj.ToString();
+				BWLog.Error($"Don't know how to serialize this object: {obj.GetType().ToString()}");
+				text2 = obj.ToString();
 			}
-			str += str2;
+			text += text2;
 		}
-		return str + ")";
+		return text + ")";
 	}
 
-	// Token: 0x06001562 RID: 5474 RVA: 0x00095298 File Offset: 0x00093698
 	public bool FixSemanticallyInvalidness()
 	{
-		Predicate predicate = this.Predicate;
+		Predicate predicate = Predicate;
 		if (predicate == Block.predicateTextureTo)
 		{
-			string key = (string)this.Args[0];
+			string key = (string)Args[0];
 			if (!Materials.textureInfos.ContainsKey(key))
 			{
-				this.Args[0] = "Plain";
+				Args[0] = "Plain";
 				return true;
 			}
 		}
 		if (predicate == Block.predicatePaintTo)
 		{
-			string key2 = (string)this.Args[0];
+			string key2 = (string)Args[0];
 			if (!Blocksworld.colorDefinitions.ContainsKey(key2))
 			{
-				this.Args[0] = "Yellow";
+				Args[0] = "Yellow";
 				return true;
 			}
 		}
 		if (predicate == Block.predicateCreate)
 		{
-			string item = (string)this.Args[0];
+			string item = (string)Args[0];
 			if (!Blocksworld.existingBlockNames.Contains(item))
 			{
-				this.Args[0] = "Cube";
+				Args[0] = "Cube";
 				return true;
 			}
 		}
 		if (predicate == Block.predicatePlaySoundDurational)
 		{
-			string text = (string)this.Args[0];
+			string text = (string)Args[0];
 			if (!Sound.existingSfxs.Contains(text) && !Sound.existingSfxs.Contains("SFX " + text))
 			{
-				this.Args[0] = "Checkpoint";
+				Args[0] = "Checkpoint";
 				return true;
 			}
 		}
 		return false;
 	}
 
-	// Token: 0x06001563 RID: 5475 RVA: 0x000953AC File Offset: 0x000937AC
 	public bool IsSemanticallyValid()
 	{
-		Predicate predicate = this.Predicate;
-        if (BWEnvConfig.Flags["SKIP_GAF_VERIFICATION"])
-        {
-            return true;
-        }
-        if (predicate == Block.predicateTextureTo)
+		Predicate predicate = Predicate;
+		if (BWEnvConfig.Flags["SKIP_GAF_VERIFICATION"])
 		{
-			string text = (string)this.Args[0];
+			return true;
+		}
+		if (predicate == Block.predicateTextureTo)
+		{
+			string text = (string)Args[0];
 			if (!Materials.textureInfos.ContainsKey(text))
 			{
 				BWLog.Info("GAF validation error: Could not find texture '" + text + "'");
@@ -406,7 +394,7 @@ public class GAF
 		}
 		else if (predicate == Block.predicatePaintTo)
 		{
-			string text2 = (string)this.Args[0];
+			string text2 = (string)Args[0];
 			if (!Blocksworld.colorDefinitions.ContainsKey(text2))
 			{
 				BWLog.Info("GAF validation error: Could not find paint '" + text2 + "'");
@@ -415,7 +403,7 @@ public class GAF
 		}
 		else if (predicate == Block.predicateCreate)
 		{
-			string text3 = (string)this.Args[0];
+			string text3 = (string)Args[0];
 			if (!Blocksworld.existingBlockNames.Contains(text3))
 			{
 				BWLog.Info("GAF validation error: Could not find block '" + text3 + "'");
@@ -424,7 +412,7 @@ public class GAF
 		}
 		else if (predicate == Block.predicatePlaySoundDurational)
 		{
-			string text4 = (string)this.Args[0];
+			string text4 = (string)Args[0];
 			if (!Sound.existingSfxs.Contains(text4) && !Sound.existingSfxs.Contains("SFX " + text4))
 			{
 				BWLog.Info("GAF validation error: Could not find SFX '" + text4 + "'");
@@ -434,112 +422,79 @@ public class GAF
 		return true;
 	}
 
-	// Token: 0x06001564 RID: 5476 RVA: 0x000954F0 File Offset: 0x000938F0
 	public static GAF FromJSON(JObject obj, bool nullOnFailure = false, bool logOnFailure = true)
 	{
 		if (obj.ObjectValue != null)
 		{
-			string text = (string)obj["predicate"];
-			text = SymbolCompat.RenamePredicate(text);
-			Predicate predicate = PredicateRegistry.ByName(text, logOnFailure);
+			string name = (string)obj["predicate"];
+			name = SymbolCompat.RenamePredicate(name);
+			Predicate predicate = PredicateRegistry.ByName(name, logOnFailure);
 			if (predicate == null)
 			{
 				if (BW.isUnityEditor && Options.CreateErrorGafs)
 				{
-					return new GAF("Error", new object[]
-					{
-						"Predicate not found: " + text
-					});
+					return new GAF("Error", "Predicate not found: " + name);
 				}
 				return null;
 			}
-			else
-			{
-				List<JObject> arrayValue = obj["args"].ArrayValue;
-				Type[] argTypes = predicate.ArgTypes;
-				if (predicate.ArgTypes.Length < arrayValue.Count)
-				{
-					if (logOnFailure)
-					{
-						BWLog.Error(string.Concat(new object[]
-						{
-							"Found more arguments than supported for predicate ",
-							predicate.Name,
-							" Max supported: ",
-							predicate.ArgTypes.Length,
-							" Found: ",
-							arrayValue.Count
-						}));
-					}
-					return null;
-				}
-				int num = Mathf.Min(arrayValue.Count, argTypes.Length);
-				object[] array = new object[num];
-				for (int i = 0; i < num; i++)
-				{
-					array[i] = GAF.ArgFromJSON(predicate.ArgTypes[i], obj["args"][i]);
-				}
-				array = predicate.ExtendArguments(array, false);
-				return SymbolCompat.RenameGAF(new GAF(predicate, array));
-			}
-		}
-		else
-		{
-			if (obj.ArrayValue == null)
+			List<JObject> arrayValue = obj["args"].ArrayValue;
+			Type[] argTypes = predicate.ArgTypes;
+			if (predicate.ArgTypes.Length < arrayValue.Count)
 			{
 				if (logOnFailure)
 				{
-					BWLog.Error("JObject obj is not a valid GAF in GAF.FromJSON()");
+					BWLog.Error("Found more arguments than supported for predicate " + predicate.Name + " Max supported: " + predicate.ArgTypes.Length + " Found: " + arrayValue.Count);
 				}
 				return null;
 			}
-			string text2 = (string)obj[0];
-			text2 = SymbolCompat.RenamePredicate(text2);
-			Predicate predicate2 = PredicateRegistry.ByName(text2, logOnFailure);
-			if (predicate2 == null)
+			int num = Mathf.Min(arrayValue.Count, argTypes.Length);
+			object[] array = new object[num];
+			for (int i = 0; i < num; i++)
 			{
-				if (BW.isUnityEditor && Options.CreateErrorGafs)
-				{
-					return new GAF("Error", new object[]
-					{
-						"Predicate not found: " + text2
-					});
-				}
-				return null;
+				array[i] = ArgFromJSON(predicate.ArgTypes[i], obj["args"][i]);
 			}
-			else
-			{
-				List<JObject> arrayValue2 = obj.ArrayValue;
-				Type[] argTypes2 = predicate2.ArgTypes;
-				if (arrayValue2.Count - 1 > argTypes2.Length)
-				{
-					if (logOnFailure)
-					{
-						BWLog.Error(string.Concat(new object[]
-						{
-							"Found more arguments than supported for predicate ",
-							predicate2.Name,
-							" Max supported: ",
-							predicate2.ArgTypes.Length,
-							" Found: ",
-							arrayValue2.Count - 1
-						}));
-					}
-					return null;
-				}
-				int num2 = Mathf.Min(arrayValue2.Count - 1, argTypes2.Length);
-				object[] array2 = new object[num2];
-				for (int j = 1; j < obj.ArrayValue.Count; j++)
-				{
-					array2[j - 1] = GAF.ArgFromJSON(predicate2.ArgTypes[j - 1], obj[j]);
-				}
-				array2 = predicate2.ExtendArguments(array2, false);
-				return SymbolCompat.RenameGAF(new GAF(predicate2, array2));
-			}
+			array = predicate.ExtendArguments(array, overwrite: false);
+			return SymbolCompat.RenameGAF(new GAF(predicate, array));
 		}
+		if (obj.ArrayValue == null)
+		{
+			if (logOnFailure)
+			{
+				BWLog.Error("JObject obj is not a valid GAF in GAF.FromJSON()");
+			}
+			return null;
+		}
+		string name2 = (string)obj[0];
+		name2 = SymbolCompat.RenamePredicate(name2);
+		Predicate predicate2 = PredicateRegistry.ByName(name2, logOnFailure);
+		if (predicate2 == null)
+		{
+			if (BW.isUnityEditor && Options.CreateErrorGafs)
+			{
+				return new GAF("Error", "Predicate not found: " + name2);
+			}
+			return null;
+		}
+		List<JObject> arrayValue2 = obj.ArrayValue;
+		Type[] argTypes2 = predicate2.ArgTypes;
+		if (arrayValue2.Count - 1 > argTypes2.Length)
+		{
+			if (logOnFailure)
+			{
+				BWLog.Error("Found more arguments than supported for predicate " + predicate2.Name + " Max supported: " + predicate2.ArgTypes.Length + " Found: " + (arrayValue2.Count - 1));
+			}
+			return null;
+		}
+		int num2 = Mathf.Min(arrayValue2.Count - 1, argTypes2.Length);
+		object[] array2 = new object[num2];
+		for (int j = 1; j < obj.ArrayValue.Count; j++)
+		{
+			array2[j - 1] = ArgFromJSON(predicate2.ArgTypes[j - 1], obj[j]);
+		}
+		array2 = predicate2.ExtendArguments(array2, overwrite: false);
+		return SymbolCompat.RenameGAF(new GAF(predicate2, array2));
 	}
 
-	// Token: 0x06001565 RID: 5477 RVA: 0x000957C4 File Offset: 0x00093BC4
 	private void WriteDefaultArgValue(JSONStreamEncoder encoder, Type argType, bool compact)
 	{
 		if (argType.Equals(typeof(float)))
@@ -552,7 +507,7 @@ public class GAF
 		}
 		else if (argType.Equals(typeof(bool)))
 		{
-			encoder.WriteBool(false);
+			encoder.WriteBool(b: false);
 		}
 		else if (argType.Equals(typeof(string)))
 		{
@@ -568,37 +523,28 @@ public class GAF
 		}
 	}
 
-	// Token: 0x06001566 RID: 5478 RVA: 0x000958B4 File Offset: 0x00093CB4
 	public void ToJSON(JSONStreamEncoder encoder)
 	{
 		encoder.BeginObject();
 		encoder.WriteKey("predicate");
-		encoder.WriteString(this.Predicate.Name);
+		encoder.WriteString(Predicate.Name);
 		encoder.WriteKey("args");
 		encoder.BeginArray();
-		for (int i = 0; i < this.Args.Length; i++)
+		for (int i = 0; i < Args.Length; i++)
 		{
-			object obj = this.Args[i];
+			object obj = Args[i];
 			try
 			{
-				GAF.WriteArgJSON(encoder, obj, false);
+				WriteArgJSON(encoder, obj);
 			}
 			catch
 			{
 				string text = "GAF_Serialization_Error";
-				string text2 = string.Concat(new object[]
-				{
-					"World:",
-					WorldSession.current.worldTitle,
-					"Predicate:",
-					this.Predicate.Name,
-					" argument index:",
-					i
-				});
+				string text2 = "World:" + WorldSession.current.worldTitle + "Predicate:" + Predicate.Name + " argument index:" + i;
 				BWLog.Error(text + text2);
-				if (i < this.Predicate.ArgTypes.Length)
+				if (i < Predicate.ArgTypes.Length)
 				{
-					this.WriteDefaultArgValue(encoder, this.Predicate.ArgTypes[i], false);
+					WriteDefaultArgValue(encoder, Predicate.ArgTypes[i], compact: false);
 				}
 				else
 				{
@@ -611,45 +557,41 @@ public class GAF
 		encoder.EndObject();
 	}
 
-	// Token: 0x06001567 RID: 5479 RVA: 0x000959E0 File Offset: 0x00093DE0
 	public void ToJSONCompact(JSONStreamEncoder encoder)
 	{
 		encoder.BeginArray();
-		string text = this.Predicate.Name;
-		object[] array = this.Args;
+		string text = Predicate.Name;
+		object[] array = Args;
 		if (Blocksworld.useCompactGafWriteRenamings)
 		{
-			string text2;
-			if (SymbolCompat.predicateInvRenamings.TryGetValue(text, out text2))
+			if (SymbolCompat.predicateInvRenamings.TryGetValue(text, out var value))
 			{
-				text = text2;
+				text = value;
 			}
-			string text3 = null;
-			string text6;
-			if (this.Predicate == Block.predicateCreate)
+			string text2 = null;
+			string value4;
+			if (Predicate == Block.predicateCreate)
 			{
-				string text4;
-				if (SymbolCompat.blockInvRenamings.TryGetValue((string)this.Args[0], out text4))
+				if (SymbolCompat.blockInvRenamings.TryGetValue((string)Args[0], out var value2))
 				{
-					text3 = text4;
+					text2 = value2;
 				}
 			}
-			else if (this.Predicate == Block.predicatePaintTo)
+			else if (Predicate == Block.predicatePaintTo)
 			{
-				string text5;
-				if (SymbolCompat.paintInvRenamings.TryGetValue((string)this.Args[0], out text5))
+				if (SymbolCompat.paintInvRenamings.TryGetValue((string)Args[0], out var value3))
 				{
-					text3 = text5;
+					text2 = value3;
 				}
 			}
-			else if (this.Predicate == Block.predicateTextureTo && SymbolCompat.textureInvRenamings.TryGetValue((string)this.Args[0], out text6))
+			else if (Predicate == Block.predicateTextureTo && SymbolCompat.textureInvRenamings.TryGetValue((string)Args[0], out value4))
 			{
-				text3 = text6;
+				text2 = value4;
 			}
-			if (text3 != null)
+			if (text2 != null)
 			{
-				array = (object[])this.Args.Clone();
-				array[0] = text3;
+				array = (object[])Args.Clone();
+				array[0] = text2;
 			}
 		}
 		encoder.WriteString(text);
@@ -658,61 +600,42 @@ public class GAF
 			object obj = array[i];
 			try
 			{
-				GAF.WriteArgJSON(encoder, obj, true);
+				WriteArgJSON(encoder, obj, compact: true);
 			}
 			catch
 			{
-				string text7 = "GAF_Serialization_Error";
-				string text8 = string.Concat(new object[]
+				string text3 = "GAF_Serialization_Error";
+				string text4 = "World:" + WorldSession.current.worldTitle + "Predicate:" + Predicate.Name + " argument index:" + i;
+				BWLog.Error(text3 + text4);
+				if (i < Predicate.ArgTypes.Length)
 				{
-					"World:",
-					WorldSession.current.worldTitle,
-					"Predicate:",
-					this.Predicate.Name,
-					" argument index:",
-					i
-				});
-				BWLog.Error(text7 + text8);
-				if (i < this.Predicate.ArgTypes.Length)
-				{
-					this.WriteDefaultArgValue(encoder, this.Predicate.ArgTypes[i], true);
+					WriteDefaultArgValue(encoder, Predicate.ArgTypes[i], compact: true);
 				}
 				else
 				{
 					encoder.WriteNumber(0L);
 				}
-				BW.Analytics.SendAnalyticsEvent(text7, text8);
+				BW.Analytics.SendAnalyticsEvent(text3, text4);
 			}
 		}
 		encoder.EndArray();
 	}
 
-	// Token: 0x17000061 RID: 97
-	// (get) Token: 0x06001568 RID: 5480 RVA: 0x00095BD4 File Offset: 0x00093FD4
-	public bool HasBuildPanelLabel
-	{
-		get
-		{
-			return (this.Predicate != Block.predicateCreate && this.Predicate != Block.predicateTextureTo && this.Predicate != Block.predicatePaintTo && !Blocksworld.globalGafs.Contains(this)) || this.Predicate == Block.predicateButton || this.Predicate == Block.predicateThen;
-		}
-	}
-
-	// Token: 0x06001569 RID: 5481 RVA: 0x00095C44 File Offset: 0x00094044
 	public static void WriteGAFCountDictionary(JSONStreamEncoder encoder, Dictionary<GAF, int> dict)
 	{
 		encoder.BeginArray();
 		encoder.InsertNewline();
-		foreach (KeyValuePair<GAF, int> keyValuePair in dict)
+		foreach (KeyValuePair<GAF, int> item in dict)
 		{
 			encoder.BeginArray();
-			keyValuePair.Key.ToJSONCompact(encoder);
-			if (keyValuePair.Value == -1)
+			item.Key.ToJSONCompact(encoder);
+			if (item.Value == -1)
 			{
 				encoder.WriteString("infinity");
 			}
 			else
 			{
-				encoder.WriteNumber((long)keyValuePair.Value);
+				encoder.WriteNumber(item.Value);
 			}
 			encoder.EndArray();
 			encoder.InsertNewline();
@@ -720,44 +643,45 @@ public class GAF
 		encoder.EndArray();
 	}
 
-	// Token: 0x0600156A RID: 5482 RVA: 0x00095CF0 File Offset: 0x000940F0
 	public static void WriteArgJSON(JSONStreamEncoder encoder, object obj, bool compact = false)
 	{
 		if (obj is float)
 		{
 			encoder.WriteNumber((float)obj);
+			return;
 		}
-		else if (obj is int)
+		if (obj is int)
 		{
-			encoder.WriteNumber((long)((int)obj));
+			encoder.WriteNumber((int)obj);
+			return;
 		}
-		else if (obj is bool)
+		if (obj is bool)
 		{
 			encoder.WriteBool((bool)obj);
+			return;
 		}
-		else if (obj is string)
+		if (obj is string)
 		{
 			encoder.WriteString((string)obj);
+			return;
 		}
-		else if (obj is Vector3)
+		if (obj is Vector3)
 		{
 			((Vector3)obj).ToJSON(encoder, !Options.NoSnapSave, compact, Blocksworld.useCompactGafWriteRenamings);
+			return;
 		}
-		else if (obj is Quaternion)
+		if (obj is Quaternion)
 		{
 			((Quaternion)obj).ToJSON(encoder);
+			return;
 		}
-		else
+		if (obj == null)
 		{
-			if (obj == null)
-			{
-				throw new ArgumentException("obj", "Trying to serialize null object");
-			}
-			throw new ArgumentException("obj", string.Format("Don't know how to serialize this object: {0}", obj.GetType().ToString()));
+			throw new ArgumentException("obj", "Trying to serialize null object");
 		}
+		throw new ArgumentException("obj", $"Don't know how to serialize this object: {obj.GetType().ToString()}");
 	}
 
-	// Token: 0x0600156B RID: 5483 RVA: 0x00095DEC File Offset: 0x000941EC
 	public static object ArgFromJSON(Type type, JObject obj)
 	{
 		if (type == typeof(float))
@@ -787,7 +711,6 @@ public class GAF
 		throw new ArgumentException("type", "Don't know how to materialize this type");
 	}
 
-	// Token: 0x0600156C RID: 5484 RVA: 0x00095EAC File Offset: 0x000942AC
 	public static bool IsJSONGAFSupported(JObject jgaf)
 	{
 		string text = (string)jgaf[0];
@@ -795,99 +718,71 @@ public class GAF
 		{
 			return false;
 		}
-		if (text != null)
+		switch (text)
 		{
-			if (text == "Block.Create" || text == "Block.TextureTo" || text == "Block.PaintTo")
+		case "Block.Create":
+		case "Block.TextureTo":
+		case "Block.PaintTo":
+		{
+			GAF gAF = FromJSON(jgaf);
+			if (gAF == null)
 			{
-				GAF gaf = GAF.FromJSON(jgaf, false, true);
-				if (gaf == null)
-				{
-					BWLog.Info("GAF.FromJSON() returned null. predName: " + text);
-				}
-				return TileIconManager.Instance.GAFHasIcon(gaf);
+				BWLog.Info("GAF.FromJSON() returned null. predName: " + text);
 			}
+			return TileIconManager.Instance.GAFHasIcon(gAF);
 		}
-		return true;
+		default:
+			return true;
+		}
 	}
 
-	// Token: 0x0600156D RID: 5485 RVA: 0x00095F3C File Offset: 0x0009433C
 	public static bool IsJSONGAFListSupported(string jsonGafs)
 	{
-		JObject jobject = JSONDecoder.Decode(jsonGafs);
+		JObject jObject = JSONDecoder.Decode(jsonGafs);
 		if (!PredicateRegistry.IsInitialized())
 		{
 			BWLog.Info("Predicate Registry not initialized in IsJSONGAFListSupported(). Returning true.");
 			return true;
 		}
-		foreach (JObject jobject2 in jobject.ArrayValue)
+		foreach (JObject item in jObject.ArrayValue)
 		{
-			if (!GAF.IsJSONGAFSupported(jobject2))
+			if (IsJSONGAFSupported(item))
 			{
-				BWLog.Info("Unsupported GAF detected in IsJSONGAFListSupported()");
-				foreach (JObject obj in jobject2.ArrayValue)
-				{
-					BWLog.Info((string)obj);
-				}
-				return false;
+				continue;
 			}
+			BWLog.Info("Unsupported GAF detected in IsJSONGAFListSupported()");
+			foreach (JObject item2 in item.ArrayValue)
+			{
+				BWLog.Info((string)item2);
+			}
+			return false;
 		}
 		return true;
 	}
 
-	// Token: 0x0600156E RID: 5486 RVA: 0x00096020 File Offset: 0x00094420
 	public static List<GAF> GetAllGlobalGAFs()
 	{
 		List<GAF> list = new List<GAF>();
-		list.AddRange(new GAF[]
+		list.AddRange(new GAF[3]
 		{
-			new GAF("Meta.TileBackground", new object[0]),
-			new GAF("Meta.TileBackgroundWithLabel", new object[0]),
-			new GAF("Meta.ButtonBackground", new object[0])
+			new GAF("Meta.TileBackground"),
+			new GAF("Meta.TileBackgroundWithLabel"),
+			new GAF("Meta.ButtonBackground")
 		});
-		list.Add(new GAF("Meta.Then", new object[0]));
-		foreach (UIInputControl.ControlVariant controlVariant in UIInputControl.allButtonVariants)
+		list.Add(new GAF("Meta.Then"));
+		foreach (UIInputControl.ControlVariant allButtonVariant in UIInputControl.allButtonVariants)
 		{
-			string text = controlVariant.ToString();
-			GAF item = new GAF("Control", new object[]
-			{
-				text
-			});
-			GAF item2 = new GAF("Control", new object[]
-			{
-				text + " Pressed"
-			});
+			string text = allButtonVariant.ToString();
+			GAF item = new GAF("Control", text);
+			GAF item2 = new GAF("Control", text + " Pressed");
 			list.Add(item);
 			list.Add(item2);
-			foreach (UIInputControl.ControlType controlType in UIInputControl.allButtonTypes)
+			foreach (UIInputControl.ControlType allButtonType in UIInputControl.allButtonTypes)
 			{
-				GAF item3 = new GAF("Block.ButtonInput", new object[]
-				{
-					controlType.ToString() + " " + text
-				});
+				GAF item3 = new GAF("Block.ButtonInput", allButtonType.ToString() + " " + text);
 				list.Add(item3);
 			}
 		}
 		return list;
 	}
-
-	// Token: 0x040010A9 RID: 4265
-	public bool Rare;
-
-	// Token: 0x040010AA RID: 4266
-	public readonly Predicate Predicate;
-
-	// Token: 0x040010AB RID: 4267
-	public readonly object[] Args;
-
-	// Token: 0x040010AC RID: 4268
-	private readonly int _hashCode;
-
-	// Token: 0x040010AD RID: 4269
-	private int _blockItemId;
-
-	// Token: 0x040010AE RID: 4270
-	private static HashSet<Predicate> dynamicLabelPredicates;
-
-	// Token: 0x040010AF RID: 4271
-	private static HashSet<Predicate> paintPredicates;
 }

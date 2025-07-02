@@ -1,206 +1,210 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using UnityEngine;
-using MoonSharp.Interpreter;
+using System.Text;
+using Blocks;
 using Exdilin.Lua;
+using ModExdilin;
+using MoonSharp.Interpreter;
+using UnityEngine;
 
-namespace Exdilin
+namespace Exdilin;
+
+public static class ModLoader
 {
-	public static class ModLoader {
+	public delegate void OnModLoading(string id, string stage);
 
-		public static List<Mod> mods = new List<Mod>();
-		public static List<string> pendingErrorMsg = new List<string>();
-		private static Dictionary<string, Assembly> assemblies = new Dictionary<string, Assembly>();
+	public static List<Mod> mods = new List<Mod>();
 
-		public static event EventHandler OverlaysAvailable;
-		public static bool IsOverlayLoaded;
+	public static List<string> pendingErrorMsg = new List<string>();
 
-		public delegate void OnModLoading(string id, string stage);
+	private static Dictionary<string, Assembly> assemblies = new Dictionary<string, Assembly>();
 
-		public static IEnumerator ShowErrors() {
-			while (!BWStandalone.Instance.menuLoaded) {
-				yield return new WaitForSeconds(0.5f);
-			}
-			IsOverlayLoaded = true;
-			foreach (string msg in pendingErrorMsg) {
-				BWStandalone.Overlays.ShowMessage(msg);
-				yield return new WaitForSeconds(0.5f);
-				while (BWStandalone.Overlays.IsShowingPopup()) {
-					yield return new WaitForSeconds(0.5f);
-				}
-			}
-			OverlaysAvailable?.Invoke(null, new EventArgs());
-			yield break;
+	public static bool IsOverlayLoaded;
+
+	public static event EventHandler OverlaysAvailable;
+
+	public static IEnumerator ShowErrors()
+	{
+		while (!BWStandalone.Instance.menuLoaded)
+		{
+			yield return new WaitForSeconds(0.5f);
 		}
-
-		private static void InitLuaOptions() {
-			Script.DefaultOptions.DebugPrint = delegate (string msg)
+		IsOverlayLoaded = true;
+		foreach (string item in pendingErrorMsg)
+		{
+			BWStandalone.Overlays.ShowMessage(item);
+			yield return new WaitForSeconds(0.5f);
+			while (BWStandalone.Overlays.IsShowingPopup())
 			{
-				BWLog.Info("[Lua Mod] " + msg);
-			};
-			UserData.RegisterType<ExdilinAPI>();
-			UserData.RegisterType<LuaBlockItem>();
-			UserData.RegisterType<LuaBlock>();
-			UserData.RegisterType<BlockItem>();
-			UserData.RegisterType<PredicateEntry>();
-			UserData.RegisterType<Vector3>();
-			UserData.RegisterType<ScriptRowExecutionInfo>();
+				yield return new WaitForSeconds(0.5f);
+			}
 		}
+		ModLoader.OverlaysAvailable?.Invoke(null, new EventArgs());
+	}
 
-		public static IEnumerator LoadModsCoroutine(OnModLoading modLoading)
-        {
-            string CurrentUserModsFolder = Path.Combine(BWFilesystem.CurrentUserDataFolder, "mods");
-			string CurrentUserLuaModsFolder = Path.Combine(BWFilesystem.CurrentUserDataFolder, "lua_mods");
-            if (!Directory.Exists(CurrentUserModsFolder))
-            {
-                Directory.CreateDirectory(CurrentUserModsFolder);
-            }
-			if (!Directory.Exists(CurrentUserLuaModsFolder)) {
-				Directory.CreateDirectory(CurrentUserLuaModsFolder);
+	private static void InitLuaOptions()
+	{
+		Script.DefaultOptions.DebugPrint = delegate(string msg)
+		{
+			BWLog.Info("[Lua Mod] " + msg);
+		};
+		UserData.RegisterType<ExdilinAPI>();
+		UserData.RegisterType<LuaBlockItem>();
+		UserData.RegisterType<LuaBlock>();
+		UserData.RegisterType<BlockItem>();
+		UserData.RegisterType<PredicateEntry>();
+		UserData.RegisterType<Vector3>();
+		UserData.RegisterType<ScriptRowExecutionInfo>();
+	}
+
+	public static IEnumerator LoadModsCoroutine(OnModLoading modLoading)
+	{
+		string text = Path.Combine(BWFilesystem.CurrentUserDataFolder, "mods");
+		string CurrentUserLuaModsFolder = Path.Combine(BWFilesystem.CurrentUserDataFolder, "lua_mods");
+		if (!Directory.Exists(text))
+		{
+			Directory.CreateDirectory(text);
+		}
+		if (!Directory.Exists(CurrentUserLuaModsFolder))
+		{
+			Directory.CreateDirectory(CurrentUserLuaModsFolder);
+		}
+		Mod item = new ExdilinMod();
+		mods.Add(item);
+		BWLog.Info(text);
+		string[] directories = Directory.GetDirectories(text);
+		string[] array = directories;
+		foreach (string file in array)
+		{
+			Assembly asm = null;
+			try
+			{
+				asm = Assembly.LoadFrom(file + "\\Assembly.dll");
 			}
-
-			Mod m = new ModExdilin.ExdilinMod();
-            mods.Add(m);
-            BWLog.Info(CurrentUserModsFolder);
-            string[] files = Directory.GetDirectories(CurrentUserModsFolder);
-            foreach (string file in files)
-            {
-                Assembly asm = null;
-                try
-                {
-                    asm = Assembly.LoadFrom(file + "\\Assembly.dll");
-                }
-                catch (Exception e)
-                {
-                    // TODO
-                    BWLog.Error(e.Message);
-                    BWLog.Error(e.StackTrace);
-                }
-                yield return null;
-
-                Type[] types = asm.GetTypes();
-                foreach (Type t in types)
-                {
-                    if (t.IsSubclassOf(typeof(Mod)))
-                    {
-                        Mod mod = Activator.CreateInstance(t) as Mod;
-                        mod.Directory = file;
-                        mods.Add(mod);
-                        assemblies[mod.Id] = asm;
-                    }
-                }
-            }
-
-			InitLuaOptions();
-			string[] fullLuaMods = Directory.GetDirectories(CurrentUserLuaModsFolder); // lua mods that *can* contain assets
-			foreach (string fullLuaMod in fullLuaMods) {
-				Debug.Log("Loading Lua mod " + fullLuaMod);
-				Script script = new Script(CoreModules.Basic | CoreModules.Bit32 | CoreModules.ErrorHandling | CoreModules.OS_Time
-					| CoreModules.String | CoreModules.Table | CoreModules.TableIterators | CoreModules.Coroutine | CoreModules.GlobalConsts
-					| CoreModules.Math | CoreModules.Metatables);
-				bool failed = false;
-				string id = Path.GetFileName(fullLuaMod);
-				modLoading(id, "load");
-				try {
-					script.DoString(File.ReadAllText(fullLuaMod + "/init.lua", System.Text.Encoding.UTF8));
-				} catch (ScriptRuntimeException ex) {
-					pendingErrorMsg.Add("Runtime error in Lua mod " + id + ": " + ex.DecoratedMessage);
-					BWLog.Error(ex.Message + "\n" + ex.StackTrace);
-					failed = true;
-				} catch (SyntaxErrorException ex) {
-					pendingErrorMsg.Add("Syntax error in Lua mod " + id + ": " + ex.DecoratedMessage);
-					BWLog.Error(ex.Message + "\n" + ex.StackTrace);
-					failed = true;
-				}
-				if (!failed) {
-					LuaMod mod = new LuaMod(script, fullLuaMod);
-					mod.Directory = fullLuaMod;
+			catch (Exception ex)
+			{
+				BWLog.Error(ex.Message);
+				BWLog.Error(ex.StackTrace);
+			}
+			yield return null;
+			Type[] types = asm.GetTypes();
+			Type[] array2 = types;
+			foreach (Type type in array2)
+			{
+				if (type.IsSubclassOf(typeof(Mod)))
+				{
+					Mod mod = Activator.CreateInstance(type) as Mod;
+					mod.Directory = file;
 					mods.Add(mod);
+					assemblies[mod.Id] = asm;
 				}
-				yield return null;
 			}
-
-			string versionConcat = "[";
-            foreach (Mod mod in mods)
-            {
-                if (mod.IsImportant)
-                {
-                    if (versionConcat.Length > 1)
-                    {
-                        versionConcat += "|";
-                    }
-                    versionConcat += mod.Name + "/" + mod.Version;
-                }
-            }
-            versionConcat += "]";
-
-            if (versionConcat != "[]")
-            {
-                BWEnvConfig.BLOCKSWORLD_VERSION += versionConcat;
-            }
-
-            foreach (Mod mod in mods)
-            {
-                BWLog.Info("Pre-initializing mod " + mod.Id + " " + mod.Version);
-				modLoading(mod.Id, "preinit");
-				Mod.ExecutionMod = mod;
-                foreach (Dependency dep in mod.Dependencies)
-                {
-                    bool present = false;
-                    bool outOfDate = false;
-                    foreach (Mod modDep in mods)
-                    {
-                        if (dep.Id == modDep.Id)
-                        {
-                            present = true;
-                            if (modDep.Version < dep.MinimumVersion || modDep.Version > dep.MaximumVersion)
-                            {
-                                outOfDate = true;
-                            }
+		}
+		InitLuaOptions();
+		string[] directories2 = Directory.GetDirectories(CurrentUserLuaModsFolder);
+		array = directories2;
+		foreach (string text2 in array)
+		{
+			Debug.Log("Loading Lua mod " + text2);
+			Script script = new Script(CoreModules.Preset_HardSandbox | CoreModules.Metatables | CoreModules.ErrorHandling | CoreModules.Coroutine | CoreModules.OS_Time);
+			bool flag = false;
+			string fileName = Path.GetFileName(text2);
+			modLoading(fileName, "load");
+			try
+			{
+				script.DoString(File.ReadAllText(text2 + "/init.lua", Encoding.UTF8));
+			}
+			catch (ScriptRuntimeException ex2)
+			{
+				pendingErrorMsg.Add("Runtime error in Lua mod " + fileName + ": " + ex2.DecoratedMessage);
+				BWLog.Error(ex2.Message + "\n" + ex2.StackTrace);
+				flag = true;
+			}
+			catch (SyntaxErrorException ex3)
+			{
+				pendingErrorMsg.Add("Syntax error in Lua mod " + fileName + ": " + ex3.DecoratedMessage);
+				BWLog.Error(ex3.Message + "\n" + ex3.StackTrace);
+				flag = true;
+			}
+			if (!flag)
+			{
+				LuaMod luaMod = new LuaMod(script, text2);
+				luaMod.Directory = text2;
+				mods.Add(luaMod);
+			}
+			yield return null;
+		}
+		string text3 = "[";
+		foreach (Mod mod3 in mods)
+		{
+			if (mod3.IsImportant)
+			{
+				if (text3.Length > 1)
+				{
+					text3 += "|";
+				}
+				text3 = text3 + mod3.Name + "/" + mod3.Version;
+			}
+		}
+		text3 += "]";
+		if (text3 != "[]")
+		{
+			BWEnvConfig.BLOCKSWORLD_VERSION += text3;
+		}
+		foreach (Mod mod4 in mods)
+		{
+			BWLog.Info("Pre-initializing mod " + mod4.Id + " " + mod4.Version);
+			modLoading(mod4.Id, "preinit");
+			Mod.ExecutionMod = mod4;
+			foreach (Dependency dependency in mod4.Dependencies)
+			{
+				bool flag2 = false;
+				bool flag3 = false;
+				foreach (Mod mod5 in mods)
+				{
+					if (dependency.Id == mod5.Id)
+					{
+						flag2 = true;
+						if (mod5.Version < dependency.MinimumVersion || mod5.Version > dependency.MaximumVersion)
+						{
+							flag3 = true;
 						}
-                    }
-                    if (!present)
-                    {
-                        pendingErrorMsg.Add("Missing dependency " + dep.Id + " for mod " + mod.Name + ".");
-                    }
-                    if (outOfDate)
-                    {
-						BWLog.Info("out of date!");
-						pendingErrorMsg.Add("Out of date dependency " + dep.Id + " for mod " + mod.Name + ". " + dep.MinimumVersion + " or greater required.");
-                    }
-                }
-                mod.PreInit();
-                Mod.ExecutionMod = null;
-            }
-
-            foreach (Mod mod in mods)
-            {
-                Mod.ExecutionMod = mod;
-                if (mod.Id != "exdilin")
-                {
-					if (!(mod is LuaMod)) {
-						BWLog.Info("Applying patches of " + mod.Id + " " + mod.Version);
-						mod.ApplyPatches(assemblies[mod.Id]);
 					}
-                }
-                Mod.ExecutionMod = null;
-            }
-
-            foreach (string key in BlockItemsRegistry.GetBlockEntries().Keys)
-            {
-                BlockEntry entry = BlockItemsRegistry.GetBlockEntries()[key];
-                if (entry.blockType != null)
-                {
-                    Blocks.Block.blockNameTypeMap[key] = entry.blockType;
-                }
-            }
-
-			AssetsManager.Plug();
-
-            yield break;
-        }
-    }
+				}
+				if (!flag2)
+				{
+					pendingErrorMsg.Add("Missing dependency " + dependency.Id + " for mod " + mod4.Name + ".");
+				}
+				if (flag3)
+				{
+					BWLog.Info("out of date!");
+					pendingErrorMsg.Add("Out of date dependency " + dependency.Id + " for mod " + mod4.Name + ". " + dependency.MinimumVersion?.ToString() + " or greater required.");
+				}
+			}
+			mod4.PreInit();
+			Mod.ExecutionMod = null;
+		}
+		foreach (Mod mod6 in mods)
+		{
+			Mod mod2 = (Mod.ExecutionMod = mod6);
+			if (mod2.Id != "exdilin" && !(mod2 is LuaMod))
+			{
+				BWLog.Info("Applying patches of " + mod2.Id + " " + mod2.Version);
+				mod2.ApplyPatches(assemblies[mod2.Id]);
+			}
+			Mod.ExecutionMod = null;
+		}
+		foreach (string key in BlockItemsRegistry.GetBlockEntries().Keys)
+		{
+			BlockEntry blockEntry = BlockItemsRegistry.GetBlockEntries()[key];
+			if (blockEntry.blockType != null)
+			{
+				Block.blockNameTypeMap[key] = blockEntry.blockType;
+			}
+		}
+		AssetsManager.Plug();
+	}
 }

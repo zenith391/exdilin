@@ -1,11 +1,10 @@
-﻿using System;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x02000239 RID: 569
 public class VerticalOffsetVisualizer : ParameterValueVisualizer
 {
-	// Token: 0x06001AEE RID: 6894 RVA: 0x000C53B4 File Offset: 0x000C37B4
+	protected static GameObject visualizerPrefab;
+
 	public override void Update()
 	{
 		Block block = Blocksworld.selectedBlock;
@@ -24,13 +23,13 @@ public class VerticalOffsetVisualizer : ParameterValueVisualizer
 		{
 			return;
 		}
-		if (this.visualizerGo == null)
+		if (visualizerGo == null)
 		{
-			if (VerticalOffsetVisualizer.visualizerPrefab == null)
+			if (visualizerPrefab == null)
 			{
-				VerticalOffsetVisualizer.visualizerPrefab = (Resources.Load("GUI/Vertical Offset Visualizer") as GameObject);
+				visualizerPrefab = Resources.Load("GUI/Vertical Offset Visualizer") as GameObject;
 			}
-			this.visualizerGo = UnityEngine.Object.Instantiate<GameObject>(VerticalOffsetVisualizer.visualizerPrefab);
+			visualizerGo = Object.Instantiate(visualizerPrefab);
 		}
 		EditableTileParameter parameter = Blocksworld.bw.tileParameterEditor.parameter;
 		float num = (float)parameter.objectValue;
@@ -42,13 +41,13 @@ public class VerticalOffsetVisualizer : ParameterValueVisualizer
 		if (flag)
 		{
 			float y = bounds.extents.y;
-			Vector3 localScale = this.visualizerGo.transform.localScale;
-			this.visualizerGo.transform.position = position + Vector3.up * y + vector * num;
-			this.visualizerGo.transform.localScale = new Vector3(bounds.size.x + 2f, localScale.y, bounds.size.z + 2f);
+			Vector3 localScale = visualizerGo.transform.localScale;
+			visualizerGo.transform.position = position + Vector3.up * y + vector * num;
+			visualizerGo.transform.localScale = new Vector3(bounds.size.x + 2f, localScale.y, bounds.size.z + 2f);
 		}
 		else if (flag2)
 		{
-			this.visualizerGo.transform.rotation = transform.rotation;
+			visualizerGo.transform.rotation = transform.rotation;
 			Vector3 vector2 = block.Scale();
 			for (int i = 0; i < 3; i++)
 			{
@@ -57,10 +56,10 @@ public class VerticalOffsetVisualizer : ParameterValueVisualizer
 					num = vector2[i];
 				}
 			}
-			Vector3 a = block.Scale() + vector * num;
-			Vector3 a2 = Vector3.one - Util.Abs(vector);
-			this.visualizerGo.transform.localScale = a - a2 * 0.2f;
-			this.visualizerGo.transform.position = position + num * this.visualizerGo.transform.TransformDirection(vector) * 0.5f;
+			Vector3 vector3 = block.Scale() + vector * num;
+			Vector3 vector4 = Vector3.one - Util.Abs(vector);
+			visualizerGo.transform.localScale = vector3 - vector4 * 0.2f;
+			visualizerGo.transform.position = position + num * visualizerGo.transform.TransformDirection(vector) * 0.5f;
 		}
 		else
 		{
@@ -68,11 +67,8 @@ public class VerticalOffsetVisualizer : ParameterValueVisualizer
 			size.y = Mathf.Max(0.05f, size.y + num * vector.y);
 			size.x -= Mathf.Clamp(size.x * 0.1f, 0.1f, 0.2f);
 			size.z -= Mathf.Clamp(size.y * 0.1f, 0.1f, 0.2f);
-			this.visualizerGo.transform.localScale = size;
-			this.visualizerGo.transform.position = position + Mathf.Max(num * vector.y, -bounds.size.y) * 0.5f * Vector3.up;
+			visualizerGo.transform.localScale = size;
+			visualizerGo.transform.position = position + Mathf.Max(num * vector.y, 0f - bounds.size.y) * 0.5f * Vector3.up;
 		}
 	}
-
-	// Token: 0x04001690 RID: 5776
-	protected static GameObject visualizerPrefab;
 }

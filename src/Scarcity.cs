@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -8,72 +8,102 @@ using Gestures;
 using SimpleJSON;
 using UnityEngine;
 
-// Token: 0x02000278 RID: 632
 public class Scarcity
 {
-	// Token: 0x06001D69 RID: 7529 RVA: 0x000D1058 File Offset: 0x000CF458
+	public delegate void ScarcityEventHandler();
+
+	public static Dictionary<GAF, int> puzzleInventory;
+
+	public static Dictionary<GAF, int> puzzleGAFUsage;
+
+	public static Dictionary<GAF, int> puzzleInventoryAfterStepByStep;
+
+	public static Dictionary<GAF, int> puzzleGAFUsageAfterStepByStep;
+
+	public static Dictionary<GAF, int> inventory = null;
+
+	public static Dictionary<GAF, float> inventoryScales = new Dictionary<GAF, float>();
+
+	public static Dictionary<GAF, int> globalInventory = null;
+
+	public static Dictionary<GAF, int> worldGAFUsage = null;
+
+	public static HashSet<GAF> autoRemoveHighlights = new HashSet<GAF>();
+
+	public static Dictionary<string, string> textureOriginals = new Dictionary<string, string>();
+
+	private static List<HudMeshLabel> scarcityLabels = new List<HudMeshLabel>();
+
+	private static HudMeshLabel quickSelectPaintScarcityLabel;
+
+	private static HudMeshLabel quickSelectTextureScarcityLabel;
+
+	private static HudMeshLabel quickSelectModelScarcityLabel;
+
+	private static HudMeshLabel quickSelectScriptScarcityLabel;
+
+	public static Dictionary<string, BlockScarcityInfo> scarcityInfos;
+
+	private static HashSet<Predicate> notCountInStepByStepPredicates = null;
+
+	private static string[] normalizedPostfixes = new string[4] { "_Terrain", "_Sky", "_Water", "_Block" };
+
+	public static event ScarcityEventHandler OnInventoryChange;
+
 	public static void ReadScarcityInfo()
 	{
-		Scarcity.scarcityInfos = new Dictionary<string, BlockScarcityInfo>();
+		scarcityInfos = new Dictionary<string, BlockScarcityInfo>();
 		TextAsset textAsset = Resources.Load("BlockInfoList") as TextAsset;
 		if (textAsset == null)
 		{
 			BWLog.Error("Unable to load BlockInfoList");
 		}
-		JObject jobject = JSONDecoder.Decode(textAsset.text);
-		List<JObject> arrayValue = jobject["block-infos"].ArrayValue;
-		foreach (JObject jObj in arrayValue)
+		JObject jObject = JSONDecoder.Decode(textAsset.text);
+		List<JObject> arrayValue = jObject["block-infos"].ArrayValue;
+		foreach (JObject item in arrayValue)
 		{
-			BlockScarcityInfo blockScarcityInfo = BlockScarcityInfo.Read(jObj);
-			Scarcity.scarcityInfos[blockScarcityInfo.blockName] = blockScarcityInfo;
+			BlockScarcityInfo blockScarcityInfo = BlockScarcityInfo.Read(item);
+			scarcityInfos[blockScarcityInfo.blockName] = blockScarcityInfo;
 		}
 	}
 
-	// Token: 0x06001D6A RID: 7530 RVA: 0x000D1114 File Offset: 0x000CF514
 	private static bool TryGetBlockMeshScarcityInfo(string blockType, int meshIndex, out BlockMeshScarcityInfo info)
 	{
-		BlockScarcityInfo blockScarcityInfo;
-		if (Scarcity.scarcityInfos.TryGetValue(blockType, out blockScarcityInfo) && meshIndex < blockScarcityInfo.meshInfos.Count)
+		if (scarcityInfos.TryGetValue(blockType, out var value) && meshIndex < value.meshInfos.Count)
 		{
-			info = blockScarcityInfo.meshInfos[meshIndex];
+			info = value.meshInfos[meshIndex];
 			return true;
 		}
 		info = null;
 		return false;
 	}
 
-	// Token: 0x06001D6B RID: 7531 RVA: 0x000D1158 File Offset: 0x000CF558
 	public static string DefaultTexture(string blockType, int meshIndex)
 	{
-		BlockMeshScarcityInfo blockMeshScarcityInfo;
-		if (Scarcity.TryGetBlockMeshScarcityInfo(blockType, meshIndex, out blockMeshScarcityInfo))
+		if (TryGetBlockMeshScarcityInfo(blockType, meshIndex, out var info))
 		{
-			return blockMeshScarcityInfo.defaultTexture;
+			return info.defaultTexture;
 		}
 		return "Plain";
 	}
 
-	// Token: 0x06001D6C RID: 7532 RVA: 0x000D1180 File Offset: 0x000CF580
 	public static string DefaultPaint(string blockType, int meshIndex)
 	{
-		BlockMeshScarcityInfo blockMeshScarcityInfo;
-		if (Scarcity.TryGetBlockMeshScarcityInfo(blockType, meshIndex, out blockMeshScarcityInfo))
+		if (TryGetBlockMeshScarcityInfo(blockType, meshIndex, out var info))
 		{
-			return blockMeshScarcityInfo.defaultPaint;
+			return info.defaultPaint;
 		}
 		return "Yellow";
 	}
 
-	// Token: 0x06001D6D RID: 7533 RVA: 0x000D11A8 File Offset: 0x000CF5A8
 	public static string[] DefaultPaints(string blockType)
 	{
 		List<string> list = new List<string>();
-		BlockScarcityInfo blockScarcityInfo;
-		if (Scarcity.scarcityInfos.TryGetValue(blockType, out blockScarcityInfo))
+		if (scarcityInfos.TryGetValue(blockType, out var value))
 		{
-			foreach (BlockMeshScarcityInfo blockMeshScarcityInfo in blockScarcityInfo.meshInfos)
+			foreach (BlockMeshScarcityInfo meshInfo in value.meshInfos)
 			{
-				list.Add(blockMeshScarcityInfo.defaultPaint);
+				list.Add(meshInfo.defaultPaint);
 			}
 		}
 		if (list.Count == 0)
@@ -83,16 +113,14 @@ public class Scarcity
 		return list.ToArray();
 	}
 
-	// Token: 0x06001D6E RID: 7534 RVA: 0x000D1240 File Offset: 0x000CF640
 	public static string[] DefaultTextures(string blockType)
 	{
 		List<string> list = new List<string>();
-		BlockScarcityInfo blockScarcityInfo;
-		if (Scarcity.scarcityInfos.TryGetValue(blockType, out blockScarcityInfo))
+		if (scarcityInfos.TryGetValue(blockType, out var value))
 		{
-			foreach (BlockMeshScarcityInfo blockMeshScarcityInfo in blockScarcityInfo.meshInfos)
+			foreach (BlockMeshScarcityInfo meshInfo in value.meshInfos)
 			{
-				list.Add(blockMeshScarcityInfo.defaultTexture);
+				list.Add(meshInfo.defaultTexture);
 			}
 		}
 		if (list.Count == 0)
@@ -102,64 +130,61 @@ public class Scarcity
 		return list.ToArray();
 	}
 
-	// Token: 0x06001D6F RID: 7535 RVA: 0x000D12D8 File Offset: 0x000CF6D8
 	public static bool FreeTexture(string blockType, int meshIndex, string texture)
 	{
-		BlockMeshScarcityInfo blockMeshScarcityInfo;
-		return blockType != null && texture != null && Scarcity.TryGetBlockMeshScarcityInfo(blockType, meshIndex, out blockMeshScarcityInfo) && blockMeshScarcityInfo.freeTextures.Contains(texture);
+		if (blockType != null && texture != null && TryGetBlockMeshScarcityInfo(blockType, meshIndex, out var info))
+		{
+			return info.freeTextures.Contains(texture);
+		}
+		return false;
 	}
 
-	// Token: 0x06001D70 RID: 7536 RVA: 0x000D1310 File Offset: 0x000CF710
 	public static bool FreePaint(string blockType, int meshIndex, string paint)
 	{
-		BlockMeshScarcityInfo blockMeshScarcityInfo;
-		return blockType != null && paint != null && Scarcity.TryGetBlockMeshScarcityInfo(blockType, meshIndex, out blockMeshScarcityInfo) && blockMeshScarcityInfo.freePaints.Contains(paint);
+		if (blockType != null && paint != null && TryGetBlockMeshScarcityInfo(blockType, meshIndex, out var info))
+		{
+			return info.freePaints.Contains(paint);
+		}
+		return false;
 	}
 
-	// Token: 0x06001D71 RID: 7537 RVA: 0x000D1348 File Offset: 0x000CF748
 	public static HashSet<string> FreePaints(string blockType, int meshIndex)
 	{
-		BlockMeshScarcityInfo blockMeshScarcityInfo;
-		if (Scarcity.TryGetBlockMeshScarcityInfo(blockType, meshIndex, out blockMeshScarcityInfo))
+		if (TryGetBlockMeshScarcityInfo(blockType, meshIndex, out var info))
 		{
-			return blockMeshScarcityInfo.freePaints;
+			return info.freePaints;
 		}
-		return new HashSet<string>
-		{
-			Scarcity.DefaultPaint(blockType, meshIndex)
-		};
+		return new HashSet<string> { DefaultPaint(blockType, meshIndex) };
 	}
 
-	// Token: 0x06001D72 RID: 7538 RVA: 0x000D1380 File Offset: 0x000CF780
 	public static bool FreeSfx(string blockType, string sfx)
 	{
-		BlockScarcityInfo blockScarcityInfo;
-		return blockType != null && sfx != null && Scarcity.scarcityInfos.TryGetValue(blockType, out blockScarcityInfo) && blockScarcityInfo.freeSfxs.Contains(sfx);
+		if (blockType != null && sfx != null && scarcityInfos.TryGetValue(blockType, out var value))
+		{
+			return value.freeSfxs.Contains(sfx);
+		}
+		return false;
 	}
 
-	// Token: 0x06001D73 RID: 7539 RVA: 0x000D13BC File Offset: 0x000CF7BC
 	public static HashSet<string> GetShapeCategories(string blockType)
 	{
-		BlockScarcityInfo blockScarcityInfo;
-		if (Scarcity.scarcityInfos.TryGetValue(blockType, out blockScarcityInfo))
+		if (scarcityInfos.TryGetValue(blockType, out var value))
 		{
-			return blockScarcityInfo.shapeCategories;
+			return value.shapeCategories;
 		}
 		return new HashSet<string>();
 	}
 
-	// Token: 0x06001D74 RID: 7540 RVA: 0x000D13E7 File Offset: 0x000CF7E7
 	public static void SetTextureOriginal(string rewritten, string original)
 	{
-		Scarcity.textureOriginals[rewritten] = original;
+		textureOriginals[rewritten] = original;
 	}
 
-	// Token: 0x06001D75 RID: 7541 RVA: 0x000D13F8 File Offset: 0x000CF7F8
 	private static HashSet<Predicate> GetNotCountInStepByStepPredicates()
 	{
-		if (Scarcity.notCountInStepByStepPredicates == null)
+		if (notCountInStepByStepPredicates == null)
 		{
-			Scarcity.notCountInStepByStepPredicates = new HashSet<Predicate>
+			notCountInStepByStepPredicates = new HashSet<Predicate>
 			{
 				Block.predicateThen,
 				Block.predicateLocked,
@@ -168,10 +193,9 @@ public class Scarcity
 				Block.predicateTutorialRemoveBlockHint
 			};
 		}
-		return Scarcity.notCountInStepByStepPredicates;
+		return notCountInStepByStepPredicates;
 	}
 
-	// Token: 0x06001D76 RID: 7542 RVA: 0x000D145C File Offset: 0x000CF85C
 	public static void GetScriptColorAndTextureUse(List<List<List<Tile>>> tiles, Dictionary<GAF, int> result)
 	{
 		for (int i = 0; i < tiles.Count; i++)
@@ -203,64 +227,60 @@ public class Scarcity
 					if (predicate2 == Block.predicateHideNextTile)
 					{
 						l++;
+						continue;
 					}
-					else
+					object[] args2 = gaf2.Args;
+					if (predicate2 == Block.predicatePaintTo)
 					{
-						object[] args2 = gaf2.Args;
-						if (predicate2 == Block.predicatePaintTo)
+						string stringArg = Util.GetStringArg(args2, 0, "Yellow");
+						int intArg = Util.GetIntArg(args2, 1, 0);
+						if (!FreePaint(blockType, intArg, stringArg))
 						{
-							string stringArg = Util.GetStringArg(args2, 0, "Yellow");
-							int intArg = Util.GetIntArg(args2, 1, 0);
-							if (!Scarcity.FreePaint(blockType, intArg, stringArg))
-							{
-								GAF normalizedGaf = Scarcity.GetNormalizedGaf(gaf2, false);
-								hashSet.Add(normalizedGaf);
-							}
+							GAF normalizedGaf = GetNormalizedGaf(gaf2);
+							hashSet.Add(normalizedGaf);
 						}
-						else if (predicate2 == Block.predicateTextureTo)
+					}
+					else if (predicate2 == Block.predicateTextureTo)
+					{
+						string stringArg2 = Util.GetStringArg(args2, 0, "Plain");
+						int intArg2 = Util.GetIntArg(args2, 2, 0);
+						if (!FreeTexture(blockType, intArg2, stringArg2))
 						{
-							string stringArg2 = Util.GetStringArg(args2, 0, "Plain");
-							int intArg2 = Util.GetIntArg(args2, 2, 0);
-							if (!Scarcity.FreeTexture(blockType, intArg2, stringArg2))
-							{
-								GAF normalizedGaf2 = Scarcity.GetNormalizedGaf(gaf2, false);
-								hashSet.Add(normalizedGaf2);
-							}
+							GAF normalizedGaf2 = GetNormalizedGaf(gaf2);
+							hashSet.Add(normalizedGaf2);
 						}
 					}
 				}
 			}
-			foreach (GAF key in hashSet)
+			foreach (GAF item in hashSet)
 			{
-				int num = 0;
-				result.TryGetValue(key, out num);
-				result[key] = num + 1;
+				int value = 0;
+				result.TryGetValue(item, out value);
+				result[item] = value + 1;
 			}
 		}
 	}
 
-	// Token: 0x06001D77 RID: 7543 RVA: 0x000D1668 File Offset: 0x000CFA68
 	public static Dictionary<GAF, int> GetNormalizedInventoryUse(List<List<List<Tile>>> tiles, WorldType worldType, bool includeLocked = false)
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		Scarcity.GetInventoryUse(tiles, worldType, dictionary, includeLocked);
+		GetInventoryUse(tiles, worldType, dictionary, includeLocked);
 		Dictionary<GAF, int> dictionary2 = new Dictionary<GAF, int>();
-		foreach (KeyValuePair<GAF, int> keyValuePair in dictionary)
+		foreach (KeyValuePair<GAF, int> item in dictionary)
 		{
-			GAF normalizedGaf = Scarcity.GetNormalizedGaf(keyValuePair.Key, false);
+			GAF normalizedGaf = GetNormalizedGaf(item.Key);
 			if (BlockItem.FindByGafPredicateNameAndArguments(normalizedGaf.Predicate.Name, normalizedGaf.Args) != null)
 			{
-				int value = keyValuePair.Value;
-				int num = 0;
-				dictionary2.TryGetValue(normalizedGaf, out num);
-				dictionary2[normalizedGaf] = value + num;
+				int value = item.Value;
+				int value2 = 0;
+				dictionary2.TryGetValue(normalizedGaf, out value2);
+				dictionary2[normalizedGaf] = value + value2;
 			}
 		}
-		Scarcity.GetScriptColorAndTextureUse(tiles, dictionary2);
+		GetScriptColorAndTextureUse(tiles, dictionary2);
 		return dictionary2;
 	}
 
-	// Token: 0x06001D78 RID: 7544 RVA: 0x000D1730 File Offset: 0x000CFB30
 	public static void GetInventoryUse(List<List<List<Tile>>> tiles, WorldType worldType, Dictionary<GAF, int> result, bool includeLocked = false)
 	{
 		int[] array = new int[tiles.Count];
@@ -273,12 +293,11 @@ public class Scarcity
 			if (tile != null)
 			{
 				int key = BlockGroups.GroupId(tile);
-				int num;
-				if (!dictionary.TryGetValue(key, out num))
+				if (!dictionary.TryGetValue(key, out var value))
 				{
-					num = 0;
+					value = 0;
 				}
-				dictionary[key] = num + 1;
+				dictionary[key] = value + 1;
 				if (BlockGroups.IsMainGroupBlock(tile))
 				{
 					dictionary2[key] = i;
@@ -288,239 +307,204 @@ public class Scarcity
 			if (tile2 != null)
 			{
 				int key2 = BlockGroups.GroupId(tile2);
-				int num2;
-				if (!dictionary.TryGetValue(key2, out num2))
+				if (!dictionary.TryGetValue(key2, out var value2))
 				{
-					num2 = 0;
+					value2 = 0;
 				}
-				dictionary[key2] = num2 + 1;
+				dictionary[key2] = value2 + 1;
 				if (BlockGroups.IsMainGroupBlock(tile2))
 				{
 					dictionary2[key2] = i;
 				}
 			}
 		}
-		foreach (KeyValuePair<int, int> keyValuePair in dictionary2)
+		foreach (KeyValuePair<int, int> item in dictionary2)
 		{
-			int key3 = keyValuePair.Key;
-			int value = keyValuePair.Value;
-			array[value] = dictionary[key3];
+			int key3 = item.Key;
+			int value3 = item.Value;
+			array[value3] = dictionary[key3];
 		}
 		for (int j = 0; j < tiles.Count; j++)
 		{
-			Scarcity.GetInventoryUse(tiles[j], worldType, array[j], result, includeLocked);
+			GetInventoryUse(tiles[j], worldType, array[j], result, includeLocked);
 		}
 	}
 
-	// Token: 0x06001D79 RID: 7545 RVA: 0x000D18AC File Offset: 0x000CFCAC
 	public static void GetInventoryUse(List<List<Tile>> tiles, WorldType worldType, int groupSize, Dictionary<GAF, int> result, bool includeLocked = false)
 	{
-		bool flag = tiles.Count > 1 && tiles[1].Count > 1 && tiles[1][1].IsLocked();
-		if (flag && !includeLocked)
+		if (tiles.Count > 1 && tiles[1].Count > 1 && tiles[1][1].IsLocked() && !includeLocked)
 		{
 			return;
 		}
-		bool flag2 = worldType != WorldType.ForComplexityCalculation;
+		bool flag = worldType != WorldType.ForComplexityCalculation;
 		for (int i = 0; i < tiles.Count; i++)
 		{
-			bool flag3 = i == 0;
+			bool flag2 = i == 0;
 			List<Tile> list = tiles[i];
-			bool flag4 = false;
+			bool flag3 = false;
 			for (int j = 0; j < list.Count; j++)
 			{
 				Tile tile = list[j];
 				if (tile.gaf.Predicate == Block.predicateHideTileRow)
 				{
-					flag4 = true;
+					flag3 = true;
 					break;
 				}
 			}
-			if (!flag4)
+			if (flag3)
 			{
-				string text = null;
-				for (int k = 0; k < list.Count; k++)
+				continue;
+			}
+			string text = null;
+			for (int k = 0; k < list.Count; k++)
+			{
+				Tile tile2 = list[k];
+				GAF gaf = tile2.gaf;
+				Predicate predicate = gaf.Predicate;
+				if (predicate == Block.predicateHideNextTile)
 				{
-					Tile tile2 = list[k];
-					GAF gaf = tile2.gaf;
-					Predicate predicate = gaf.Predicate;
-					if (predicate == Block.predicateHideNextTile)
+					k++;
+					continue;
+				}
+				object[] args = gaf.Args;
+				if (predicate == Block.predicateCreate)
+				{
+					text = (string)args[0];
+					if (!ProfileBlocksterUtils.IsProfileBlockType(text))
 					{
-						k++;
-					}
-					else
-					{
-						object[] args = gaf.Args;
-						if (predicate == Block.predicateCreate)
+						if (groupSize == 0)
 						{
-							text = (string)args[0];
-							if (!ProfileBlocksterUtils.IsProfileBlockType(text))
-							{
-								if (groupSize == 0)
-								{
-									Scarcity.UpdateWorldGAFUsage(gaf, 1, result, true);
-								}
-								else
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicateCreate, new object[]
-									{
-										(string)args[0] + " x" + groupSize
-									}), 1, result, true);
-								}
-							}
-						}
-						else if (predicate == BlockAnimatedCharacter.predicateReplaceLimb)
-						{
-							string text2 = (string)args[0];
-							if (text2.EndsWith(" Left"))
-							{
-								text2 = text2.Remove(text2.Length - 5, 5);
-							}
-							else if (text2.EndsWith(" Right"))
-							{
-								text2 = text2.Remove(text2.Length - 6, 6);
-							}
-							Scarcity.UpdateWorldGAFUsage(new GAF(BlockAnimatedCharacter.predicateReplaceLimb, new object[]
-							{
-								text2
-							}), 1, result, true);
-						}
-						if (worldType == WorldType.StepByStepTutorial)
-						{
-							if (!Scarcity.GetNotCountInStepByStepPredicates().Contains(predicate))
-							{
-								EditableTileParameter editableParameter = gaf.Predicate.EditableParameter;
-								GAF primitiveGafFor = TileToggleChain.GetPrimitiveGafFor(gaf);
-								if (primitiveGafFor != null)
-								{
-									Scarcity.UpdateWorldGAFUsage(primitiveGafFor, 1, result, true);
-								}
-								else if (editableParameter != null)
-								{
-									GAF gaf2 = gaf.Clone();
-									gaf2.Args[editableParameter.parameterIndex] = null;
-									Tile tile3 = Blocksworld.buildPanel.FindTileMatching(gaf2);
-									if (tile3 != null)
-									{
-										Scarcity.UpdateWorldGAFUsage(tile3.gaf, 1, result, true);
-									}
-									else
-									{
-										GAF gaf3 = gaf.Clone();
-										GAF gaf4 = new GAF(gaf3.Predicate, gaf3.Predicate.ExtendArguments(gaf3.Args, true));
-										Scarcity.UpdateWorldGAFUsage(gaf4, 1, result, true);
-									}
-								}
-								else if (predicate == BlockMaster.predicateSetEnvEffect)
-								{
-									string text3 = BlockSky.EnvEffectToTexture(Util.GetStringArg(args, 0, "Clear"));
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, new object[]
-									{
-										text3,
-										Vector3.zero
-									}), 1, result, true);
-								}
-								else if (predicate == BlockMaster.predicatePaintSkyTo)
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, new object[]
-									{
-										Util.GetStringArg(args, 0, "Yellow")
-									}), 1, result, true);
-								}
-								else if (predicate == Block.predicateTutorialPaintExistingBlock)
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, new object[]
-									{
-										Util.GetStringArg(args, 1, "Yellow")
-									}), 1, result, true);
-								}
-								else if (predicate == Block.predicateTutorialTextureExistingBlock)
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, new object[]
-									{
-										Util.GetStringArg(args, 1, "Plain"),
-										Vector3.zero
-									}), 1, result, true);
-								}
-								else if (predicate == Block.predicateTextureTo)
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, new object[]
-									{
-										Util.GetStringArg(args, 0, "Plain"),
-										Vector3.zero
-									}), 1, result, true);
-								}
-								else if (predicate == Block.predicatePaintTo)
-								{
-									Scarcity.UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, new object[]
-									{
-										Util.GetStringArg(args, 0, "Yellow")
-									}), 1, result, true);
-								}
-								else if (!flag3)
-								{
-									Scarcity.UpdateWorldGAFUsage(gaf, 1, result, true);
-								}
-							}
+							UpdateWorldGAFUsage(gaf, 1, result);
 						}
 						else
 						{
-							if (flag3 && flag2)
-							{
-								if (predicate == Block.predicatePaintTo)
-								{
-									string stringArg = Util.GetStringArg(args, 0, "Yellow");
-									int intArg = Util.GetIntArg(args, 1, 0);
-									if (flag3 && !Scarcity.FreePaint(text, intArg, stringArg))
-									{
-										Scarcity.UpdateWorldGAFUsage(gaf, 1, result, true);
-									}
-								}
-								else if (predicate == Block.predicateTextureTo)
-								{
-									string stringArg2 = Util.GetStringArg(args, 0, "Plain");
-									int intArg2 = Util.GetIntArg(args, 2, 0);
-									if (flag3 && !Scarcity.FreeTexture(text, intArg2, stringArg2))
-									{
-										Scarcity.UpdateWorldGAFUsage(gaf, 1, result, true);
-									}
-								}
-							}
-							if (predicate == Block.predicatePlaySoundDurational)
-							{
-								string stringArg3 = Util.GetStringArg(args, 0, string.Empty);
-								if (!Scarcity.FreeSfx(text, stringArg3))
-								{
-									Scarcity.UpdateWorldGAFUsage(gaf, 1, result, true);
-								}
-							}
+							UpdateWorldGAFUsage(new GAF(Block.predicateCreate, (string)args[0] + " x" + groupSize), 1, result);
 						}
+					}
+				}
+				else if (predicate == BlockAnimatedCharacter.predicateReplaceLimb)
+				{
+					string text2 = (string)args[0];
+					if (text2.EndsWith(" Left"))
+					{
+						text2 = text2.Remove(text2.Length - 5, 5);
+					}
+					else if (text2.EndsWith(" Right"))
+					{
+						text2 = text2.Remove(text2.Length - 6, 6);
+					}
+					UpdateWorldGAFUsage(new GAF(BlockAnimatedCharacter.predicateReplaceLimb, text2), 1, result);
+				}
+				if (worldType == WorldType.StepByStepTutorial)
+				{
+					if (GetNotCountInStepByStepPredicates().Contains(predicate))
+					{
+						continue;
+					}
+					EditableTileParameter editableParameter = gaf.Predicate.EditableParameter;
+					GAF primitiveGafFor = TileToggleChain.GetPrimitiveGafFor(gaf);
+					if (primitiveGafFor != null)
+					{
+						UpdateWorldGAFUsage(primitiveGafFor, 1, result);
+					}
+					else if (editableParameter != null)
+					{
+						GAF gAF = gaf.Clone();
+						gAF.Args[editableParameter.parameterIndex] = null;
+						Tile tile3 = Blocksworld.buildPanel.FindTileMatching(gAF);
+						if (tile3 != null)
+						{
+							UpdateWorldGAFUsage(tile3.gaf, 1, result);
+							continue;
+						}
+						GAF gAF2 = gaf.Clone();
+						GAF gaf2 = new GAF(gAF2.Predicate, gAF2.Predicate.ExtendArguments(gAF2.Args, overwrite: true));
+						UpdateWorldGAFUsage(gaf2, 1, result);
+					}
+					else if (predicate == BlockMaster.predicateSetEnvEffect)
+					{
+						string text3 = BlockSky.EnvEffectToTexture(Util.GetStringArg(args, 0, "Clear"));
+						UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, text3, Vector3.zero), 1, result);
+					}
+					else if (predicate == BlockMaster.predicatePaintSkyTo)
+					{
+						UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, Util.GetStringArg(args, 0, "Yellow")), 1, result);
+					}
+					else if (predicate == Block.predicateTutorialPaintExistingBlock)
+					{
+						UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, Util.GetStringArg(args, 1, "Yellow")), 1, result);
+					}
+					else if (predicate == Block.predicateTutorialTextureExistingBlock)
+					{
+						UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, Util.GetStringArg(args, 1, "Plain"), Vector3.zero), 1, result);
+					}
+					else if (predicate == Block.predicateTextureTo)
+					{
+						UpdateWorldGAFUsage(new GAF(Block.predicateTextureTo, Util.GetStringArg(args, 0, "Plain"), Vector3.zero), 1, result);
+					}
+					else if (predicate == Block.predicatePaintTo)
+					{
+						UpdateWorldGAFUsage(new GAF(Block.predicatePaintTo, Util.GetStringArg(args, 0, "Yellow")), 1, result);
+					}
+					else if (!flag2)
+					{
+						UpdateWorldGAFUsage(gaf, 1, result);
+					}
+					continue;
+				}
+				if (flag2 && flag)
+				{
+					if (predicate == Block.predicatePaintTo)
+					{
+						string stringArg = Util.GetStringArg(args, 0, "Yellow");
+						int intArg = Util.GetIntArg(args, 1, 0);
+						if (flag2 && !FreePaint(text, intArg, stringArg))
+						{
+							UpdateWorldGAFUsage(gaf, 1, result);
+						}
+					}
+					else if (predicate == Block.predicateTextureTo)
+					{
+						string stringArg2 = Util.GetStringArg(args, 0, "Plain");
+						int intArg2 = Util.GetIntArg(args, 2, 0);
+						if (flag2 && !FreeTexture(text, intArg2, stringArg2))
+						{
+							UpdateWorldGAFUsage(gaf, 1, result);
+						}
+					}
+				}
+				if (predicate == Block.predicatePlaySoundDurational)
+				{
+					string stringArg3 = Util.GetStringArg(args, 0, string.Empty);
+					if (!FreeSfx(text, stringArg3))
+					{
+						UpdateWorldGAFUsage(gaf, 1, result);
 					}
 				}
 			}
 		}
 	}
 
-	// Token: 0x06001D7A RID: 7546 RVA: 0x000D1E04 File Offset: 0x000D0204
 	public static void StepInventoryScales()
 	{
-		if (Scarcity.ScarcityBadgesShowing() && Scarcity.GetScarcityHighlightGafs() != null)
+		if (!ScarcityBadgesShowing() || GetScarcityHighlightGafs() == null)
 		{
-			List<GAF> list = new List<GAF>(Scarcity.inventoryScales.Keys);
-			foreach (GAF key in list)
-			{
-				float num = Scarcity.inventoryScales[key];
-				num *= 0.93f;
-				if (num < 1f)
-				{
-					num = 1f;
-				}
-				Scarcity.inventoryScales[key] = num;
-			}
-			History.RemoveHighlightsIfNecessary();
+			return;
 		}
+		List<GAF> list = new List<GAF>(inventoryScales.Keys);
+		foreach (GAF item in list)
+		{
+			float num = inventoryScales[item];
+			num *= 0.93f;
+			if (num < 1f)
+			{
+				num = 1f;
+			}
+			inventoryScales[item] = num;
+		}
+		History.RemoveHighlightsIfNecessary();
 	}
 
-	// Token: 0x06001D7B RID: 7547 RVA: 0x000D1EB0 File Offset: 0x000D02B0
 	private static HashSet<GAF> GetScarcityHighlightGafs()
 	{
 		HashSet<GAF> result = null;
@@ -533,60 +517,63 @@ public class Scarcity
 		return TBoxGesture.GetScarcityHighlightGafs(result);
 	}
 
-	// Token: 0x06001D7C RID: 7548 RVA: 0x000D1EF1 File Offset: 0x000D02F1
 	private static bool ScarcityBadgesShowing()
 	{
-		return (Scarcity.inventory != null && Blocksworld.CurrentState != State.Play) || RewardVisualization.rewardAnimationRunning;
+		if (inventory == null || Blocksworld.CurrentState == State.Play)
+		{
+			return RewardVisualization.rewardAnimationRunning;
+		}
+		return true;
 	}
 
-	// Token: 0x06001D7D RID: 7549 RVA: 0x000D1F10 File Offset: 0x000D0310
 	public static void PaintScarcityBadges()
 	{
-		if (Scarcity.ScarcityBadgesShowing() && Scarcity.inventory != null)
+		if (!ScarcityBadgesShowing() || inventory == null)
 		{
-			HudMeshStyle inventoryStyle = HudMeshOnGUI.dataSource.inventoryStyle;
-			HashSet<GAF> scarcityHighlightGafs = Scarcity.GetScarcityHighlightGafs();
-			BuildPanel buildPanel = Blocksworld.buildPanel;
-			int num = 0;
-			TabBarTabId selectedTab = buildPanel.GetTabBar().SelectedTab;
-			List<Tile> tilesInTab = buildPanel.GetTilesInTab(selectedTab);
-			if (tilesInTab != null)
+			return;
+		}
+		HudMeshStyle inventoryStyle = HudMeshOnGUI.dataSource.inventoryStyle;
+		HashSet<GAF> scarcityHighlightGafs = GetScarcityHighlightGafs();
+		BuildPanel buildPanel = Blocksworld.buildPanel;
+		int labelIndex = 0;
+		TabBarTabId selectedTab = buildPanel.GetTabBar().SelectedTab;
+		List<Tile> tilesInTab = buildPanel.GetTilesInTab(selectedTab);
+		if (tilesInTab == null)
+		{
+			return;
+		}
+		for (int i = 0; i < tilesInTab.Count; i++)
+		{
+			Tile tile = tilesInTab[i];
+			if (tile.IsShowing())
 			{
-				for (int i = 0; i < tilesInTab.Count; i++)
+				GAF gaf = tile.gaf;
+				PaintBadge(tile, gaf, scarcityHighlightGafs, ref labelIndex, quickSelectUIVisible: true, inventoryStyle);
+				if (Blocksworld.clipboard.autoTextureMode && buildPanel.IsBlockTabSelected())
 				{
-					Tile tile = tilesInTab[i];
-					if (tile.IsShowing())
-					{
-						GAF gaf = tile.gaf;
-						Scarcity.PaintBadge(tile, gaf, scarcityHighlightGafs, ref num, true, inventoryStyle);
-						if (Blocksworld.clipboard.autoTextureMode && buildPanel.IsBlockTabSelected())
-						{
-							Blocksworld.UI.QuickSelect.ShowTextureScarcity();
-						}
-					}
+					Blocksworld.UI.QuickSelect.ShowTextureScarcity();
 				}
-				if (Blocksworld.modelCollection != null && buildPanel.IsModelTabSelected())
-				{
-					List<Tile> tilesInTab2 = buildPanel.GetTilesInTab(TabBarTabId.Models);
-					for (int j = 0; j < tilesInTab2.Count; j++)
-					{
-						Scarcity.PaintBadge(tilesInTab2[j], tilesInTab2[j].gaf, scarcityHighlightGafs, ref num, true, inventoryStyle);
-					}
-				}
+			}
+		}
+		if (Blocksworld.modelCollection != null && buildPanel.IsModelTabSelected())
+		{
+			List<Tile> tilesInTab2 = buildPanel.GetTilesInTab(TabBarTabId.Models);
+			for (int j = 0; j < tilesInTab2.Count; j++)
+			{
+				PaintBadge(tilesInTab2[j], tilesInTab2[j].gaf, scarcityHighlightGafs, ref labelIndex, quickSelectUIVisible: true, inventoryStyle);
 			}
 		}
 	}
 
-	// Token: 0x06001D7E RID: 7550 RVA: 0x000D2040 File Offset: 0x000D0440
 	private static bool PaintBadge(Tile tile, GAF gaf, HashSet<GAF> highlightGafs, ref int labelIndex, bool quickSelectUIVisible, HudMeshStyle inventoryStyle)
 	{
 		if (!tile.IsShowing())
 		{
 			return false;
 		}
-		int num = -1;
-		float num2 = 1f;
-		bool flag = Scarcity.ShouldDrawBadge(gaf, highlightGafs, out num, out num2, false);
+		int inventoryCount = -1;
+		float scale = 1f;
+		bool flag = ShouldDrawBadge(gaf, highlightGafs, out inventoryCount, out scale);
 		if (!flag)
 		{
 			return false;
@@ -597,30 +584,30 @@ public class Scarcity
 			if (intArg >= 0)
 			{
 				ModelData model = Blocksworld.modelCollection.models[intArg];
-				num = Blocksworld.clipboard.AvailableModelCount(model, null, null, true);
+				inventoryCount = Blocksworld.clipboard.AvailableModelCount(model);
 			}
 		}
-		if (num > 0 && !tile.IsEnabled())
+		if (inventoryCount > 0 && !tile.IsEnabled())
 		{
-			tile.Enable(true);
+			tile.Enable(enabled: true);
 		}
-		else if (num == 0 && tile.IsEnabled())
+		else if (inventoryCount == 0 && tile.IsEnabled())
 		{
-			tile.Enable(false);
+			tile.Enable(enabled: false);
 		}
-		string text = num.ToString();
+		string text = inventoryCount.ToString();
 		Vector2 centerPos = new Vector2(tile.tileObject.GetPosition().x + 70f * NormalizedScreen.pixelScale, (float)NormalizedScreen.height - tile.tileObject.GetPosition().y - 70f * NormalizedScreen.pixelScale);
-		Rect rect = Scarcity.RectForLabel(text, centerPos, num2);
+		Rect rect = RectForLabel(text, centerPos, scale);
 		if (quickSelectUIVisible)
 		{
-			flag = (centerPos.y < (float)NormalizedScreen.height - Blocksworld.UI.QuickSelect.GetHeight() - rect.height);
+			flag = centerPos.y < (float)NormalizedScreen.height - Blocksworld.UI.QuickSelect.GetHeight() - rect.height;
 		}
 		if (flag)
 		{
-			HudMeshOnGUI.Label(Scarcity.scarcityLabels, labelIndex, rect, text, inventoryStyle);
-			if (Scarcity.scarcityLabels.Count > labelIndex && Scarcity.scarcityLabels[labelIndex] != null)
+			HudMeshOnGUI.Label(scarcityLabels, labelIndex, rect, text, inventoryStyle);
+			if (scarcityLabels.Count > labelIndex && scarcityLabels[labelIndex] != null)
 			{
-				Scarcity.scarcityLabels[labelIndex].transform.localScale = new Vector3(num2, num2, 1f);
+				scarcityLabels[labelIndex].transform.localScale = new Vector3(scale, scale, 1f);
 			}
 			labelIndex++;
 			return true;
@@ -628,7 +615,6 @@ public class Scarcity
 		return false;
 	}
 
-	// Token: 0x06001D7F RID: 7551 RVA: 0x000D21F4 File Offset: 0x000D05F4
 	private static bool ShouldDrawBadge(GAF gaf, HashSet<GAF> highlightGafs, out int inventoryCount, out float scale, bool debug = false)
 	{
 		inventoryCount = -1;
@@ -637,9 +623,9 @@ public class Scarcity
 		{
 			return false;
 		}
-		if (Scarcity.inventory != null && Scarcity.inventory.ContainsKey(gaf))
+		if (inventory != null && inventory.ContainsKey(gaf))
 		{
-			inventoryCount = Scarcity.inventory[gaf];
+			inventoryCount = inventory[gaf];
 			if (inventoryCount < 0)
 			{
 				return false;
@@ -653,40 +639,37 @@ public class Scarcity
 		{
 			return false;
 		}
-		if (!Scarcity.inventoryScales.TryGetValue(gaf, out scale))
+		if (!inventoryScales.TryGetValue(gaf, out scale))
 		{
 			scale = 1f;
 		}
 		return true;
 	}
 
-	// Token: 0x06001D80 RID: 7552 RVA: 0x000D2288 File Offset: 0x000D0688
 	public static Rect RectForLabel(string labelText, Vector2 centerPos, float scale)
 	{
-		Vector2 a = new Vector2(32f, 32f) * NormalizedScreen.pixelScale;
+		Vector2 vector = new Vector2(32f, 32f) * NormalizedScreen.pixelScale;
 		float num = 5f * NormalizedScreen.scale;
 		float scale2 = NormalizedScreen.scale;
-		Vector2 vector = a * scale2;
+		Vector2 vector2 = vector * scale2;
 		if (labelText.Length > 1)
 		{
-			vector += new Vector2(num * (float)labelText.Length - 1f, 0f) * scale2;
+			vector2 += new Vector2(num * (float)labelText.Length - 1f, 0f) * scale2;
 		}
-		Vector2 vector2 = (vector * scale - vector) / (2f * scale2);
-		Vector2 vector3 = new Vector2((centerPos.x - a.x / 2f - vector2.x) * scale2, (centerPos.y - a.y / 2f - vector2.y) * scale2);
-		Rect result = new Rect(vector3.x, vector3.y, vector.x, vector.y);
-		return result;
+		Vector2 vector3 = (vector2 * scale - vector2) / (2f * scale2);
+		Vector2 vector4 = new Vector2((centerPos.x - vector.x / 2f - vector3.x) * scale2, (centerPos.y - vector.y / 2f - vector3.y) * scale2);
+		return new Rect(vector4.x, vector4.y, vector2.x, vector2.y);
 	}
 
-	// Token: 0x06001D81 RID: 7553 RVA: 0x000D2380 File Offset: 0x000D0780
 	public static string GetNormalizedTexture(string texture)
 	{
-		if (Scarcity.textureOriginals.ContainsKey(texture))
+		if (textureOriginals.ContainsKey(texture))
 		{
-			return Scarcity.textureOriginals[texture];
+			return textureOriginals[texture];
 		}
-		for (int i = 0; i < Scarcity.normalizedPostfixes.Length; i++)
+		for (int i = 0; i < normalizedPostfixes.Length; i++)
 		{
-			int num = texture.IndexOf(Scarcity.normalizedPostfixes[i]);
+			int num = texture.IndexOf(normalizedPostfixes[i]);
 			if (num >= 0)
 			{
 				texture = texture.Substring(0, num);
@@ -696,7 +679,6 @@ public class Scarcity
 		return texture;
 	}
 
-	// Token: 0x06001D82 RID: 7554 RVA: 0x000D23E8 File Offset: 0x000D07E8
 	public static GAF GetNormalizedGaf(GAF gaf, bool keepPaintAndTextureIndices = false)
 	{
 		string name = gaf.Predicate.Name;
@@ -708,116 +690,82 @@ public class Scarcity
 			string texture = (string)args[0];
 			if (keepPaintAndTextureIndices)
 			{
-				return new GAF(name, new object[]
-				{
-					Scarcity.GetNormalizedTexture(texture),
-					Vector3.zero,
-					Util.GetIntArg(gaf.Args, 2, 0)
-				});
+				return new GAF(name, GetNormalizedTexture(texture), Vector3.zero, Util.GetIntArg(gaf.Args, 2, 0));
 			}
-			return new GAF(name, new object[]
-			{
-				Scarcity.GetNormalizedTexture(texture),
-				Vector3.zero
-			});
+			return new GAF(name, GetNormalizedTexture(texture), Vector3.zero);
 		}
 		case "Block.PaintTo":
 		{
-			string text = (string)args[0];
+			string text3 = (string)args[0];
 			if (keepPaintAndTextureIndices)
 			{
-				return new GAF(name, new object[]
-				{
-					text,
-					Util.GetIntArg(gaf.Args, 1, 0)
-				});
+				return new GAF(name, text3, Util.GetIntArg(gaf.Args, 1, 0));
 			}
-			return new GAF(name, new object[]
-			{
-				text
-			});
+			return new GAF(name, text3);
 		}
 		case "Block.Create":
 		{
 			string text2 = (string)args[0];
-			if (text2 != null)
+			switch (text2)
 			{
-				if (text2 == "Volume")
-				{
-					break;
-				}
-				if (text2 == "Anim Character Avatar")
-				{
-					return new GAF(name, new object[]
-					{
-						"Character Avatar"
-					});
-				}
+			case "Anim Character Avatar":
+				return new GAF(name, "Character Avatar");
+			default:
+				return new GAF(name, text2);
+			case "Volume":
+				break;
 			}
-			return new GAF(name, new object[]
-			{
-				text2
-			});
+			break;
 		}
 		case "AnimCharacter.ReplaceBodyPart":
 		{
-			string text3 = (string)args[0];
-			if (text3.EndsWith(" Left"))
+			string text = (string)args[0];
+			if (text.EndsWith(" Left"))
 			{
-				text3 = text3.Remove(text3.Length - 5, 5);
+				text = text.Remove(text.Length - 5, 5);
 			}
-			else if (text3.EndsWith(" Right"))
+			else if (text.EndsWith(" Right"))
 			{
-				text3 = text3.Remove(text3.Length - 6, 6);
+				text = text.Remove(text.Length - 6, 6);
 			}
-			return new GAF(name, new object[]
-			{
-				text3
-			});
+			return new GAF(name, text);
 		}
 		case "Block.SendCustomSignal":
 		case "Block.SendCustomSignalModel":
-			return new GAF(name, new object[]
-			{
-				"*",
-				1f
-			});
+			return new GAF(name, "*", 1f);
 		case "BlockVariable.Int":
 		case "Variable.CustomInt":
-			return new GAF(name, new object[]
-			{
-				"*",
-				0
-			});
+			return new GAF(name, "*", 0);
 		}
 		return gaf;
 	}
 
-	// Token: 0x06001D83 RID: 7555 RVA: 0x000D2684 File Offset: 0x000D0A84
 	public static bool IsFreeTexture(string texture, int meshIndex, Block b)
 	{
-		if (texture != null)
+		switch (texture)
 		{
-			if (texture == "Plain")
+		case "Plain":
+			return true;
+		case "Clothing Underwear":
+			if (b is BlockCharacter)
 			{
-				return true;
+				return meshIndex == 1;
 			}
-			if (texture == "Clothing Underwear")
+			return false;
+		default:
+			if (b.BlockType() == "Sky UV")
 			{
-				return b is BlockCharacter && meshIndex == 1;
+				switch (texture)
+				{
+				case "Cloudy Sky":
+				case "Space Sky":
+					return true;
+				}
 			}
+			return false;
 		}
-		if (b.BlockType() == "Sky UV" && texture != null)
-		{
-			if (texture == "Cloudy Sky" || texture == "Space Sky")
-			{
-				return true;
-			}
-		}
-		return false;
 	}
 
-	// Token: 0x06001D84 RID: 7556 RVA: 0x000D2714 File Offset: 0x000D0B14
 	public static void CalculateBlockGafUsage(Block b, Dictionary<GAF, int> result, bool verbose = false, bool forStepByStepTutorial = false)
 	{
 		List<Tile> list = b.tiles[0];
@@ -836,7 +784,7 @@ public class Scarcity
 				Block.predicateTutorialPaintExistingBlock,
 				Block.predicateTutorialTextureExistingBlock,
 				Block.predicateLocked,
-				PredicateRegistry.ByName("Block.TutorialCreateBlockHint", true)
+				PredicateRegistry.ByName("Block.TutorialCreateBlockHint")
 			};
 		}
 		string text = string.Empty;
@@ -858,51 +806,43 @@ public class Scarcity
 					break;
 				}
 			}
-			if (!flag)
+			if (flag)
 			{
-				bool flag2 = false;
-				for (int k = 0; k < list2.Count; k++)
+				continue;
+			}
+			bool flag2 = false;
+			for (int k = 0; k < list2.Count; k++)
+			{
+				Tile tile2 = list2[k];
+				if (flag2)
 				{
-					Tile tile2 = list2[k];
-					if (flag2)
+					flag2 = false;
+					continue;
+				}
+				GAF gaf2 = tile2.gaf;
+				if (gaf2.Predicate == Block.predicatePlaySoundDurational)
+				{
+					object[] args = gaf2.Args;
+					GAF gAF = new GAF(gaf2.Predicate.Name, args);
+					if (!Block.IsDefaultSfx(blockType, (string)args[0]))
 					{
-						flag2 = false;
+						UpdateWorldGAFUsage(gAF, 1, result);
+						if (verbose)
+						{
+							string text2 = text;
+							text = string.Concat(text2, b.BlockType(), ": ", gAF, "\n");
+						}
 					}
-					else
+				}
+				if (forStepByStepTutorial)
+				{
+					if (gaf2.Predicate == Block.predicateHideNextTile)
 					{
-						GAF gaf2 = tile2.gaf;
-						if (gaf2.Predicate == Block.predicatePlaySoundDurational)
-						{
-							object[] args = gaf2.Args;
-							GAF gaf3 = new GAF(gaf2.Predicate.Name, args);
-							if (!Block.IsDefaultSfx(blockType, (string)args[0]))
-							{
-								Scarcity.UpdateWorldGAFUsage(gaf3, 1, result, true);
-								if (verbose)
-								{
-									string text2 = text;
-									text = string.Concat(new object[]
-									{
-										text2,
-										b.BlockType(),
-										": ",
-										gaf3,
-										"\n"
-									});
-								}
-							}
-						}
-						if (forStepByStepTutorial)
-						{
-							if (gaf2.Predicate == Block.predicateHideNextTile)
-							{
-								flag2 = true;
-							}
-							else if (!hashSet.Contains(gaf2.Predicate))
-							{
-								Scarcity.UpdateWorldGAFUsage(Scarcity.GetNormalizedGaf(gaf2, false), 1, result, true);
-							}
-						}
+						flag2 = true;
+					}
+					else if (!hashSet.Contains(gaf2.Predicate))
+					{
+						UpdateWorldGAFUsage(GetNormalizedGaf(gaf2), 1, result);
 					}
 				}
 			}
@@ -911,98 +851,67 @@ public class Scarcity
 		for (int l = 0; l < list.Count; l++)
 		{
 			Tile tile3 = list[l];
-			GAF gaf4 = tile3.gaf;
-			Predicate predicate = gaf4.Predicate;
-			object[] args2 = gaf4.Args;
+			GAF gaf3 = tile3.gaf;
+			Predicate predicate = gaf3.Predicate;
+			object[] args2 = gaf3.Args;
 			if (predicate == Block.predicateTextureTo || predicate == BlockSky.predicateEnvEffect)
 			{
 				bool flag3 = predicate == Block.predicateTextureTo;
 				string text3 = (string)args2[0];
-				string texture = (!flag3) ? BlockSky.EnvEffectToTexture(text3) : text3;
-				int num = (!flag3) ? 0 : ((args2.Length <= 2) ? 0 : ((int)args2[2]));
-				if (num < array.Length && !array[num] && !Scarcity.IsFreeTexture(texture, num, b) && !b.IsDefaultTexture(texture, num))
+				string texture = ((!flag3) ? BlockSky.EnvEffectToTexture(text3) : text3);
+				int num = (flag3 ? ((args2.Length > 2) ? ((int)args2[2]) : 0) : 0);
+				if (num < array.Length && !array[num] && !IsFreeTexture(texture, num, b) && !b.IsDefaultTexture(texture, num))
 				{
-					GAF gaf5 = new GAF(Block.predicateTextureTo, new object[]
-					{
-						Scarcity.GetNormalizedTexture(texture),
-						Vector3.zero
-					});
-					Scarcity.UpdateWorldGAFUsage(gaf5, 1, result, true);
+					GAF gAF2 = new GAF(Block.predicateTextureTo, GetNormalizedTexture(texture), Vector3.zero);
+					UpdateWorldGAFUsage(gAF2, 1, result);
 					if (verbose)
 					{
-						string text2 = text;
-						text = string.Concat(new object[]
-						{
-							text2,
-							b.BlockType(),
-							": ",
-							gaf5,
-							"\n"
-						});
+						string text4 = text;
+						text = string.Concat(text4, b.BlockType(), ": ", gAF2, "\n");
 					}
 					array[num] = true;
 				}
 			}
 			else if (predicate == Block.predicatePaintTo)
 			{
-				string text4 = (string)args2[0];
-				if (!b.IsDefaultPaint(gaf4))
+				string text5 = (string)args2[0];
+				if (!b.IsDefaultPaint(gaf3))
 				{
-					GAF gaf6 = new GAF(predicate, new object[]
-					{
-						text4
-					});
-					Scarcity.UpdateWorldGAFUsage(gaf6, 1, result, true);
+					GAF gAF3 = new GAF(predicate, text5);
+					UpdateWorldGAFUsage(gAF3, 1, result);
 					if (verbose)
 					{
-						string text2 = text;
-						text = string.Concat(new object[]
-						{
-							text2,
-							b.BlockType(),
-							": ",
-							gaf6,
-							"\n"
-						});
+						string text6 = text;
+						text = string.Concat(text6, b.BlockType(), ": ", gAF3, "\n");
 					}
 				}
 			}
-			else if (predicate == Block.predicateCreate)
+			else
 			{
-				gaf4 = Scarcity.GetNormalizedGaf(gaf4, false);
-				string text5 = (string)args2[0];
-				if (!ProfileBlocksterUtils.IsProfileBlockType(text5))
+				if (predicate != Block.predicateCreate)
 				{
-					if (text5 != null)
+					continue;
+				}
+				gaf3 = GetNormalizedGaf(gaf3);
+				string text7 = (string)args2[0];
+				if (ProfileBlocksterUtils.IsProfileBlockType(text7) || (text7 != null && text7 == "Volume"))
+				{
+					continue;
+				}
+				if (blockGrouped != null)
+				{
+					gaf3 = blockGrouped.GetIconGaf();
+				}
+				if (Blocksworld.buildPanel.IsGAFInBuildPanel(gaf3) || Blocksworld.GetUniqueBlockMap().ContainsKey(text7))
+				{
+					UpdateWorldGAFUsage(gaf3, 1, result);
+					if (verbose)
 					{
-						if (text5 == "Volume")
-						{
-							goto IL_51E;
-						}
-					}
-					if (blockGrouped != null)
-					{
-						gaf4 = blockGrouped.GetIconGaf();
-					}
-					if (Blocksworld.buildPanel.IsGAFInBuildPanel(gaf4) || Blocksworld.GetUniqueBlockMap().ContainsKey(text5))
-					{
-						Scarcity.UpdateWorldGAFUsage(gaf4, 1, result, true);
-						if (verbose)
-						{
-							string text2 = text;
-							text = string.Concat(new object[]
-							{
-								text2,
-								b.BlockType(),
-								": ",
-								gaf4,
-								"\n"
-							});
-						}
+						string text8 = text;
+						text = string.Concat(text8, b.BlockType(), ": ", gaf3, "\n");
 					}
 				}
 			}
-			IL_51E:;
 		}
 		if (verbose && text.Length > 0)
 		{
@@ -1010,23 +919,21 @@ public class Scarcity
 		}
 	}
 
-	// Token: 0x06001D85 RID: 7557 RVA: 0x000D2C6C File Offset: 0x000D106C
 	public static Dictionary<GAF, int> CalculateWorldGafUsage(bool verbose = false, bool forStepByStepTutorials = false)
 	{
 		List<Block> list = BWSceneManager.AllBlocks();
 		Dictionary<GAF, int> result = new Dictionary<GAF, int>();
 		for (int i = 0; i < list.Count; i++)
 		{
-			Scarcity.CalculateBlockGafUsage(list[i], result, verbose, forStepByStepTutorials);
+			CalculateBlockGafUsage(list[i], result, verbose, forStepByStepTutorials);
 		}
 		return result;
 	}
 
-	// Token: 0x06001D86 RID: 7558 RVA: 0x000D2CAC File Offset: 0x000D10AC
 	public static bool IsRelevantGAF(string blockType, GAF gaf, bool firstRow)
 	{
 		object[] args = gaf.Args;
-		string text = (args.Length <= 0 || !(args[0] is string)) ? string.Empty : ((string)args[0]);
+		string text = ((args.Length == 0 || !(args[0] is string)) ? string.Empty : ((string)args[0]));
 		int meshIndex = 0;
 		if (gaf.Predicate == Block.predicatePaintTo)
 		{
@@ -1039,113 +946,116 @@ public class Scarcity
 		bool flag = false;
 		if (firstRow)
 		{
-			flag |= (gaf.Predicate == Block.predicateTextureTo && !Scarcity.FreeTexture(blockType, meshIndex, text));
-			flag |= (gaf.Predicate == Block.predicatePaintTo && !Scarcity.FreePaint(blockType, meshIndex, text));
-			flag |= (gaf.Predicate == Block.predicateCreate && text != "Volume" && !ProfileBlocksterUtils.IsProfileBlockType(text) && Blocksworld.buildPanel.IsGAFInBuildPanel(gaf));
+			flag |= gaf.Predicate == Block.predicateTextureTo && !FreeTexture(blockType, meshIndex, text);
+			flag |= gaf.Predicate == Block.predicatePaintTo && !FreePaint(blockType, meshIndex, text);
+			flag |= gaf.Predicate == Block.predicateCreate && text != "Volume" && !ProfileBlocksterUtils.IsProfileBlockType(text) && Blocksworld.buildPanel.IsGAFInBuildPanel(gaf);
 		}
-		flag |= (gaf.Predicate == Block.predicatePlaySoundDurational && !Scarcity.FreeSfx(blockType, text));
-		return flag | gaf.Predicate == BlockAnimatedCharacter.predicateReplaceLimb;
+		flag |= gaf.Predicate == Block.predicatePlaySoundDurational && !FreeSfx(blockType, text);
+		return flag | (gaf.Predicate == BlockAnimatedCharacter.predicateReplaceLimb);
 	}
 
-	// Token: 0x06001D87 RID: 7559 RVA: 0x000D2DD9 File Offset: 0x000D11D9
 	public static void CompareIncrementalAndAbsoluteGafUsages()
 	{
-		Scarcity.CompareGafUsages(Scarcity.CalculateWorldGafUsage(false, false), Scarcity.worldGAFUsage, "Absolute", "Incremental");
+		CompareGafUsages(CalculateWorldGafUsage(), worldGAFUsage, "Absolute", "Incremental");
 	}
 
-	// Token: 0x06001D88 RID: 7560 RVA: 0x000D2DF8 File Offset: 0x000D11F8
 	public static Dictionary<GAF, int> CompareGafUsages(Dictionary<GAF, int> d1, Dictionary<GAF, int> d2, string n1 = "d1", string n2 = "d2")
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		foreach (GAF gaf in d1.Keys)
+		foreach (GAF key in d1.Keys)
 		{
-			int num = d1[gaf];
-			if (d2.ContainsKey(gaf))
+			int num = d1[key];
+			if (d2.ContainsKey(key))
 			{
-				int num2 = d2[gaf];
+				int num2 = d2[key];
 				if (num != num2)
 				{
-					Scarcity.UpdateWorldGAFUsage(gaf, num - num2, dictionary, false);
+					UpdateWorldGAFUsage(key, num - num2, dictionary, clampZero: false);
 				}
 			}
 			else
 			{
-				Scarcity.UpdateWorldGAFUsage(gaf, num, dictionary, false);
+				UpdateWorldGAFUsage(key, num, dictionary, clampZero: false);
 			}
 		}
-		foreach (GAF gaf2 in d2.Keys)
+		foreach (GAF key2 in d2.Keys)
 		{
-			if (!d1.ContainsKey(gaf2))
+			if (!d1.ContainsKey(key2))
 			{
-				int num3 = d2[gaf2];
-				Scarcity.UpdateWorldGAFUsage(gaf2, -num3, dictionary, false);
+				int num3 = d2[key2];
+				UpdateWorldGAFUsage(key2, -num3, dictionary, clampZero: false);
 			}
 		}
 		return dictionary;
 	}
 
-	// Token: 0x06001D89 RID: 7561 RVA: 0x000D2EFC File Offset: 0x000D12FC
 	public static void UpdateScarcityBadges(HashSet<GAF> highlights, Dictionary<GAF, int> oldGafUsage, Dictionary<GAF, int> startInventory)
 	{
-		if (startInventory != null)
+		if (startInventory == null)
 		{
-			Dictionary<GAF, int> d = Scarcity.CalculateWorldGafUsage(false, false);
-			Dictionary<GAF, int> dictionary = Scarcity.CompareGafUsages(oldGafUsage, d, "d1", "d2");
-			foreach (GAF gaf in dictionary.Keys)
+			return;
+		}
+		Dictionary<GAF, int> d = CalculateWorldGafUsage();
+		Dictionary<GAF, int> dictionary = CompareGafUsages(oldGafUsage, d);
+		foreach (GAF key in dictionary.Keys)
+		{
+			if (dictionary[key] != 0)
 			{
-				int num = dictionary[gaf];
-				if (num != 0)
-				{
-					highlights.Add(gaf);
-				}
+				highlights.Add(key);
 			}
-			foreach (GAF key in highlights)
+		}
+		foreach (GAF highlight in highlights)
+		{
+			if (startInventory.ContainsKey(highlight))
 			{
-				if (startInventory.ContainsKey(key))
-				{
-					Scarcity.inventoryScales[key] = 1.5f;
-				}
+				inventoryScales[highlight] = 1.5f;
 			}
 		}
 	}
 
-	// Token: 0x06001D8A RID: 7562 RVA: 0x000D2FE8 File Offset: 0x000D13E8
 	public static bool GetExistsInInventory(GAF gaf)
 	{
-		return Scarcity.inventory != null && Scarcity.inventory.ContainsKey(gaf);
+		if (inventory != null)
+		{
+			return inventory.ContainsKey(gaf);
+		}
+		return false;
 	}
 
-	// Token: 0x06001D8B RID: 7563 RVA: 0x000D3002 File Offset: 0x000D1402
 	public static int GetInventoryCount(GAF gaf, bool zeroIfNotExist = false)
 	{
-		if (Scarcity.inventory != null && Scarcity.inventory.ContainsKey(gaf))
+		if (inventory != null && inventory.ContainsKey(gaf))
 		{
-			return Scarcity.inventory[gaf];
+			return inventory[gaf];
 		}
-		return (!zeroIfNotExist) ? -1 : 0;
+		if (zeroIfNotExist)
+		{
+			return 0;
+		}
+		return -1;
 	}
 
-	// Token: 0x06001D8C RID: 7564 RVA: 0x000D3038 File Offset: 0x000D1438
 	public static Dictionary<GAF, int> GetInventoryCopy()
 	{
-		if (Scarcity.inventory != null)
+		if (inventory != null)
 		{
 			Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-			foreach (GAF key in Scarcity.inventory.Keys)
 			{
-				dictionary.Add(key, Scarcity.inventory[key]);
+				foreach (GAF key in inventory.Keys)
+				{
+					dictionary.Add(key, inventory[key]);
+				}
+				return dictionary;
 			}
-			return dictionary;
 		}
 		return null;
 	}
 
-	// Token: 0x06001D8D RID: 7565 RVA: 0x000D30B8 File Offset: 0x000D14B8
 	public static void UpdateWorldGAFUsage(GAF gaf, int change, Dictionary<GAF, int> usage = null, bool clampZero = true)
 	{
 		if (usage == null)
 		{
-			usage = Scarcity.worldGAFUsage;
+			usage = worldGAFUsage;
 		}
 		if (!usage.ContainsKey(gaf))
 		{
@@ -1154,97 +1064,85 @@ public class Scarcity
 		usage[gaf] = ((!clampZero) ? (usage[gaf] + change) : Mathf.Max(0, usage[gaf] + change));
 	}
 
-	// Token: 0x06001D8E RID: 7566 RVA: 0x000D3110 File Offset: 0x000D1510
 	public static string SaveWorldGAFUsage(bool verbose = false, bool insertLines = false)
 	{
-		Scarcity.worldGAFUsage = Scarcity.CalculateWorldGafUsage(verbose, false);
-		return Scarcity.GetInventoryJSON(Scarcity.worldGAFUsage, verbose, insertLines);
+		worldGAFUsage = CalculateWorldGafUsage(verbose);
+		return GetInventoryJSON(worldGAFUsage, verbose, insertLines);
 	}
 
-	// Token: 0x06001D8F RID: 7567 RVA: 0x000D312C File Offset: 0x000D152C
 	public static string GetInventoryJSON(Dictionary<GAF, int> inv, bool verbose = false, bool insertLines = false)
 	{
 		StringBuilder stringBuilder = new StringBuilder(32768);
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder jsonstreamEncoder = new JSONStreamEncoder(writer, 20);
-		jsonstreamEncoder.BeginArray();
-		foreach (KeyValuePair<GAF, int> keyValuePair in inv)
+		JSONStreamEncoder jSONStreamEncoder = new JSONStreamEncoder(writer);
+		jSONStreamEncoder.BeginArray();
+		foreach (KeyValuePair<GAF, int> item in inv)
 		{
-			jsonstreamEncoder.BeginArray();
-			keyValuePair.Key.ToJSONCompact(jsonstreamEncoder);
-			jsonstreamEncoder.WriteNumber((long)keyValuePair.Value);
-			jsonstreamEncoder.EndArray();
+			jSONStreamEncoder.BeginArray();
+			item.Key.ToJSONCompact(jSONStreamEncoder);
+			jSONStreamEncoder.WriteNumber(item.Value);
+			jSONStreamEncoder.EndArray();
 			if (insertLines)
 			{
-				jsonstreamEncoder.InsertNewline();
+				jSONStreamEncoder.InsertNewline();
 			}
 		}
-		jsonstreamEncoder.EndArray();
+		jSONStreamEncoder.EndArray();
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x06001D90 RID: 7568 RVA: 0x000D31E4 File Offset: 0x000D15E4
 	public static string GetBlockIDInventoryString(Dictionary<GAF, int> inv, HashSet<Predicate> infinitePredicates = null)
 	{
 		StringBuilder stringBuilder = new StringBuilder(32768);
 		bool flag = true;
-		foreach (KeyValuePair<GAF, int> keyValuePair in inv)
+		foreach (KeyValuePair<GAF, int> item in inv)
 		{
-			GAF normalizedGaf = Scarcity.GetNormalizedGaf(keyValuePair.Key, false);
+			GAF normalizedGaf = GetNormalizedGaf(item.Key);
 			BlockItem blockItem = BlockItem.FindByGafPredicateNameAndArguments(normalizedGaf.Predicate.Name, normalizedGaf.Args);
 			if (blockItem == null)
 			{
 				BWLog.Info("Couldn't find id for block: " + normalizedGaf.ToString());
+				continue;
+			}
+			int id = blockItem.Id;
+			if (!flag)
+			{
+				stringBuilder.Append('|');
+			}
+			int value = item.Value;
+			int num = ((infinitePredicates != null && infinitePredicates.Contains(normalizedGaf.Predicate)) ? 1 : 0);
+			stringBuilder.Append(id.ToString());
+			stringBuilder.Append(':');
+			if (num == 0)
+			{
+				stringBuilder.Append(value.ToString());
 			}
 			else
 			{
-				int id = blockItem.Id;
-				if (!flag)
-				{
-					stringBuilder.Append('|');
-				}
-				int value = keyValuePair.Value;
-				int num = (infinitePredicates == null || !infinitePredicates.Contains(normalizedGaf.Predicate)) ? 0 : 1;
-				stringBuilder.Append(id.ToString());
-				stringBuilder.Append(':');
-				if (num == 0)
-				{
-					stringBuilder.Append(value.ToString());
-				}
-				else
-				{
-					stringBuilder.Append(';');
-					stringBuilder.Append(num.ToString());
-				}
-				flag = false;
+				stringBuilder.Append(';');
+				stringBuilder.Append(num.ToString());
 			}
+			flag = false;
 		}
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x06001D91 RID: 7569 RVA: 0x000D333C File Offset: 0x000D173C
 	public static Dictionary<GAF, int> ReadBlockIDInventoryString(string blockIDInventoryString)
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
 		int c = 0;
 		StringBuilder sb = new StringBuilder(32768);
-		List<char> separators = new List<char>
-		{
-			':',
-			';',
-			'|'
-		};
+		List<char> separators = new List<char> { ':', ';', '|' };
 		bool done = false;
 		char currentSeparator = '|';
-		Action action = delegate()
+		Action action = delegate
 		{
 			sb.Length = 0;
-			while (c < blockIDInventoryString.Length && !separators.Contains(blockIDInventoryString[c]))
+			for (; c < blockIDInventoryString.Length && !separators.Contains(blockIDInventoryString[c]); c++)
 			{
 				sb.Append(blockIDInventoryString[c]);
-				c++;
 			}
-			done = (c >= blockIDInventoryString.Length);
+			done = c >= blockIDInventoryString.Length;
 			if (!done)
 			{
 				currentSeparator = blockIDInventoryString[c];
@@ -1253,46 +1151,42 @@ public class Scarcity
 		};
 		while (!done)
 		{
-			int num = 0;
-			int num2 = 0;
+			int result = 0;
+			int result2 = 0;
 			action();
-			int num3;
-			int.TryParse(sb.ToString(), out num3);
+			int.TryParse(sb.ToString(), out var result3);
 			action();
-			int.TryParse(sb.ToString(), out num);
+			int.TryParse(sb.ToString(), out result);
 			if (currentSeparator != '|')
 			{
 				action();
-				int.TryParse(sb.ToString(), out num2);
+				int.TryParse(sb.ToString(), out result2);
 			}
-			if (BlockItem.Exists(num3))
+			if (BlockItem.Exists(result3))
 			{
-				BlockItem blockItem = BlockItem.FindByID(num3);
+				BlockItem blockItem = BlockItem.FindByID(result3);
 				if (blockItem == null)
 				{
-					BWLog.Error("Couldn't find block with id: " + num3);
+					BWLog.Error("Couldn't find block with id: " + result3);
+					continue;
 				}
-				else
-				{
-					GAF key = new GAF(blockItem);
-					int value = (num2 <= 0) ? num : -1;
-					dictionary[key] = value;
-				}
+				GAF key = new GAF(blockItem);
+				int value = ((result2 <= 0) ? result : (-1));
+				dictionary[key] = value;
 			}
 		}
 		return dictionary;
 	}
 
-	// Token: 0x06001D92 RID: 7570 RVA: 0x000D3480 File Offset: 0x000D1880
 	public static void ResetInventory()
 	{
-		if (Scarcity.globalInventory != null)
+		if (globalInventory != null)
 		{
-			Scarcity.inventory = new Dictionary<GAF, int>(Scarcity.globalInventory);
+			inventory = new Dictionary<GAF, int>(globalInventory);
 		}
 		else
 		{
-			Scarcity.inventory = null;
+			inventory = null;
 		}
 		if (Blocksworld.modelCollection != null)
 		{
@@ -1309,30 +1203,28 @@ public class Scarcity
 		}
 	}
 
-	// Token: 0x06001D93 RID: 7571 RVA: 0x000D34F8 File Offset: 0x000D18F8
 	public static void RefreshScarcity(BlocksInventory blocksInventory, bool addImplicitGafs)
 	{
-		Scarcity.globalInventory = Scarcity.ParseScarcityData(blocksInventory);
+		globalInventory = ParseScarcityData(blocksInventory);
 		if (addImplicitGafs)
 		{
 			HashSet<Type> allRegisteredTypes = PredicateRegistry.GetAllRegisteredTypes();
-			foreach (Type type in allRegisteredTypes)
+			foreach (Type item in allRegisteredTypes)
 			{
-				List<GAF> implicitlyUnlockedGAFs = Scarcity.GetImplicitlyUnlockedGAFs(type);
-				foreach (GAF key in implicitlyUnlockedGAFs)
+				List<GAF> implicitlyUnlockedGAFs = GetImplicitlyUnlockedGAFs(item);
+				foreach (GAF item2 in implicitlyUnlockedGAFs)
 				{
-					if (!Scarcity.globalInventory.ContainsKey(key))
+					if (!globalInventory.ContainsKey(item2))
 					{
-						Scarcity.globalInventory[key] = -1;
+						globalInventory[item2] = -1;
 					}
 				}
 			}
 		}
-		Scarcity.ResetInventory();
-		Scarcity.UpdateInventory(true, null);
+		ResetInventory();
+		UpdateInventory();
 	}
 
-	// Token: 0x06001D94 RID: 7572 RVA: 0x000D35D4 File Offset: 0x000D19D4
 	public static List<GAF> GetImplicitlyUnlockedGAFs(Type type)
 	{
 		List<GAF> list = new List<GAF>();
@@ -1340,128 +1232,114 @@ public class Scarcity
 		{
 			return list;
 		}
-		List<Predicate> list2 = PredicateRegistry.ForType(type, false);
-		foreach (Predicate predicate in list2)
+		List<Predicate> list2 = PredicateRegistry.ForType(type, includeBaseTypes: false);
+		foreach (Predicate item in list2)
 		{
-			List<BlockItem> list3 = BlockItem.FindByGafPredicateName(predicate.Name);
-			foreach (BlockItem blockItem in list3)
+			List<BlockItem> list3 = BlockItem.FindByGafPredicateName(item.Name);
+			foreach (BlockItem item2 in list3)
 			{
-				list.Add(new GAF(blockItem));
+				list.Add(new GAF(item2));
 			}
 		}
 		return list;
 	}
 
-	// Token: 0x06001D95 RID: 7573 RVA: 0x000D36A4 File Offset: 0x000D1AA4
 	public static Dictionary<GAF, int> ParseScarcityData(JObject scarcityData)
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		foreach (JObject jobject in scarcityData.ArrayValue)
+		foreach (JObject item in scarcityData.ArrayValue)
 		{
-			GAF gaf = GAF.FromJSON(jobject[0], true, true);
-			if (gaf == null)
+			GAF gAF = GAF.FromJSON(item[0], nullOnFailure: true);
+			if (gAF == null)
 			{
-				BWLog.Warning("Could not find GAF " + gaf + " when refreshing scarcity");
+				BWLog.Warning("Could not find GAF " + gAF?.ToString() + " when refreshing scarcity");
+				continue;
+			}
+			JObject jObject = item[1];
+			if (jObject.StringValue == "infinity")
+			{
+				dictionary[gAF] = -1;
 			}
 			else
 			{
-				JObject jobject2 = jobject[1];
-				if (jobject2.StringValue == "infinity")
-				{
-					dictionary[gaf] = -1;
-				}
-				else
-				{
-					dictionary[gaf] = Mathf.Max(0, (int)jobject2);
-				}
+				dictionary[gAF] = Mathf.Max(0, (int)jObject);
 			}
 		}
 		return dictionary;
 	}
 
-	// Token: 0x06001D96 RID: 7574 RVA: 0x000D3770 File Offset: 0x000D1B70
 	public static Dictionary<GAF, int> ParseScarcityData(BlocksInventory blocksInventory)
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		foreach (int num in blocksInventory.BlockItemIds)
+		foreach (int blockItemId in blocksInventory.BlockItemIds)
 		{
-			if (BlockItem.Exists(num))
+			if (BlockItem.Exists(blockItemId))
 			{
-				BlockItem blockItem = BlockItem.FindByID(num);
+				BlockItem blockItem = BlockItem.FindByID(blockItemId);
 				if (blockItem != null)
 				{
 					GAF key = new GAF(blockItem);
-					dictionary[key] = blocksInventory.CountOrMinusOneIfInfinityOf(num);
+					dictionary[key] = blocksInventory.CountOrMinusOneIfInfinityOf(blockItemId);
 				}
 			}
 		}
 		return dictionary;
 	}
 
-	// Token: 0x06001D97 RID: 7575 RVA: 0x000D3800 File Offset: 0x000D1C00
 	public static void PrintInventory(string name, Dictionary<GAF, int> inv)
 	{
 		BWLog.Info(name);
-		foreach (GAF gaf in inv.Keys)
+		foreach (GAF key in inv.Keys)
 		{
-			BWLog.Info(string.Concat(new object[]
-			{
-				"  ",
-				gaf,
-				": ",
-				inv[gaf]
-			}));
+			BWLog.Info(string.Concat("  ", key, ": ", inv[key]));
 		}
 	}
 
-	// Token: 0x06001D98 RID: 7576 RVA: 0x000D3890 File Offset: 0x000D1C90
 	public static void UpdateInventory(bool updateTiles = true, Dictionary<GAF, int> changes = null)
 	{
-		if (Scarcity.worldGAFUsage != null && Scarcity.inventory != null && (Tutorial.state == TutorialState.None || Tutorial.mode != TutorialMode.StepByStep))
+		if (worldGAFUsage == null || inventory == null || (Tutorial.state != TutorialState.None && Tutorial.mode == TutorialMode.StepByStep))
 		{
-			Dictionary<GAF, int> d = Scarcity.CalculateWorldGafUsage(false, false);
-			Dictionary<GAF, int> dictionary = Scarcity.CompareGafUsages(Scarcity.worldGAFUsage, d, "d1", "d2");
-			bool flag = false;
-			foreach (GAF gaf in dictionary.Keys)
+			return;
+		}
+		Dictionary<GAF, int> d = CalculateWorldGafUsage();
+		Dictionary<GAF, int> dictionary = CompareGafUsages(worldGAFUsage, d);
+		bool flag = false;
+		foreach (GAF key in dictionary.Keys)
+		{
+			int num = dictionary[key];
+			GAF normalizedGaf = GetNormalizedGaf(key);
+			if (inventory.ContainsKey(normalizedGaf) && inventory[normalizedGaf] != -1)
 			{
-				int num = dictionary[gaf];
-				GAF normalizedGaf = Scarcity.GetNormalizedGaf(gaf, false);
-				if (Scarcity.inventory.ContainsKey(normalizedGaf) && Scarcity.inventory[normalizedGaf] != -1)
+				inventory[normalizedGaf] += num;
+				if (inventory[normalizedGaf] < 0)
 				{
-					Dictionary<GAF, int> dictionary2;
-					GAF key;
-					(dictionary2 = Scarcity.inventory)[key = normalizedGaf] = dictionary2[key] + num;
-					if (Scarcity.inventory[normalizedGaf] < 0)
-					{
-						Scarcity.inventory[normalizedGaf] = 0;
-					}
-					if (changes != null)
-					{
-						changes[normalizedGaf] = num;
-					}
+					inventory[normalizedGaf] = 0;
 				}
-				if (num != 0)
+				if (changes != null)
 				{
-					flag = true;
+					changes[normalizedGaf] = num;
 				}
 			}
-			Scarcity.worldGAFUsage = d;
-			if (Blocksworld.modelCollection != null)
+			if (num != 0)
 			{
-				Blocksworld.modelCollection.RefreshScarcity();
+				flag = true;
 			}
-			if (updateTiles && flag)
-			{
-				Blocksworld.UpdateTiles();
-			}
-			if (Scarcity.OnInventoryChange != null)
-			{
-				Scarcity.OnInventoryChange();
-			}
+		}
+		worldGAFUsage = d;
+		if (Blocksworld.modelCollection != null)
+		{
+			Blocksworld.modelCollection.RefreshScarcity();
+		}
+		if (updateTiles && flag)
+		{
+			Blocksworld.UpdateTiles();
+		}
+		if (Scarcity.OnInventoryChange != null)
+		{
+			Scarcity.OnInventoryChange();
 		}
 	}
 
-	// Token: 0x06001D99 RID: 7577 RVA: 0x000D39FC File Offset: 0x000D1DFC
 	public static HashSet<string> GetUniqueBlockNames(Dictionary<GAF, int> gafUsageDict)
 	{
 		Dictionary<string, HashSet<string>> uniqueBlockMap = Blocksworld.GetUniqueBlockMap();
@@ -1470,11 +1348,11 @@ public class Scarcity
 		{
 			return hashSet;
 		}
-		foreach (GAF gaf in gafUsageDict.Keys)
+		foreach (GAF key in gafUsageDict.Keys)
 		{
-			if (gaf.Predicate.ArgTypes.Length != 0 && gaf.Predicate.ArgTypes[0] == typeof(string))
+			if (key.Predicate.ArgTypes.Length != 0 && key.Predicate.ArgTypes[0] == typeof(string))
 			{
-				string text = (string)gaf.Args[0];
+				string text = (string)key.Args[0];
 				if (uniqueBlockMap.ContainsKey(text))
 				{
 					hashSet.Add(text);
@@ -1483,73 +1361,4 @@ public class Scarcity
 		}
 		return hashSet;
 	}
-
-	// Token: 0x14000010 RID: 16
-	// (add) Token: 0x06001D9A RID: 7578 RVA: 0x000D3ACC File Offset: 0x000D1ECC
-	// (remove) Token: 0x06001D9B RID: 7579 RVA: 0x000D3B00 File Offset: 0x000D1F00
-	public static event Scarcity.ScarcityEventHandler OnInventoryChange;
-
-	// Token: 0x0400180C RID: 6156
-	public static Dictionary<GAF, int> puzzleInventory;
-
-	// Token: 0x0400180D RID: 6157
-	public static Dictionary<GAF, int> puzzleGAFUsage;
-
-	// Token: 0x0400180E RID: 6158
-	public static Dictionary<GAF, int> puzzleInventoryAfterStepByStep;
-
-	// Token: 0x0400180F RID: 6159
-	public static Dictionary<GAF, int> puzzleGAFUsageAfterStepByStep;
-
-	// Token: 0x04001810 RID: 6160
-	public static Dictionary<GAF, int> inventory = null;
-
-	// Token: 0x04001811 RID: 6161
-	public static Dictionary<GAF, float> inventoryScales = new Dictionary<GAF, float>();
-
-	// Token: 0x04001812 RID: 6162
-	public static Dictionary<GAF, int> globalInventory = null;
-
-	// Token: 0x04001813 RID: 6163
-	public static Dictionary<GAF, int> worldGAFUsage = null;
-
-	// Token: 0x04001814 RID: 6164
-	public static HashSet<GAF> autoRemoveHighlights = new HashSet<GAF>();
-
-	// Token: 0x04001815 RID: 6165
-	public static Dictionary<string, string> textureOriginals = new Dictionary<string, string>();
-
-	// Token: 0x04001816 RID: 6166
-	private static List<HudMeshLabel> scarcityLabels = new List<HudMeshLabel>();
-
-	// Token: 0x04001817 RID: 6167
-	private static HudMeshLabel quickSelectPaintScarcityLabel;
-
-	// Token: 0x04001818 RID: 6168
-	private static HudMeshLabel quickSelectTextureScarcityLabel;
-
-	// Token: 0x04001819 RID: 6169
-	private static HudMeshLabel quickSelectModelScarcityLabel;
-
-	// Token: 0x0400181A RID: 6170
-	private static HudMeshLabel quickSelectScriptScarcityLabel;
-
-	// Token: 0x0400181B RID: 6171
-	public static Dictionary<string, BlockScarcityInfo> scarcityInfos;
-
-	// Token: 0x0400181C RID: 6172
-	private static HashSet<Predicate> notCountInStepByStepPredicates = null;
-
-	// Token: 0x0400181D RID: 6173
-	private static string[] normalizedPostfixes = new string[]
-	{
-		"_Terrain",
-		"_Sky",
-		"_Water",
-		"_Block"
-	};
-
-	// Token: 0x02000279 RID: 633
-	// (Invoke) Token: 0x06001D9E RID: 7582
-	public delegate void ScarcityEventHandler();
 }

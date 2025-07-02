@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,184 +6,721 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using Blocks;
+using Exdilin;
 using Gestures;
 using SimpleJSON;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
-using Exdilin;
 
-// Token: 0x020001F7 RID: 503
 public class Blocksworld : MonoBehaviour
 {
-	// Token: 0x17000076 RID: 118
-	// (get) Token: 0x060018DD RID: 6365 RVA: 0x000AF9DE File Offset: 0x000ADDDE
-	public static Camera mainCamera
-	{
-		get
-		{
-			return Blocksworld._mainCamera;
-		}
-	}
+	public static float fixedDeltaTime;
 
-	// Token: 0x17000077 RID: 119
-	// (get) Token: 0x060018DE RID: 6366 RVA: 0x000AF9E5 File Offset: 0x000ADDE5
-	public static UIMain UI
-	{
-		get
-		{
-			return Blocksworld.bw._ui;
-		}
-	}
+	public static bool useCompactGafWriteRenamings;
 
-	// Token: 0x17000078 RID: 120
-	// (get) Token: 0x060018DF RID: 6367 RVA: 0x000AF9F1 File Offset: 0x000ADDF1
-	public static State CurrentState
-	{
-		get
-		{
-			return Blocksworld._currentState;
-		}
-	}
+	public static bool inBackground;
 
-	// Token: 0x17000079 RID: 121
-	// (get) Token: 0x060018E0 RID: 6368 RVA: 0x000AF9F8 File Offset: 0x000ADDF8
-	private static State LastState
-	{
-		get
-		{
-			return Blocksworld._lastState;
-		}
-	}
+	public static Bunch selectedBunch;
 
-	// Token: 0x060018E1 RID: 6369 RVA: 0x000AF9FF File Offset: 0x000ADDFF
+	public static bool lockPull;
+
+	public static List<NamedPose> cameraPoses;
+
+	public static Dictionary<string, NamedPose> cameraPosesMap;
+
+	public static bool staticLockPull;
+
+	public static bool dynamicLockPull;
+
+	public static bool lockInput;
+
+	public static bool isFirstFrame;
+
+	public static bool hideInGameUI;
+
+	public static bool started;
+
+	public static bool renderingShadows;
+
+	public static bool renderingSkybox;
+
+	public static bool renderingWater;
+
+	public static float _lightIntensityBasic;
+
+	public static float _lightIntensityMultiplier;
+
+	public static Color _buildModeFogColor;
+
+	public static float _buildModeFogStart;
+
+	public static float _buildModeFogEnd;
+
+	public static Clipboard clipboard;
+
+	public static ModelCollection modelCollection;
+
+	private static List<Command> updateCommands;
+
+	private static List<Command> fixedUpdateCommands;
+
+	private static List<Command> resetStateCommands;
+
+	public static HashSet<string> unlockedPaints;
+
+	public static bool resetting;
+
+	public static bool loadComplete;
+
+	public static bool isLoadingScene;
+
+	public static bool resettingPlay;
+
+	public static bool capturingScreenshot;
+
+	public static Vector3 constrainedManipulationAxis;
+
+	public static HashSet<Block> editorSelectionLocked;
+
+	private static bool keyLReleased;
+
+	private static Block recentSelectionUnlockedBlock;
+
+	public static bool isUsingSmallScreen;
+
+	public static string currentBackgroundMusic;
+
+	private static int loadedTextureCountAfterRemovingAssets;
+
+	private static int loadedBlockCountAfterRemovingAssets;
+
+	public static bool interpolateRigidBodies;
+
+	public const int sizeTile = 80;
+
+	public const int sizeTileMesh = 75;
+
+	public static int marginTile;
+
+	public static int defaultPanelPadding;
+
+	public const int buildPanelPadding = 20;
+
+	public static float fogMultiplier;
+
+	public static float fogStart;
+
+	public static float fogEnd;
+
+	public static Color fogColor;
+
+	public static HashSet<string> existingBlockNames;
+
+	public static Dictionary<string, GameObject> prefabs;
+
+	public static Dictionary<string, GameObject> goPrefabs;
+
+	public static Dictionary<string, Mesh> meshes;
+
+	public static Dictionary<string, Collider> colliders;
+
+	public static Dictionary<string, GameObject> compoundColliders;
+
+	public static Dictionary<string, GameObject> shapes;
+
+	public static Dictionary<string, GameObject> glues;
+
+	public static Dictionary<string, GameObject> joints;
+
+	public static List<GAF> globalGafs;
+
+	public static List<GAF> rewardVisualizationGafs;
+
+	private static int rewardVisualizationIndex;
+
+	private static ScriptRowExecutionInfo rewardExecutionInfo;
+
+	public static bool winIsWaiting;
+
+	public static bool hasWon;
+
+	public static bool stopASAP;
+
+	public static bool waitForSetPurchase;
+
+	private static bool canSaveInMenu;
+
+	public static bool worldSaveEnabled;
+
+	private static bool f3PressedInCurrentWorld;
+
+	public static Blocksworld bw;
+
+	public static GameObject blocksworldDataContainer;
+
+	protected static Camera _mainCamera;
+
+	private static Camera _mainCameraOverrideBackup;
+
+	public static Transform cameraTransform;
+
+	public static Vector3 cameraPosition;
+
+	public static Vector3 cameraForward;
+
+	public static Vector3 cameraUp;
+
+	public static Vector3 cameraRight;
+
+	public static Camera guiCamera;
+
+	public static Camera rewardCamera;
+
+	public static GUISkin skin;
+
+	public static GameObject directionalLight;
+
+	public static Light overheadLight;
+
+	public static Transform lightingRig;
+
+	public static Texture buttonPlus;
+
+	public static Texture buttonMinus;
+
+	public static BlockSky worldSky;
+
+	public static GameObject worldOcean;
+
+	public static BlockWater worldOceanBlock;
+
+	private int whiteBackground;
+
+	public static GameObject prefabArrow;
+
+	public ParticleSystem explosion;
+
+	public static ParticleSystem stars;
+
+	public static ParticleSystem starsReward;
+
+	public static GameObject rewardStarburst;
+
+	public static SfxDefinitions sfxDefinitions;
+
+	public static EngineSoundDefinitions engineSoundDefinitions;
+
+	public static LeaderboardData leaderboardData;
+
+	public static BlocksworldComponentData componentData;
+
+	public static readonly BlocksworldCamera blocksworldCamera;
+
+	public static Vector3 prevCamPos;
+
+	public static bool cameraMoved;
+
+	public static Color lightColor;
+
+	public static Color dynamicLightColor;
+
+	public static float dynamicLightIntensityMultiplier;
+
+	public static List<ILightChanger> dynamicalLightChangers;
+
+	public static WeatherEffect weather;
+
+	public static FpsCounter fpsCounter;
+
+	private Vector3 mousePositionLast = Vector3.zero;
+
+	private Vector3 mousePositionDelta;
+
+	public static Vector3 mousePositionFirst;
+
+	public static BuildPanel buildPanel;
+
+	public static ScriptPanel scriptPanel;
+
+	public static Tile tileButtonClearScript;
+
+	public static Tile tileButtonCopyScript;
+
+	public static Tile tileButtonPasteScript;
+
+	public static HashSet<GAF> publicProvidedGafs;
+
+	private float offsetMenu;
+
+	public static List<GAF> enabledGAFs;
+
+	public static List<GAF> enabledPanelBlock;
+
+	private static string displayString;
+
+	public static List<GAF> unlockedGAFs;
+
+	public static HashSet<GAF> sidePanelGafs;
+
+	public static Dictionary<OldSymbol, float> joysticks;
+
+	public TileParameterEditor tileParameterEditor;
+
+	public static Tile selectedTile;
+
+	public bool forcePlayMode;
+
+	public static float lastRealtimeSinceStartup;
+
+	public static float deltaTime;
+
+	public static bool hd;
+
+	public static float screenScale;
+
+	public static int screenWidth;
+
+	public static int screenHeight;
+
+	public static Vector3 mouse;
+
+	public static int numTouches;
+
+	public static Vector3[] touches;
+
+	public static Block mouseBlock;
+
+	public static int mouseBlockIndex;
+
+	public static Vector3 mouseBlockNormal;
+
+	public static Vector3 mouseBlockHitPosition;
+
+	public static Block mouseBlockLast;
+
+	public bool tWidgetHit;
+
+	public static bool tWidgetHitAtStart;
+
+	public static bool tBoxHit;
+
+	public static bool tBoxHitAtStart;
+
+	public static Vector3 mouseBlockNormalLast;
+
+	public static Block selectedBlock;
+
+	private Vector3 anglesDelta;
+
+	private Quaternion rotationStart;
+
+	private Vector3 textureNormalLast;
+
+	private float orbit;
+
+	private static string stringInput;
+
+	private static bool consumeEvent;
+
+	public LineRenderer pullObjectLineRenderer;
+
+	public static GestureRecognizer recognizer;
+
+	private BaseGesture[] buildOnlyGestures;
+
+	private SecretCommandGesture autoPlayGesture;
+
+	private PullObjectGesture pullObject;
+
+	public TapControlGesture tapControl;
+
+	public ParameterEditGesture parameterEditGesture;
+
+	public static UIGesture uiGesture;
+
+	public static TBoxGesture tBoxGesture;
+
+	public static TileDragGesture tileDragGesture;
+
+	public static CreateTileDragGesture createTileDragGesture;
+
+	public static ReplaceBodyPartTileDragGesture replaceBodyPartGesture;
+
+	public static CharacterEditGearGesture characterEditGearGesture;
+
+	public static CWidgetGesture cWidgetGesture;
+
+	public static BlockDuplicateGesture blockDupeGesture;
+
+	public static BlockTapGesture blockTapGesture;
+
+	public static ButtonTapGesture buttonTapGesture;
+
+	public static OrbitDuringControlCameraGesture orbitDuringControlGesture;
+
+	private Vector3 mouseStart;
+
+	public static string currentWorldId;
+
+	public static bool launchIntoPlayMode;
+
+	private JObject lastLoadedCameraObj;
+
+	public static float angularDragMultiplier;
+
+	public static float dragMultiplier;
+
+	public static List<Block> locked;
+
+	public static List<Chunk> chunks;
+
+	public static float timerStart;
+
+	public static float timerStop;
+
+	public static bool gameStart;
+
+	public const string SIGNAL_NAMES = "signal-names";
+
+	public const string BLOCK_NAMES = "block-names";
+
+	public const string CAMERA_POSES = "camera-poses";
+
+	public const string PUZZLE_GAFS = "puzzle-gafs";
+
+	public const string PUZZLE_GAF_USAGE = "puzzle-gaf-usage";
+
+	public const string PUZZLE_GAFS_AFTER_STEP_BY_STEP = "puzzle-gafs-after-step-by-step";
+
+	public const string PUZZLE_GAF_USAGE_AFTER_STEP_BY_STEP = "puzzle-gaf-usage-after-step-by-step";
+
+	public const int SIGNAL_COUNT = 26;
+
+	public const int MAX_PLAYER_COUNT = 8;
+
+	public const int MAX_COUNTERS = 2;
+
+	public const int MAX_TIMERS = 2;
+
+	public const int MAX_GAUGES = 2;
+
+	public const int MAX_RADARS = 1;
+
+	public static bool[] sending;
+
+	public static float[] sendingValues;
+
+	public static string[] signalNames;
+
+	public const string GENERIC_WILDCARD_NAME = "*";
+
+	public const string DEFAULT_CUSTOM_SIGNAL_NAME = "Signal";
+
+	public const string DEFAULT_CUSTOM_INT_VARIABLE_NAME = "Int";
+
+	public static Dictionary<string, float> sendingCustom;
+
+	public static Dictionary<Block, string> blockNames;
+
+	public static int numSendTilesInUse;
+
+	public static int numTagTilesInUse;
+
+	public static HashSet<string> everPresentTagsInUse;
+
+	public static HashSet<string> arrowTags;
+
+	public static HashSet<string> handAttachmentTags;
+
+	public static HashSet<string> laserTags;
+
+	public static HashSet<string> projectileTags;
+
+	public static HashSet<string> waterTags;
+
+	public static HashSet<string> customSignals;
+
+	public static Dictionary<string, int> customIntVariables;
+
+	public static Dictionary<Block, Dictionary<string, int>> blockIntVariables;
+
+	public static float gameTime;
+
+	public static int updateCounter;
+
+	public static int playFixedUpdateCounter;
+
+	public static int numCounters;
+
+	public static Dictionary<string, bool> countersActivated;
+
+	public static Dictionary<string, int> counters;
+
+	public static Dictionary<string, int> counterTargets;
+
+	public static Dictionary<string, bool> counterTargetsActivated;
+
+	public static Texture starOutlineTexture;
+
+	public static Texture starTexture;
+
+	public static Plane[] frustumPlanes;
+
+	public static float maxBlockTapDistance;
+
+	public static float maxBlockDragDistance;
+
+	public static MusicPlayer musicPlayer;
+
+	public static Dictionary<string, string> iconColors;
+
+	public static Dictionary<string, Color[]> colorDefinitions;
+
+	public static Dictionary<string, Color[]> ambientLightGradientDefinitions;
+
+	public static Dictionary<string, Color> skyBoxTintDefinitions;
+
+	public static Dictionary<RarityLevelEnum, Material> rarityBorderMaterialsEnabled;
+
+	public static Dictionary<RarityLevelEnum, Material> rarityBorderMaterialsDisabled;
+
+	public static TilePool tilePool;
+
+	public static TilePool modelTilePool;
+
+	public Vector2 storeFogDistances = new Vector2(150f, 400f);
+
+	private UIMain _ui;
+
+	private Color _defaultBackgroundColor;
+
+	public static readonly float defaultGravityStrength;
+
+	private static VRType VR_Default;
+
+	public static bool vrEnabled;
+
+	private static VRType currentVRType;
+
+	private static GameObject vrCameraAdjust;
+
+	public Transform cameraTiltTransform;
+
+	public Transform cameraParentTransform;
+
+	internal static bool worldSessionHadVR;
+
+	internal static bool worldSessionHadBlocksterMover;
+
+	internal static bool worldSessionHadBlocksterSpeaker;
+
+	internal static bool worldSessionHadBlockTap;
+
+	internal static int worldSessionCoinsCollected;
+
+	internal static bool worldSessionHadHypderjumpUse;
+
+	private static State _currentState;
+
+	private static State _lastState;
+
+	private static float _stateTime;
+
+	private bool autoLoad;
+
+	private HudMeshLabel labelTimer;
+
+	private List<HudMeshLabel> labelCounters = new List<HudMeshLabel>();
+
+	private static string[] counterNames;
+
+	private Block lastBuildModeSelectedBlock;
+
+	private Bunch lastBuildModeSelectedBunch;
+
+	private static HashSet<Predicate> analogStickPredicates;
+
+	private static HashSet<Predicate> tiltMoverPredicates;
+
+	private bool keyboardPasteInProgress;
+
+	private Vector3 wasdeqMouseCamPosTarget;
+
+	private Vector3 wasdeqMouseCamLookAtTarget;
+
+	private bool cameraSelectionOrbitMode;
+
+	private float lastControlPressTime = -1f;
+
+	private int controlPressesInShortTime;
+
+	private float lastQuickScrollPressTime = -1f;
+
+	private List<int> quickScrollKeys = new List<int>();
+
+	private Dictionary<string, int> materialUsage = new Dictionary<string, int>();
+
+	private static HashSet<Predicate> taggedPredicates;
+
+	public static Dictionary<string, HashSet<string>> uniqueBlockMap;
+
+	private static HashSet<GAF> uniqueGafs;
+
+	private static PredicateSet magnetPredicates;
+
+	private static PredicateSet taggedHandAttachmentPreds;
+
+	private static PredicateSet taggedArrowPreds;
+
+	private static PredicateSet taggedLaserPreds;
+
+	private static PredicateSet taggedProjectilePreds;
+
+	private static PredicateSet taggedWaterPreds;
+
+	private bool _showingOptionsWhenPaused;
+
+	private CopyModelAnimationCommand copyModelAnimationCommand = new CopyModelAnimationCommand();
+
+	private SaveModelAnimationCommand saveModelAnimationCommand = new SaveModelAnimationCommand();
+
+	private CopyScriptAnimationCommand copyScriptAnimationCommand = new CopyScriptAnimationCommand();
+
+	private const float DIRECT_RAYCAST_SCREEN_THRESHOLD = 0.35f;
+
+	private PasteModelAnimationCommand pasteModelAnimationCommand = new PasteModelAnimationCommand();
+
+	public static Dictionary<string, bool> luminousPaints;
+
+	public static Camera mainCamera => _mainCamera;
+
+	public static UIMain UI => bw._ui;
+
+	public static State CurrentState => _currentState;
+
+	private static State LastState => _lastState;
+
 	public static void SetBlocksworldState(State nextState)
 	{
-		Blocksworld._lastState = Blocksworld._currentState;
-		Blocksworld._currentState = nextState;
-		Blocksworld._stateTime = 0f;
-		Blocksworld.musicPlayer.SetEnabled(Blocksworld.IsMusicEnabledForState());
+		_lastState = _currentState;
+		_currentState = nextState;
+		_stateTime = 0f;
+		musicPlayer.SetEnabled(IsMusicEnabledForState());
 	}
 
-	// Token: 0x060018E2 RID: 6370 RVA: 0x000AFA2A File Offset: 0x000ADE2A
 	public static float TimeInCurrentState()
 	{
-		return Blocksworld._stateTime;
+		return _stateTime;
 	}
 
-	// Token: 0x060018E3 RID: 6371 RVA: 0x000AFA31 File Offset: 0x000ADE31
 	public static bool IsMusicEnabledForState()
 	{
-		return Blocksworld.CurrentState != State.Background;
+		return CurrentState != State.Background;
 	}
 
-	// Token: 0x060018E4 RID: 6372 RVA: 0x000AFA40 File Offset: 0x000ADE40
 	public static void Bootstrap(GameObject go)
 	{
 		Component component = go.GetComponent("BlocksworldComponentData");
-		Blocksworld.guiCamera = (Camera)component.GetType().GetField("guiCamera").GetValue(component);
-		Blocksworld.rewardCamera = (Camera)component.GetType().GetField("rewardCamera").GetValue(component);
-		Blocksworld.buttonPlus = (Texture)component.GetType().GetField("buttonPlus").GetValue(component);
-		Blocksworld.buttonMinus = (Texture)component.GetType().GetField("buttonMinus").GetValue(component);
-		Blocksworld.prefabArrow = (GameObject)component.GetType().GetField("prefabArrow").GetValue(component);
-		Blocksworld.stars = (ParticleSystem)component.GetType().GetField("stars").GetValue(component);
-		Blocksworld.starsReward = (ParticleSystem)component.GetType().GetField("starsReward").GetValue(component);
+		guiCamera = (Camera)component.GetType().GetField("guiCamera").GetValue(component);
+		rewardCamera = (Camera)component.GetType().GetField("rewardCamera").GetValue(component);
+		buttonPlus = (Texture)component.GetType().GetField("buttonPlus").GetValue(component);
+		buttonMinus = (Texture)component.GetType().GetField("buttonMinus").GetValue(component);
+		prefabArrow = (GameObject)component.GetType().GetField("prefabArrow").GetValue(component);
+		stars = (ParticleSystem)component.GetType().GetField("stars").GetValue(component);
+		starsReward = (ParticleSystem)component.GetType().GetField("starsReward").GetValue(component);
 		Blocksworld blocksworld = go.AddComponent<Blocksworld>();
-		blocksworld.autoLoad = (BWStandalone.Instance == null);
+		blocksworld.autoLoad = BWStandalone.Instance == null;
 	}
 
-	// Token: 0x060018E5 RID: 6373 RVA: 0x000AFB54 File Offset: 0x000ADF54
 	public static string DefaultProfileWorldAssetPath()
 	{
 		return "ProfileWorlds/profile_world_source_anim_male";
 	}
 
-	// Token: 0x060018E6 RID: 6374 RVA: 0x000AFB68 File Offset: 0x000ADF68
 	private void Awake()
 	{
 		BWLog.Info("Awaking Blocksworld..");
-		Blocksworld.bw = this;
-		Blocksworld.cameraTransform = GameObject.Find("Camera Holder").transform;
+		bw = this;
+		cameraTransform = GameObject.Find("Camera Holder").transform;
 		GameObject gameObject = UnityEngine.Object.Instantiate(Resources.Load("Main Camera")) as GameObject;
-		Blocksworld._mainCamera = gameObject.GetComponent<Camera>();
-		this._defaultBackgroundColor = Blocksworld._mainCamera.backgroundColor;
-		Blocksworld.mainCamera.transform.parent = Blocksworld.cameraTransform;
-		Blocksworld.mainCamera.transform.position = Blocksworld.cameraTransform.position;
-		Blocksworld.mainCamera.transform.rotation = Blocksworld.cameraTransform.rotation;
-		Blocksworld.blocksworldDataContainer = GameObject.Find("BlocksworldData");
-		Blocksworld.sfxDefinitions = Blocksworld.blocksworldDataContainer.GetComponent<SfxDefinitions>();
-		Blocksworld.engineSoundDefinitions = Blocksworld.blocksworldDataContainer.GetComponent<EngineSoundDefinitions>();
-		Blocksworld.componentData = Blocksworld.blocksworldDataContainer.GetComponent<BlocksworldComponentData>();
-		Blocksworld.leaderboardData = Blocksworld.blocksworldDataContainer.GetComponent<LeaderboardData>();
+		_mainCamera = gameObject.GetComponent<Camera>();
+		_defaultBackgroundColor = _mainCamera.backgroundColor;
+		mainCamera.transform.parent = cameraTransform;
+		mainCamera.transform.position = cameraTransform.position;
+		mainCamera.transform.rotation = cameraTransform.rotation;
+		blocksworldDataContainer = GameObject.Find("BlocksworldData");
+		sfxDefinitions = blocksworldDataContainer.GetComponent<SfxDefinitions>();
+		engineSoundDefinitions = blocksworldDataContainer.GetComponent<EngineSoundDefinitions>();
+		componentData = blocksworldDataContainer.GetComponent<BlocksworldComponentData>();
+		leaderboardData = blocksworldDataContainer.GetComponent<LeaderboardData>();
 		Shader.globalMaximumLOD = 1000;
-		Blocksworld.renderingShadows = (QualitySettings.shadows != ShadowQuality.Disable);
-		Blocksworld.renderingWater = true;
-		Blocksworld.renderingSkybox = true;
-		Blocksworld._mainCamera.clearFlags = CameraClearFlags.Skybox;
+		renderingShadows = QualitySettings.shadows != ShadowQuality.Disable;
+		renderingWater = true;
+		renderingSkybox = true;
+		_mainCamera.clearFlags = CameraClearFlags.Skybox;
 		AmplifyOcclusionEffect component = gameObject.GetComponent<AmplifyOcclusionEffect>();
 		if (component != null)
 		{
-			component.enabled = Blocksworld.renderingShadows;
+			component.enabled = renderingShadows;
 		}
 		BWFog component2 = gameObject.GetComponent<BWFog>();
 		if (component2 != null)
 		{
-			component2.enabled = Blocksworld.renderingShadows;
+			component2.enabled = renderingShadows;
 		}
 		BWLog.Info("Done awaking Blocksworld!");
 	}
 
-	// Token: 0x060018E7 RID: 6375 RVA: 0x000AFCC0 File Offset: 0x000AE0C0
 	private IEnumerator Start()
 	{
-        yield return null;
+		yield return null;
 		TiltManager.Instance.Init();
 		PerformaceTest speedTest = new PerformaceTest("Load Main Scene");
 		speedTest.Start();
-		Blocksworld.screenScale = NormalizedScreen.scale;
-		Blocksworld.hd = (Blocksworld.screenScale > 1f);
+		screenScale = NormalizedScreen.scale;
+		hd = screenScale > 1f;
 		BWLog.Info("Creating UI..");
-		this._ui = UIMain.CreateUI();
-		Blocksworld.UI.gameObject.SetActive(false);
-		Blocksworld.SetupCameraHierarchy();
+		_ui = UIMain.CreateUI();
+		UI.gameObject.SetActive(value: false);
+		SetupCameraHierarchy();
 		yield return null;
-		Blocksworld.fixedDeltaTime = Time.fixedDeltaTime;
-		this.tileParameterEditor = base.gameObject.AddComponent<TileParameterEditor>();
-		this.tileParameterEditor.enabled = false;
+		fixedDeltaTime = Time.fixedDeltaTime;
+		tileParameterEditor = base.gameObject.AddComponent<TileParameterEditor>();
+		tileParameterEditor.enabled = false;
 		SymbolCompat.Init();
 		BWLog.Info("Initializing settings..");
-		Blocksworld.useCompactGafWriteRenamings = Options.UseCompactGafWriteRenamings;
-		Blocksworld.screenWidth = NormalizedScreen.width;
-		Blocksworld.screenHeight = NormalizedScreen.height;
-		Blocksworld.skin = Blocksworld.LoadSkin(Blocksworld.hd);
-		Blocksworld.guiCamera.transform.position = new Vector3((float)(Blocksworld.screenWidth / 2), (float)(Blocksworld.screenHeight / 2), -1f);
-		Blocksworld.guiCamera.orthographicSize = (float)(Blocksworld.screenHeight / 2);
-		Blocksworld.guiCamera.transparencySortMode = TransparencySortMode.Orthographic;
+		useCompactGafWriteRenamings = Options.UseCompactGafWriteRenamings;
+		screenWidth = NormalizedScreen.width;
+		screenHeight = NormalizedScreen.height;
+		skin = LoadSkin(hd);
+		guiCamera.transform.position = new Vector3(screenWidth / 2, screenHeight / 2, -1f);
+		guiCamera.orthographicSize = screenHeight / 2;
+		guiCamera.transparencySortMode = TransparencySortMode.Orthographic;
 		speedTest.StartSubTest("ReadScarcityInfo");
 		Scarcity.ReadScarcityInfo();
 		speedTest.StopSubTest();
 		BWLog.Info("Initializing music..");
-		Blocksworld.musicPlayer = MusicPlayer.Create();
-		Blocksworld.UpdateEditorMusicPlayerEnabled();
+		musicPlayer = MusicPlayer.Create();
+		UpdateEditorMusicPlayerEnabled();
 		ResourceLoader.UpdateTextureInfos();
-		Blocksworld.SetupColorDefinitions(Blocksworld.colorDefinitions, Blocksworld.ambientLightGradientDefinitions, Blocksworld.skyBoxTintDefinitions);
-		Blocksworld.SetupRarityBorders(Blocksworld.rarityBorderMaterialsEnabled, Blocksworld.rarityBorderMaterialsDisabled);
-		this.SetupTextureMetaDatas();
+		SetupColorDefinitions(colorDefinitions, ambientLightGradientDefinitions, skyBoxTintDefinitions);
+		SetupRarityBorders(rarityBorderMaterialsEnabled, rarityBorderMaterialsDisabled);
+		SetupTextureMetaDatas();
 		speedTest.StartSubTest("RegisterBlocks");
 		BWLog.Info("Registering blocks..");
-		Blocksworld.RegisterBlocks();
-        foreach (Mod mod in ModLoader.mods)
-        {
-            Mod.ExecutionMod = mod;
-            mod.Register(RegisterType.BLOCKS);
-            Mod.ExecutionMod = null;
-        }
-        speedTest.StopSubTest();
+		RegisterBlocks();
+		foreach (Mod mod in ModLoader.mods)
+		{
+			(Mod.ExecutionMod = mod).Register(RegisterType.BLOCKS);
+			Mod.ExecutionMod = null;
+		}
+		speedTest.StopSubTest();
 		BlockItem.LoadBlockItemsFromResources();
 		PanelSlots.LoadPanelSlotsFromResources();
 		CollisionTest.ReadNoShapeCollides();
 		PredicateRegistry.UpdateEquivalentPredicates();
-		Blocksworld.modelCollection = new ModelCollection();
+		modelCollection = new ModelCollection();
 		speedTest.StartSubTest("Block.Init");
 		Block.Init();
 		speedTest.StopSubTest();
@@ -200,329 +737,267 @@ public class Blocksworld : MonoBehaviour
 		Materials.Init();
 		speedTest.StopSubTest();
 		ActionDebug.Init();
-		Blocksworld.globalGafs = GAF.GetAllGlobalGAFs();
+		globalGafs = GAF.GetAllGlobalGAFs();
 		yield return null;
 		BWLog.Info("Loading tile data..");
 		speedTest.StartSubTest("LoadTileData");
-        foreach (Mod mod in ModLoader.mods)
-        {
-            Mod.ExecutionMod = mod;
-            mod.Register(RegisterType.BLOCK_ITEMS);
-            Mod.ExecutionMod = null;
-        }
-        TileIconManager.Init();
+		foreach (Mod mod2 in ModLoader.mods)
+		{
+			(Mod.ExecutionMod = mod2).Register(RegisterType.BLOCK_ITEMS);
+			Mod.ExecutionMod = null;
+		}
+		TileIconManager.Init();
 		speedTest.StopSubTest();
 		TileToggleChain.LoadTileToggleChains();
 		speedTest.StartSubTest("UpdateTileParameterSettings");
 		Tile.CreateAntigravityArgumentConverters();
-        foreach (Mod mod in ModLoader.mods)
-        {
-            mod.Register(RegisterType.TILE_PARAMETERS);
-        }
-        Tile.UpdateTileParameterSettings();
+		foreach (Mod mod3 in ModLoader.mods)
+		{
+			mod3.Register(RegisterType.TILE_PARAMETERS);
+		}
+		Tile.UpdateTileParameterSettings();
 		speedTest.StopSubTest();
 		BWLog.Info("Creating tile pools..");
-		Blocksworld.tilePool = new TilePool("Blocksworld", 256, TilePool.TileImageSource.Resources);
-		Blocksworld.modelTilePool = new TilePool("ModelTiles", 256, TilePool.TileImageSource.StandaloneImageManger);
+		tilePool = new TilePool("Blocksworld", 256, TilePool.TileImageSource.Resources);
+		modelTilePool = new TilePool("ModelTiles", 256, TilePool.TileImageSource.StandaloneImageManger);
 		yield return null;
 		EntityTagsRegistry.Read();
-		Blocksworld.tileButtonClearScript = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Buttons/Clear_Script", true));
-		Blocksworld.tileButtonCopyScript = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Buttons/Copy_Script", true));
-		Blocksworld.tileButtonPasteScript = new Tile(Blocksworld.tilePool.GetTileObjectForIcon("Buttons/Paste_Script", true));
+		tileButtonClearScript = new Tile(tilePool.GetTileObjectForIcon("Buttons/Clear_Script", enabled: true));
+		tileButtonCopyScript = new Tile(tilePool.GetTileObjectForIcon("Buttons/Copy_Script", enabled: true));
+		tileButtonPasteScript = new Tile(tilePool.GetTileObjectForIcon("Buttons/Paste_Script", enabled: true));
 		speedTest.StartSubTest("create build panel");
-		int num = 3;
+		int columns = 3;
 		if (BW.isUnityEditor)
 		{
-			num = Options.PanelColumnCount;
-			if (num == 0)
-			{
-				num = 3;
-			}
-			else
-			{
-				num = Mathf.Clamp(num, 2, 20);
-			}
+			columns = Options.PanelColumnCount;
+			columns = ((columns != 0) ? Mathf.Clamp(columns, 2, 20) : 3);
 		}
 		BWLog.Info("Creating build panel..");
-		Blocksworld.buildPanel = new BuildPanel("Build Panel", num);
-		Blocksworld.buildPanel.UpdatePosition();
-		Blocksworld.buildPanel.depth = 20f;
+		buildPanel = new BuildPanel("Build Panel", columns);
+		buildPanel.UpdatePosition();
+		buildPanel.depth = 20f;
 		speedTest.StopSubTest();
 		BWLog.Info("Creating script panel..");
-		Blocksworld.scriptPanel = new ScriptPanel("Script Panel");
-		Blocksworld.scriptPanel.depth = 10f;
-		Blocksworld.scriptPanel.Show(false);
-		Blocksworld.SetupClipboard();
+		scriptPanel = new ScriptPanel("Script Panel");
+		scriptPanel.depth = 10f;
+		scriptPanel.Show(show: false);
+		SetupClipboard();
 		CharacterStateHandler.ClearStateMap();
 		BWLog.Info("Loading character data..");
-		TextAsset stateMap = Resources.Load<TextAsset>("StateHandler/Character");
-		if (null != stateMap)
+		TextAsset textAsset = Resources.Load<TextAsset>("StateHandler/Character");
+		if (null != textAsset)
 		{
-			CharacterStateHandler.LoadStateMap(stateMap.text, CharacterRole.Male);
+			CharacterStateHandler.LoadStateMap(textAsset.text);
 		}
-		TextAsset upperBodyMap = Resources.Load<TextAsset>("StateHandler/UpperBody");
-		if (null != upperBodyMap)
+		TextAsset textAsset2 = Resources.Load<TextAsset>("StateHandler/UpperBody");
+		if (null != textAsset2)
 		{
-			UpperBodyStateHandler.LoadStateMap(upperBodyMap.text, CharacterRole.Male);
+			UpperBodyStateHandler.LoadStateMap(textAsset2.text);
 		}
 		for (CharacterRole characterRole = CharacterRole.Male; characterRole < CharacterRole.None; characterRole++)
 		{
-			stateMap = Resources.Load<TextAsset>("StateHandler/Character" + characterRole.ToString());
-			if (null != stateMap)
+			textAsset = Resources.Load<TextAsset>("StateHandler/Character" + characterRole);
+			if (null != textAsset)
 			{
-				CharacterStateHandler.LoadStateMap(stateMap.text, characterRole);
+				CharacterStateHandler.LoadStateMap(textAsset.text, characterRole);
 			}
-			upperBodyMap = Resources.Load<TextAsset>("StateHandler/UpperBody" + characterRole.ToString());
-			if (null != upperBodyMap)
+			textAsset2 = Resources.Load<TextAsset>("StateHandler/UpperBody" + characterRole);
+			if (null != textAsset2)
 			{
-				UpperBodyStateHandler.LoadStateMap(upperBodyMap.text, characterRole);
+				UpperBodyStateHandler.LoadStateMap(textAsset2.text, characterRole);
 			}
 		}
 		yield return null;
 		BWLog.Info("Creating GUI..");
 		WorldUILayout.Init();
-		Blocksworld.blocksworldCamera.Init();
-		this.InitializeLights();
+		blocksworldCamera.Init();
+		InitializeLights();
 		Tutorial.Init();
 		TBox.Init();
-		Blocksworld.buildPanel.PositionReset(false);
+		buildPanel.PositionReset();
 		speedTest.StartSubTest("HudMesh.Init");
 		HudMeshOnGUI.Init();
 		speedTest.StopSubTest();
-		Blocksworld.rewardStarburst = (UnityEngine.Object.Instantiate(Resources.Load("Blocks/Block Starburst System")) as GameObject);
-		Blocksworld.rewardStarburst.SetLayer(Layer.Rewards, false);
-		Blocksworld.uiGesture = new UIGesture();
-		Blocksworld.blockDupeGesture = new BlockDuplicateGesture(new BlockDuplicateBeginDelegate(this.BlockDuplicateBegan), new BlockDuplicateGestureDelegate(this.BlockDuplicated));
-		Blocksworld.blockTapGesture = new BlockTapGesture(new BlockTapBeginDelegate(this.BlockTapBegan), new BlockTapGestureDelegate(this.BlockTapped));
-		Blocksworld.buttonTapGesture = new ButtonTapGesture(Blocksworld.buildPanel);
-		Blocksworld.tileDragGesture = new TileDragGesture(Blocksworld.buildPanel, Blocksworld.scriptPanel);
-		Blocksworld.createTileDragGesture = new CreateTileDragGesture(Blocksworld.buildPanel);
-		Blocksworld.replaceBodyPartGesture = new ReplaceBodyPartTileDragGesture(Blocksworld.buildPanel);
-		Blocksworld.characterEditGearGesture = new CharacterEditGearGesture(Blocksworld.buildPanel);
-		PanelScrollGesture panelScroll = new PanelScrollGesture(Blocksworld.buildPanel, Blocksworld.scriptPanel);
-		PanelMoveGesture panelMove = new PanelMoveGesture(Blocksworld.scriptPanel);
-		this.pullObjectLineRenderer = Blocksworld.mainCamera.GetComponent<LineRenderer>();
-		this.pullObject = new PullObjectGesture(this.pullObjectLineRenderer);
-		this.autoPlayGesture = new SecretCommandGesture();
-		this.tapControl = new TapControlGesture();
-		Blocksworld.tBoxGesture = new TBoxGesture();
-		Blocksworld.cWidgetGesture = new CWidgetGesture();
-		this.parameterEditGesture = new ParameterEditGesture();
-		TileTapGesture clearScriptGesture = new TileTapGesture(Blocksworld.tileButtonClearScript, new TileTapGestureDelegate(this.ButtonClearScriptTapped), false, false);
-		clearScriptGesture.SetExtendedHit(-10f, -10f, -10f, -10f);
-		TileTapGesture copyScriptGesture = new TileTapGesture(Blocksworld.tileButtonCopyScript, new TileTapGestureDelegate(this.ButtonCopyScriptTapped), false, false);
-		copyScriptGesture.SetExtendedHit(-10f, -10f, -10f, -10f);
-		TileTapGesture pasteScriptGesture = new TileTapGesture(Blocksworld.tileButtonPasteScript, new TileTapGestureDelegate(this.ButtonPasteScriptTapped), false, false);
-		pasteScriptGesture.SetExtendedHit(-10f, -10f, -10f, -10f);
-		Tile characterEditTile = new Tile(TBox.tileCharacterEditIcon);
-		TileTapGesture characterEditGesture = new TileTapGesture(characterEditTile, new TileTapGestureDelegate(this.CharacterEditTapped), false, false);
-		Tile characterEditExitTile = new Tile(TBox.tileCharacterEditExitIcon);
-		TileTapGesture characterEditExitGesture = new TileTapGesture(characterEditExitTile, new TileTapGestureDelegate(this.CharacterEditExitTapped), false, false);
-		List<BaseGesture> panelLayerList = new List<BaseGesture>
+		rewardStarburst = UnityEngine.Object.Instantiate(Resources.Load("Blocks/Block Starburst System")) as GameObject;
+		rewardStarburst.SetLayer(Layer.Rewards);
+		uiGesture = new UIGesture();
+		blockDupeGesture = new BlockDuplicateGesture(BlockDuplicateBegan, BlockDuplicated);
+		blockTapGesture = new BlockTapGesture(BlockTapBegan, BlockTapped);
+		buttonTapGesture = new ButtonTapGesture(buildPanel);
+		tileDragGesture = new TileDragGesture(buildPanel, scriptPanel);
+		createTileDragGesture = new CreateTileDragGesture(buildPanel);
+		replaceBodyPartGesture = new ReplaceBodyPartTileDragGesture(buildPanel);
+		characterEditGearGesture = new CharacterEditGearGesture(buildPanel);
+		PanelScrollGesture panelScrollGesture = new PanelScrollGesture(buildPanel, scriptPanel);
+		PanelMoveGesture panelMoveGesture = new PanelMoveGesture(scriptPanel);
+		pullObjectLineRenderer = mainCamera.GetComponent<LineRenderer>();
+		pullObject = new PullObjectGesture(pullObjectLineRenderer);
+		autoPlayGesture = new SecretCommandGesture();
+		tapControl = new TapControlGesture();
+		tBoxGesture = new TBoxGesture();
+		cWidgetGesture = new CWidgetGesture();
+		parameterEditGesture = new ParameterEditGesture();
+		TileTapGesture tileTapGesture = new TileTapGesture(tileButtonClearScript, ButtonClearScriptTapped);
+		tileTapGesture.SetExtendedHit(-10f, -10f, -10f, -10f);
+		TileTapGesture tileTapGesture2 = new TileTapGesture(tileButtonCopyScript, ButtonCopyScriptTapped);
+		tileTapGesture2.SetExtendedHit(-10f, -10f, -10f, -10f);
+		TileTapGesture tileTapGesture3 = new TileTapGesture(tileButtonPasteScript, ButtonPasteScriptTapped);
+		tileTapGesture3.SetExtendedHit(-10f, -10f, -10f, -10f);
+		Tile tile = new Tile(TBox.tileCharacterEditIcon);
+		TileTapGesture tileTapGesture4 = new TileTapGesture(tile, CharacterEditTapped);
+		Tile tile2 = new Tile(TBox.tileCharacterEditExitIcon);
+		TileTapGesture tileTapGesture5 = new TileTapGesture(tile2, CharacterEditExitTapped);
+		List<BaseGesture> list = new List<BaseGesture>
 		{
-			this.autoPlayGesture,
-			this.parameterEditGesture,
-			panelScroll,
-			clearScriptGesture,
-			copyScriptGesture,
-			pasteScriptGesture,
-			panelMove,
-			Blocksworld.replaceBodyPartGesture,
-			Blocksworld.characterEditGearGesture,
-			Blocksworld.createTileDragGesture,
-			Blocksworld.tileDragGesture,
-			Blocksworld.buttonTapGesture
+			autoPlayGesture, parameterEditGesture, panelScrollGesture, tileTapGesture, tileTapGesture2, tileTapGesture3, panelMoveGesture, replaceBodyPartGesture, characterEditGearGesture, createTileDragGesture,
+			tileDragGesture, buttonTapGesture
 		};
-		BaseGesture[] panelLayer = panelLayerList.ToArray();
-		Blocksworld.orbitDuringControlGesture = new OrbitDuringControlCameraGesture();
+		BaseGesture[] array = list.ToArray();
+		orbitDuringControlGesture = new OrbitDuringControlCameraGesture();
 		BWLog.Info("Creating mapped input..");
 		MappedInput.Init();
 		BWLog.Info("Loading key maps..");
-		TextAsset buildInput = Resources.Load<TextAsset>("KeyMaps/default_keymap_build");
-		if (null != buildInput)
+		TextAsset textAsset3 = Resources.Load<TextAsset>("KeyMaps/default_keymap_build");
+		if (null != textAsset3)
 		{
 			MappedInput.ClearInputMap(MappableInputMode.Build);
-			if (!MappedInput.AddInputMap(buildInput.text, MappableInputMode.Build))
+			if (!MappedInput.AddInputMap(textAsset3.text, MappableInputMode.Build))
 			{
 				BWLog.Error("Unable to add default build keymap!");
 			}
 		}
-		TextAsset runtimeInput = Resources.Load<TextAsset>("KeyMaps/default_keymap_play");
-		if (null != runtimeInput)
+		TextAsset textAsset4 = Resources.Load<TextAsset>("KeyMaps/default_keymap_play");
+		if (null != textAsset4)
 		{
 			MappedInput.ClearInputMap(MappableInputMode.Play);
-			if (!MappedInput.AddInputMap(runtimeInput.text, MappableInputMode.Play))
+			if (!MappedInput.AddInputMap(textAsset4.text, MappableInputMode.Play))
 			{
 				BWLog.Error("Unable to add default play keymap!");
 			}
 		}
-		TextAsset menuInput = Resources.Load<TextAsset>("KeyMaps/default_keymap_menu");
-		if (null != menuInput)
+		TextAsset textAsset5 = Resources.Load<TextAsset>("KeyMaps/default_keymap_menu");
+		if (null != textAsset5)
 		{
 			MappedInput.ClearInputMap(MappableInputMode.Menu);
-			if (!MappedInput.AddInputMap(menuInput.text, MappableInputMode.Menu))
+			if (!MappedInput.AddInputMap(textAsset5.text, MappableInputMode.Menu))
 			{
 				BWLog.Error("Unable to add default menu keymap!");
 			}
 		}
 		MappedInput.SetMode(MappableInputMode.Menu);
-		BaseGesture[] buttonLayer = new BaseGesture[]
+		BaseGesture[] array2 = new BaseGesture[1] { orbitDuringControlGesture };
+		BaseGesture[] array3 = new BaseGesture[8] { blockDupeGesture, blockTapGesture, tapControl, pullObject, tBoxGesture, cWidgetGesture, tileTapGesture4, tileTapGesture5 };
+		recognizer.AddGesture(uiGesture);
+		BaseGesture[][] array4 = new BaseGesture[3][] { array, array2, array3 };
+		foreach (BaseGesture[] array5 in array4)
 		{
-			Blocksworld.orbitDuringControlGesture
-		};
-		BaseGesture[] worldLayer = new BaseGesture[]
-		{
-			Blocksworld.blockDupeGesture,
-			Blocksworld.blockTapGesture,
-			this.tapControl,
-			this.pullObject,
-			Blocksworld.tBoxGesture,
-			Blocksworld.cWidgetGesture,
-			characterEditGesture,
-			characterEditExitGesture
-		};
-		Blocksworld.recognizer.AddGesture(Blocksworld.uiGesture);
-		foreach (BaseGesture[] array2 in new BaseGesture[][]
-		{
-			panelLayer,
-			buttonLayer,
-			worldLayer
-		})
-		{
-			foreach (BaseGesture gesture in array2)
+			BaseGesture[] array6 = array5;
+			foreach (BaseGesture gesture in array6)
 			{
-				Blocksworld.recognizer.AddGesture(gesture);
+				recognizer.AddGesture(gesture);
 			}
 		}
-		Blocksworld.recognizer.CancelsAll(Blocksworld.uiGesture, panelLayer);
-		Blocksworld.recognizer.CancelsAll(Blocksworld.uiGesture, worldLayer);
-		Blocksworld.recognizer.AnyCancelsAll(panelLayer, buttonLayer);
-		Blocksworld.recognizer.AnyCancelsAll(panelLayer, worldLayer);
-		Blocksworld.recognizer.AnyCancelsAll(buttonLayer, worldLayer);
-		Blocksworld.recognizer.CancelsAll(this.parameterEditGesture, new BaseGesture[]
-		{
-			panelScroll,
-			panelMove,
-			Blocksworld.createTileDragGesture,
-			Blocksworld.replaceBodyPartGesture,
-			Blocksworld.characterEditGearGesture,
-			Blocksworld.tileDragGesture
-		});
-		Blocksworld.recognizer.Cancels(Blocksworld.tBoxGesture, Blocksworld.tileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.replaceBodyPartGesture, Blocksworld.createTileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.replaceBodyPartGesture, Blocksworld.tileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.characterEditGearGesture, Blocksworld.createTileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.characterEditGearGesture, Blocksworld.tileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.createTileDragGesture, Blocksworld.tileDragGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.replaceBodyPartGesture, Blocksworld.characterEditGearGesture);
-		Blocksworld.recognizer.Cancels(Blocksworld.buttonTapGesture, panelScroll);
-		Blocksworld.recognizer.Cancels(Blocksworld.tileDragGesture, panelMove);
-		Blocksworld.recognizer.Cancels(Blocksworld.tBoxGesture, Blocksworld.blockTapGesture);
-		Blocksworld.recognizer.Cancels(characterEditGesture, Blocksworld.blockTapGesture);
-		Blocksworld.recognizer.Cancels(characterEditExitGesture, Blocksworld.blockTapGesture);
-		this.buildOnlyGestures = new BaseGesture[]
-		{
-			Blocksworld.createTileDragGesture,
-			Blocksworld.tileDragGesture,
-			Blocksworld.replaceBodyPartGesture,
-			Blocksworld.characterEditGearGesture,
-			Blocksworld.blockDupeGesture,
-			Blocksworld.blockTapGesture,
-			this.autoPlayGesture
-		};
-		for (int k = 1; k <= Blocksworld.numCounters; k++)
+		recognizer.CancelsAll(uiGesture, array);
+		recognizer.CancelsAll(uiGesture, array3);
+		recognizer.AnyCancelsAll(array, array2);
+		recognizer.AnyCancelsAll(array, array3);
+		recognizer.AnyCancelsAll(array2, array3);
+		recognizer.CancelsAll(parameterEditGesture, new BaseGesture[6] { panelScrollGesture, panelMoveGesture, createTileDragGesture, replaceBodyPartGesture, characterEditGearGesture, tileDragGesture });
+		recognizer.Cancels(tBoxGesture, tileDragGesture);
+		recognizer.Cancels(replaceBodyPartGesture, createTileDragGesture);
+		recognizer.Cancels(replaceBodyPartGesture, tileDragGesture);
+		recognizer.Cancels(characterEditGearGesture, createTileDragGesture);
+		recognizer.Cancels(characterEditGearGesture, tileDragGesture);
+		recognizer.Cancels(createTileDragGesture, tileDragGesture);
+		recognizer.Cancels(replaceBodyPartGesture, characterEditGearGesture);
+		recognizer.Cancels(buttonTapGesture, panelScrollGesture);
+		recognizer.Cancels(tileDragGesture, panelMoveGesture);
+		recognizer.Cancels(tBoxGesture, blockTapGesture);
+		recognizer.Cancels(tileTapGesture4, blockTapGesture);
+		recognizer.Cancels(tileTapGesture5, blockTapGesture);
+		buildOnlyGestures = new BaseGesture[7] { createTileDragGesture, tileDragGesture, replaceBodyPartGesture, characterEditGearGesture, blockDupeGesture, blockTapGesture, autoPlayGesture };
+		for (int k = 1; k <= numCounters; k++)
 		{
 			string key = k + string.Empty;
-			Blocksworld.countersActivated.Add(key, false);
-			Blocksworld.counters.Add(key, 0);
-			Blocksworld.counterTargets.Add(key, 1);
-			Blocksworld.counterTargetsActivated.Add(key, false);
+			countersActivated.Add(key, value: false);
+			counters.Add(key, 0);
+			counterTargets.Add(key, 1);
+			counterTargetsActivated.Add(key, value: false);
 		}
-		Blocksworld.starOutlineTexture = (Resources.Load("Particles/Counter Star Disabled") as Texture);
-		Blocksworld.starTexture = (Resources.Load("Particles/Counter Star Enabled") as Texture);
+		starOutlineTexture = Resources.Load("Particles/Counter Star Disabled") as Texture;
+		starTexture = Resources.Load("Particles/Counter Star Enabled") as Texture;
 		History.activated = true;
-		Blocksworld.started = true;
+		started = true;
 		BlockGroups.Init();
 		if (BW.isIPad)
 		{
 			IOSInterface.BlocksworldSceneLoaded();
 		}
 		BWLog.Info("Finished loading scene.");
-		Blocksworld.isLoadingScene = false;
-		Blocksworld.loadComplete = true;
+		isLoadingScene = false;
+		loadComplete = true;
 		speedTest.Stop();
-        speedTest.DebugLogTestResults();
-        foreach (Mod mod in ModLoader.mods)
-        {
-            Mod.ExecutionMod = mod;
-            mod.Register(RegisterType.SETTINGS);
-            Mod.ExecutionMod = null;
-        }
-		foreach (Mod mod in ModLoader.mods) {
-			Mod.ExecutionMod = mod;
-			mod.Register(RegisterType.TEXTURES);
+		speedTest.DebugLogTestResults();
+		foreach (Mod mod4 in ModLoader.mods)
+		{
+			(Mod.ExecutionMod = mod4).Register(RegisterType.SETTINGS);
+			Mod.ExecutionMod = null;
+		}
+		foreach (Mod mod5 in ModLoader.mods)
+		{
+			(Mod.ExecutionMod = mod5).Register(RegisterType.TEXTURES);
 			Mod.ExecutionMod = null;
 		}
 		BWLog.Info("Initing mods..");
-		foreach (Mod mod in ModLoader.mods) {
-            Mod.ExecutionMod = mod;
-            mod.Init();
-            Mod.ExecutionMod = null;
-        }
+		foreach (Mod mod6 in ModLoader.mods)
+		{
+			(Mod.ExecutionMod = mod6).Init();
+			Mod.ExecutionMod = null;
+		}
 		StartCoroutine(ModLoader.ShowErrors());
-        foreach (BlockItemEntry entry in BlockItemsRegistry.GetItemEntries())
-        {
-            BWUser.currentUser.blocksInventory.Add(entry.item.Id, entry.count, entry.infinite ? 1 : 0);
-        }
-
-		/*foreach (GameObject gameObject in Resources.LoadAll("Blocks", typeof(GameObject))) {
-			if (gameObject.name.StartsWith("Prefab ")) {
-				string item = gameObject.name.Substring("Prefab ".Length);
-				BWLog.Info("Exporting " + item);
-				MeshUtils.ExportGameObject("Blocks/" + item + ".obj", gameObject);
-			}
-		}*/
+		BlockItemEntry[] itemEntries = BlockItemsRegistry.GetItemEntries();
+		foreach (BlockItemEntry blockItemEntry in itemEntries)
+		{
+			BWUser.currentUser.blocksInventory.Add(blockItemEntry.item.Id, blockItemEntry.count, blockItemEntry.infinite ? 1 : 0);
+		}
 		BWLog.Info("Finished loading.");
-		yield break;
 	}
 
-	// Token: 0x060018E8 RID: 6376 RVA: 0x000AFCDC File Offset: 0x000AE0DC
 	private void InitializeLights()
 	{
-		Blocksworld.directionalLight = GameObject.Find("Directional light");
+		directionalLight = GameObject.Find("Directional light");
 		GameObject gameObject = GameObject.Find("Lighting Rig");
 		if (gameObject != null)
 		{
-			if (Blocksworld.renderingShadows)
+			if (renderingShadows)
 			{
-				Blocksworld.lightingRig = gameObject.transform;
-				Light[] componentsInChildren = Blocksworld.lightingRig.GetComponentsInChildren<Light>(true);
-				if (componentsInChildren.Length > 0)
+				lightingRig = gameObject.transform;
+				Light[] componentsInChildren = lightingRig.GetComponentsInChildren<Light>(includeInactive: true);
+				if (componentsInChildren.Length != 0)
 				{
-					Blocksworld.overheadLight = componentsInChildren[0];
+					overheadLight = componentsInChildren[0];
 					for (int i = 0; i < componentsInChildren.Length; i++)
 					{
-						componentsInChildren[i].gameObject.SetActive(true);
+						componentsInChildren[i].gameObject.SetActive(value: true);
 					}
-					Blocksworld.directionalLight.SetActive(false);
+					directionalLight.SetActive(value: false);
 				}
 				else
 				{
-					gameObject.SetActive(false);
+					gameObject.SetActive(value: false);
 				}
 			}
 			else
 			{
-				gameObject.SetActive(false);
+				gameObject.SetActive(value: false);
 			}
 		}
-		else if (Blocksworld.renderingShadows)
+		else if (renderingShadows)
 		{
 			BWLog.Warning("No lighting rig found for dynamic lights!");
 		}
 	}
 
-	// Token: 0x060018E9 RID: 6377 RVA: 0x000AFDA0 File Offset: 0x000AE1A0
 	public static bool HasWinCondition()
 	{
 		Predicate predicateGameWin = Block.predicateGameWin;
@@ -550,94 +1025,101 @@ public class Blocksworld : MonoBehaviour
 		return false;
 	}
 
-	public static List<Dependency> GetRequiredMods() {
-		List<Dependency> requiredMods = new List<Dependency>();
-		List<Block> list = BWSceneManager.AllBlocks();
-
-		// TODO: also count modded music, script and SFX predicates
-		for (int i = 0; i < list.Count; i++) {
-			string blockType = list[i].BlockType();
-			BlockEntry entry = BlockItemsRegistry.GetBlockEntry(blockType);
-			if (entry != null) {
-				if (entry.originator != null) {
-					Dependency dep = new Dependency(entry.originator.Id, entry.originator.Version);
-					if (!requiredMods.Contains(dep)) {
-						requiredMods.Add(dep);
+	public static List<Dependency> GetRequiredMods()
+	{
+		List<Dependency> list = new List<Dependency>();
+		List<Block> list2 = BWSceneManager.AllBlocks();
+		for (int i = 0; i < list2.Count; i++)
+		{
+			string text = list2[i].BlockType();
+			BlockEntry blockEntry = BlockItemsRegistry.GetBlockEntry(text);
+			if (blockEntry != null)
+			{
+				if (blockEntry.originator != null)
+				{
+					Dependency item = new Dependency(blockEntry.originator.Id, blockEntry.originator.Version);
+					if (!list.Contains(item))
+					{
+						list.Add(item);
 					}
-				} else {
-					BWLog.Warning("Unknown mod originator for block " + blockType);
+				}
+				else
+				{
+					BWLog.Warning("Unknown mod originator for block " + text);
 				}
 			}
-			List<List<Tile>> tiles = list[i].tiles;
-			for (int j = 0; j < tiles.Count; j++) {
-				List<Tile> list2 = tiles[j];
-				for (int k = 0; k < list2.Count; k++) {
-					Predicate predicate = list2[k].gaf.Predicate;
-					if (predicate == Block.predicateTextureTo) {
-						object[] args = list2[k].gaf.Args;
-						string texture = Util.GetStringArg(args, 0, "Plain");
-						Mapping mapping = Materials.GetMapping(texture);
-						ShaderType shader = Materials.shaders[texture];
-						Mod owner = AssetsManager.GetOwner("Textures/" + shader + "/" + mapping + "/" + texture);
-						if (owner != null) {
-							Dependency dep = new Dependency(owner.Id, owner.Version);
-							if (!requiredMods.Contains(dep)) {
-								requiredMods.Add(dep);
-							}
+			List<List<Tile>> tiles = list2[i].tiles;
+			for (int j = 0; j < tiles.Count; j++)
+			{
+				List<Tile> list3 = tiles[j];
+				for (int k = 0; k < list3.Count; k++)
+				{
+					Predicate predicate = list3[k].gaf.Predicate;
+					if (predicate != Block.predicateTextureTo)
+					{
+						continue;
+					}
+					object[] args = list3[k].gaf.Args;
+					string stringArg = Util.GetStringArg(args, 0, "Plain");
+					Mapping mapping = Materials.GetMapping(stringArg);
+					ShaderType shaderType = Materials.shaders[stringArg];
+					Mod owner = AssetsManager.GetOwner("Textures/" + shaderType.ToString() + "/" + mapping.ToString() + "/" + stringArg);
+					if (owner != null)
+					{
+						Dependency item2 = new Dependency(owner.Id, owner.Version);
+						if (!list.Contains(item2))
+						{
+							list.Add(item2);
 						}
 					}
 				}
 			}
 		}
-		return requiredMods;
+		return list;
 	}
 
-	// Token: 0x060018EA RID: 6378 RVA: 0x000AFE6C File Offset: 0x000AE26C
 	public static void SetupCameraOverride(Transform newCameraPrefab, Block sourceBlock)
 	{
-		if (Blocksworld._mainCameraOverrideBackup != null)
+		if (_mainCameraOverrideBackup != null)
 		{
 			BWLog.Error("Only one camera override can be active at a time!");
 			return;
 		}
-		Blocksworld.TakedownVRCamera();
-		Blocksworld._mainCamera.gameObject.SetActive(false);
-		Blocksworld._mainCameraOverrideBackup = Blocksworld._mainCamera;
-		Transform transform = UnityEngine.Object.Instantiate<Transform>(newCameraPrefab).transform;
-		Blocksworld._mainCamera = transform.GetComponent<Camera>();
-		Blocksworld.mainCamera.transform.parent = Blocksworld.cameraTransform;
-		Blocksworld.mainCamera.transform.position = Blocksworld.cameraTransform.position;
-		Blocksworld.mainCamera.transform.rotation = Blocksworld.cameraTransform.rotation;
+		TakedownVRCamera();
+		_mainCamera.gameObject.SetActive(value: false);
+		_mainCameraOverrideBackup = _mainCamera;
+		Transform transform = UnityEngine.Object.Instantiate(newCameraPrefab).transform;
+		_mainCamera = transform.GetComponent<Camera>();
+		mainCamera.transform.parent = cameraTransform;
+		mainCamera.transform.position = cameraTransform.position;
+		mainCamera.transform.rotation = cameraTransform.rotation;
 		NightVisionColoring component = transform.GetComponent<NightVisionColoring>();
-		if (component)
+		if ((bool)component)
 		{
 			component.SetSourceBlock(sourceBlock);
 		}
-		Blocksworld.SetupVRCamera();
+		SetupVRCamera();
 	}
 
-	// Token: 0x060018EB RID: 6379 RVA: 0x000AFF30 File Offset: 0x000AE330
 	public static void ResetCameraOverride()
 	{
-		if (Blocksworld._mainCameraOverrideBackup != null)
+		if (_mainCameraOverrideBackup != null)
 		{
-			Blocksworld.TakedownVRCamera();
-			UnityEngine.Object.Destroy(Blocksworld._mainCamera.gameObject);
-			Blocksworld._mainCamera = Blocksworld._mainCameraOverrideBackup;
-			Blocksworld._mainCamera.gameObject.SetActive(true);
-			Blocksworld._mainCameraOverrideBackup = null;
-			Blocksworld.SetupVRCamera();
+			TakedownVRCamera();
+			UnityEngine.Object.Destroy(_mainCamera.gameObject);
+			_mainCamera = _mainCameraOverrideBackup;
+			_mainCamera.gameObject.SetActive(value: true);
+			_mainCameraOverrideBackup = null;
+			SetupVRCamera();
 		}
 	}
 
-	// Token: 0x060018EC RID: 6380 RVA: 0x000AFF86 File Offset: 0x000AE386
 	public static void CleanupAndQuitToMenu()
 	{
-		Blocksworld.Cleanup(true);
-		Blocksworld.UI.gameObject.SetActive(false);
+		Cleanup(quitToMenu: true);
+		UI.gameObject.SetActive(value: false);
 	}
 
-	// Token: 0x060018ED RID: 6381 RVA: 0x000AFFA0 File Offset: 0x000AE3A0
 	public static void Cleanup(bool quitToMenu)
 	{
 		if (CharacterEditor.Instance.InEditMode())
@@ -646,23 +1128,23 @@ public class Blocksworld : MonoBehaviour
 		}
 		try
 		{
-			Blocksworld.CleanupScene();
+			CleanupScene();
 			if (quitToMenu)
 			{
-				if (Blocksworld.modelCollection != null)
+				if (modelCollection != null)
 				{
-					Blocksworld.modelCollection.Clear();
+					modelCollection.Clear();
 				}
-				Blocksworld.buildPanel.ClearAllTiles();
+				buildPanel.ClearAllTiles();
 			}
-			Blocksworld.bw.StopAllCoroutines();
+			bw.StopAllCoroutines();
 			ScreenshotUtils.OnStopAllCoroutines();
-			Blocksworld.prefabs.Clear();
-			Blocksworld.compoundColliders.Clear();
-			Blocksworld.shapes.Clear();
-			Blocksworld.glues.Clear();
-			Blocksworld.joints.Clear();
-			Blocksworld.leaderboardData.ClearWorldSession();
+			prefabs.Clear();
+			compoundColliders.Clear();
+			shapes.Clear();
+			glues.Clear();
+			joints.Clear();
+			leaderboardData.ClearWorldSession();
 		}
 		catch (Exception ex)
 		{
@@ -672,111 +1154,102 @@ public class Blocksworld : MonoBehaviour
 		{
 			if (quitToMenu)
 			{
-				Blocksworld.worldSessionHadVR = false;
-				Blocksworld.worldSessionHadBlocksterMover = false;
-				Blocksworld.worldSessionHadBlocksterSpeaker = false;
-				Blocksworld.worldSessionHadBlockTap = false;
-				Blocksworld.worldSessionCoinsCollected = 0;
-				Blocksworld.worldSessionHadHypderjumpUse = false;
+				worldSessionHadVR = false;
+				worldSessionHadBlocksterMover = false;
+				worldSessionHadBlocksterSpeaker = false;
+				worldSessionHadBlockTap = false;
+				worldSessionCoinsCollected = 0;
+				worldSessionHadHypderjumpUse = false;
 				WorldSession.jumpRestoreConfig = null;
 				WorldSession.current = null;
-				Blocksworld.bw.StartCoroutine(Blocksworld.CoroutineWorldDidQuit());
+				bw.StartCoroutine(CoroutineWorldDidQuit());
 			}
 		}
 	}
 
-	// Token: 0x060018EE RID: 6382 RVA: 0x000B00C4 File Offset: 0x000AE4C4
 	private static IEnumerator CoroutineWorldDidQuit()
 	{
 		yield return null;
 		WorldSession.platformDelegate.WorldDidQuit();
-		yield break;
 	}
 
-	// Token: 0x060018EF RID: 6383 RVA: 0x000B00D8 File Offset: 0x000AE4D8
 	public void OpenEditorMenu()
 	{
-		Blocksworld.SetBlocksworldState(State.Menu);
-		Blocksworld.canSaveInMenu = (Tutorial.state == TutorialState.None && !Blocksworld.f3PressedInCurrentWorld);
+		SetBlocksworldState(State.Menu);
+		canSaveInMenu = Tutorial.state == TutorialState.None && !f3PressedInCurrentWorld;
 	}
 
-	// Token: 0x060018F0 RID: 6384 RVA: 0x000B00FA File Offset: 0x000AE4FA
 	public void ToggleEditorMenu()
 	{
-		if (Blocksworld.CurrentState == State.Build)
+		if (CurrentState == State.Build)
 		{
-			this.OpenEditorMenu();
+			OpenEditorMenu();
+			return;
 		}
-		else
-		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
-			Blocksworld.SetBlocksworldState(State.Build);
-		}
+		Sound.PlayOneShotSound("Button Generic");
+		SetBlocksworldState(State.Build);
 	}
 
-	// Token: 0x060018F1 RID: 6385 RVA: 0x000B0128 File Offset: 0x000AE528
 	public static void CleanupScene()
 	{
 		BWSceneManager.Cleanup();
 		if (WorldSession.isPuzzleBuildSession() || WorldSession.isPuzzlePlaySession())
 		{
-			Tutorial.Stop(false);
+			Tutorial.Stop();
 		}
 		TileIconManager.Instance.CancelAllFileLoads();
-		Blocksworld.winIsWaiting = false;
-		Blocksworld.hasWon = false;
+		winIsWaiting = false;
+		hasWon = false;
 		Tutorial.ResetState();
-		Blocksworld.bw.Stop(true, false);
+		bw.Stop(force: true, resetBlocks: false);
 		BW.Analytics.SendAnalyticsEvent("world-exit");
-		Blocksworld.inBackground = true;
+		inBackground = true;
 		if (BlockAbstractWater.waterCubes != null)
 		{
 			BlockAbstractWater.waterCubes.Clear();
 		}
 		BlockGroups.Clear();
-		Blocksworld.worldSky = null;
-		Blocksworld.worldOcean = null;
-		Blocksworld.worldOceanBlock = null;
+		worldSky = null;
+		worldOcean = null;
+		worldOceanBlock = null;
 		WeatherEffect.ResetAll();
-		Blocksworld.weather = WeatherEffect.clear;
-		Blocksworld.bw.Reset();
+		weather = WeatherEffect.clear;
+		bw.Reset();
 		TBox.tileCharacterEditIcon.Hide();
 		BlockProceduralCollider.ClearReuseableMeshes();
-		Physics.gravity = -Blocksworld.defaultGravityStrength * Vector3.up;
+		Physics.gravity = (0f - defaultGravityStrength) * Vector3.up;
 		TileIconManager.Instance.labelAtlas.Clear();
 		Materials.materialCache.Clear();
 		Materials.materialCachePaint.Clear();
 		Materials.materialCacheTexture.Clear();
-		Blocksworld.RemoveUnusedBlockPrefabs();
-		Blocksworld.RemoveUnusedTextures();
+		RemoveUnusedBlockPrefabs();
+		RemoveUnusedTextures();
 		RewardVisualization.Cancel();
-		Blocksworld.rewardVisualizationGafs = null;
-		Blocksworld.rewardVisualizationIndex = 0;
-		Blocksworld.rewardExecutionInfo.timer = 0f;
-		Blocksworld.UI.Tapedeck.Reset();
-		Blocksworld.UI.SidePanel.Hide();
+		rewardVisualizationGafs = null;
+		rewardVisualizationIndex = 0;
+		rewardExecutionInfo.timer = 0f;
+		UI.Tapedeck.Reset();
+		UI.SidePanel.Hide();
 		WorldUILayout.HideAll();
-		Blocksworld.musicPlayer.SetEnabled(false);
+		musicPlayer.SetEnabled(enabled: false);
 		if (Sound.oneShotAudioSource != null)
 		{
 			Sound.oneShotAudioSource.Stop();
 			Sound.oneShotAudioSource.clip = null;
 		}
 		BlockAnimatedCharacter.stateControllers.Clear();
-		Blocksworld.SetBlocksworldState(State.Background);
+		SetBlocksworldState(State.Background);
 	}
 
-	// Token: 0x060018F2 RID: 6386 RVA: 0x000B02B4 File Offset: 0x000AE6B4
 	public static void EnableGameCameras(bool enableCams)
 	{
-		Blocksworld.mainCamera.gameObject.SetActive(enableCams);
-		Blocksworld.mainCamera.transform.parent = Blocksworld.bw.cameraParentTransform;
-		Blocksworld.mainCamera.transform.position = Blocksworld.cameraTransform.position;
-		Blocksworld.mainCamera.transform.rotation = Blocksworld.cameraTransform.rotation;
-		Blocksworld.guiCamera.gameObject.SetActive(enableCams);
+		mainCamera.gameObject.SetActive(enableCams);
+		mainCamera.transform.parent = bw.cameraParentTransform;
+		mainCamera.transform.position = cameraTransform.position;
+		mainCamera.transform.rotation = cameraTransform.rotation;
+		guiCamera.gameObject.SetActive(enableCams);
 	}
 
-	// Token: 0x060018F3 RID: 6387 RVA: 0x000B032C File Offset: 0x000AE72C
 	public static void RegisterBlocks()
 	{
 		Block.Register();
@@ -874,77 +1347,66 @@ public class Blocksworld : MonoBehaviour
 		BlockPIRPistol.Register();
 	}
 
-	// Token: 0x060018F4 RID: 6388 RVA: 0x000B050A File Offset: 0x000AE90A
 	public static bool IsStarted()
 	{
-		return Blocksworld.started;
+		return started;
 	}
 
-	// Token: 0x060018F5 RID: 6389 RVA: 0x000B0511 File Offset: 0x000AE911
 	public static void SetupClipboard()
 	{
-		if (Blocksworld.clipboard == null)
+		if (clipboard == null)
 		{
-			Blocksworld.clipboard = new Clipboard();
-			Blocksworld.clipboard.Load();
+			clipboard = new Clipboard();
+			clipboard.Load();
 		}
 		else
 		{
-			Blocksworld.UI.QuickSelect.UpdateIcons();
+			UI.QuickSelect.UpdateIcons();
 		}
 	}
 
-	// Token: 0x060018F6 RID: 6390 RVA: 0x000B0545 File Offset: 0x000AE945
 	public void InsertTile(Block block, int x, int y, Tile tile)
 	{
 		block.tiles[y].Insert(x, tile);
-		if (block == Blocksworld.selectedBlock)
+		if (block == selectedBlock)
 		{
-			Blocksworld.scriptPanel.UpdateGestureRecognizer(Blocksworld.recognizer);
+			scriptPanel.UpdateGestureRecognizer(recognizer);
 		}
 	}
 
-	// Token: 0x060018F7 RID: 6391 RVA: 0x000B0578 File Offset: 0x000AE978
 	public static Block GetSelectedScriptBlock()
 	{
-		if (Blocksworld.selectedBlock != null)
+		if (selectedBlock != null)
 		{
-			BlockGrouped blockGrouped = Blocksworld.selectedBlock as BlockGrouped;
-			if (blockGrouped == null || blockGrouped.GroupHasIndividualSripting())
+			if (!(selectedBlock is BlockGrouped blockGrouped) || blockGrouped.GroupHasIndividualSripting())
 			{
-				return Blocksworld.selectedBlock;
+				return selectedBlock;
 			}
 			return blockGrouped.GetMainBlockInGroup();
 		}
-		else
+		if (selectedBunch != null && SelectedBunchIsGroup())
 		{
-			if (Blocksworld.selectedBunch != null && Blocksworld.SelectedBunchIsGroup())
-			{
-				return (Blocksworld.selectedBunch.blocks[0] as BlockGrouped).GetMainBlockInGroup();
-			}
-			return null;
+			return (selectedBunch.blocks[0] as BlockGrouped).GetMainBlockInGroup();
 		}
+		return null;
 	}
 
-	// Token: 0x060018F8 RID: 6392 RVA: 0x000B05E8 File Offset: 0x000AE9E8
 	public static bool IsUnlocked(Tile tile)
 	{
 		return true;
 	}
 
-	// Token: 0x060018F9 RID: 6393 RVA: 0x000B05EC File Offset: 0x000AE9EC
 	public static void UpdateCenterOfMasses()
 	{
-		foreach (Chunk chunk in Blocksworld.chunks)
+		foreach (Chunk chunk in chunks)
 		{
-			chunk.UpdateCenterOfMass(true);
+			chunk.UpdateCenterOfMass();
 		}
-		foreach (Chunk chunk2 in Blocksworld.chunks)
+		foreach (Chunk chunk2 in chunks)
 		{
 			foreach (Block block in chunk2.blocks)
 			{
-				BlockAbstractMotor blockAbstractMotor = block as BlockAbstractMotor;
-				if (blockAbstractMotor != null)
+				if (block is BlockAbstractMotor blockAbstractMotor)
 				{
 					blockAbstractMotor.CalculateMassDistributions();
 				}
@@ -952,7 +1414,6 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x060018FA RID: 6394 RVA: 0x000B06E8 File Offset: 0x000AEAE8
 	private static void UnloadIfNotNull(GameObject g)
 	{
 		if (g != null)
@@ -961,74 +1422,60 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x060018FB RID: 6395 RVA: 0x000B06FC File Offset: 0x000AEAFC
 	public static void UnloadBlock(string resource, HashSet<string> usedMeshes)
 	{
-		if (Blocksworld.meshes.ContainsKey(resource) && Blocksworld.meshes[resource] != null)
+		if (meshes.ContainsKey(resource) && meshes[resource] != null)
 		{
 			if (!usedMeshes.Contains(resource))
 			{
-				Mesh obj = Blocksworld.meshes[resource];
+				Mesh obj = meshes[resource];
 				UnityEngine.Object.Destroy(obj);
 			}
-			Blocksworld.meshes.Remove(resource);
-			IEnumerator enumerator = Blocksworld.goPrefabs[resource].transform.GetEnumerator();
-			try
+			meshes.Remove(resource);
+			foreach (object item in goPrefabs[resource].transform)
 			{
-				while (enumerator.MoveNext())
+				Transform transform = (Transform)item;
+				string text = transform.gameObject.name;
+				meshes.Remove(text);
+				if (!usedMeshes.Contains(text) && meshes.ContainsKey(text))
 				{
-					object obj2 = enumerator.Current;
-					Transform transform = (Transform)obj2;
-					string name = transform.gameObject.name;
-					Blocksworld.meshes.Remove(name);
-					if (!usedMeshes.Contains(name) && Blocksworld.meshes.ContainsKey(name))
-					{
-						Mesh obj3 = Blocksworld.meshes[name];
-						UnityEngine.Object.Destroy(obj3);
-					}
-				}
-			}
-			finally
-			{
-				IDisposable disposable;
-				if ((disposable = (enumerator as IDisposable)) != null)
-				{
-					disposable.Dispose();
+					Mesh obj2 = meshes[text];
+					UnityEngine.Object.Destroy(obj2);
 				}
 			}
 		}
-		Blocksworld.colliders.Remove(resource);
-		if (Blocksworld.goPrefabs.ContainsKey(resource))
+		colliders.Remove(resource);
+		if (goPrefabs.ContainsKey(resource))
 		{
-			if (Blocksworld.glues.ContainsKey(resource))
+			if (glues.ContainsKey(resource))
 			{
-				CollisionVolumes.Remove(Blocksworld.glues[resource]);
+				CollisionVolumes.Remove(glues[resource]);
 			}
-			if (Blocksworld.shapes.ContainsKey(resource))
+			if (shapes.ContainsKey(resource))
 			{
-				CollisionVolumes.Remove(Blocksworld.shapes[resource]);
+				CollisionVolumes.Remove(shapes[resource]);
 			}
-			if (Blocksworld.joints.ContainsKey(resource))
+			if (joints.ContainsKey(resource))
 			{
-				CollisionVolumes.Remove(Blocksworld.joints[resource]);
+				CollisionVolumes.Remove(joints[resource]);
 			}
-			if (Blocksworld.compoundColliders.ContainsKey(resource))
+			if (compoundColliders.ContainsKey(resource))
 			{
-				CollisionVolumes.Remove(Blocksworld.compoundColliders[resource]);
+				CollisionVolumes.Remove(compoundColliders[resource]);
 			}
-			UnityEngine.Object.Destroy(Blocksworld.goPrefabs[resource]);
-			Blocksworld.goPrefabs.Remove(resource);
+			UnityEngine.Object.Destroy(goPrefabs[resource]);
+			goPrefabs.Remove(resource);
 		}
 	}
 
-	// Token: 0x060018FC RID: 6396 RVA: 0x000B08B8 File Offset: 0x000AECB8
 	public static GameObject InstantiateBlockGo(string blockType)
 	{
-		GameObject gameObject = UnityEngine.Object.Instantiate<GameObject>(Blocksworld.prefabs[blockType]);
-		gameObject.SetActive(true);
-		foreach (MeshRenderer meshRenderer in gameObject.GetComponentsInChildren<MeshRenderer>())
+		GameObject gameObject = UnityEngine.Object.Instantiate(prefabs[blockType]);
+		gameObject.SetActive(value: true);
+		MeshRenderer[] componentsInChildren = gameObject.GetComponentsInChildren<MeshRenderer>();
+		foreach (MeshRenderer meshRenderer in componentsInChildren)
 		{
-			if (Blocksworld.renderingShadows && !blockType.Contains("Volume Block"))
+			if (renderingShadows && !blockType.Contains("Volume Block"))
 			{
 				meshRenderer.receiveShadows = true;
 				meshRenderer.shadowCastingMode = ShadowCastingMode.On;
@@ -1042,162 +1489,165 @@ public class Blocksworld : MonoBehaviour
 		return gameObject;
 	}
 
-	// Token: 0x060018FD RID: 6397 RVA: 0x000B0934 File Offset: 0x000AED34
 	public static void LoadBlockFromPrefab(string resource)
 	{
-		Blocksworld.goPrefabs[resource] = UnityEngine.Object.Instantiate<GameObject>(Blocksworld.prefabs[resource]);
-		Blocksworld.goPrefabs[resource].SetActive(false);
-		Blocksworld.colliders[resource] = Blocksworld.goPrefabs[resource].GetComponent<Collider>();
-		bool flag = false;
-		MeshFilter component = Blocksworld.goPrefabs[resource].GetComponent<MeshFilter>();
-		if (component != null)
+		if (string.IsNullOrEmpty(resource))
 		{
-			Blocksworld.meshes[resource] = component.mesh;
-			flag = true;
+			return;
 		}
-		IEnumerator enumerator = Blocksworld.goPrefabs[resource].transform.GetEnumerator();
 		try
 		{
-			while (enumerator.MoveNext())
+			goPrefabs[resource] = UnityEngine.Object.Instantiate(prefabs[resource]);
+			goPrefabs[resource].SetActive(value: false);
+			colliders[resource] = goPrefabs[resource].GetComponent<Collider>();
+			bool flag = false;
+			MeshFilter component = goPrefabs[resource].GetComponent<MeshFilter>();
+			if (component != null && component.mesh != null)
 			{
-				object obj = enumerator.Current;
-				Transform transform = (Transform)obj;
-				component = transform.GetComponent<MeshFilter>();
-				if (component != null)
+				meshes[resource] = component.mesh;
+				flag = true;
+			}
+			foreach (Transform item in goPrefabs[resource].transform)
+			{
+				MeshFilter component2 = item.GetComponent<MeshFilter>();
+				if (component2 != null && component2.mesh != null)
 				{
-					Blocksworld.meshes[transform.gameObject.name] = component.mesh;
+					meshes[item.gameObject.name] = component2.mesh;
 					flag = true;
 				}
 			}
-		}
-		finally
-		{
-			IDisposable disposable;
-			if ((disposable = (enumerator as IDisposable)) != null)
+			if (!flag)
 			{
-				disposable.Dispose();
+				BWLog.Error("No mesh found for: " + resource);
 			}
 		}
-		if (!flag)
+		catch (Exception ex)
 		{
-			BWLog.Error("No mesh found for: " + resource);
+			BWLog.Error("Error loading block from prefab '" + resource + "': " + ex.Message);
 		}
 	}
 
-	// Token: 0x060018FE RID: 6398 RVA: 0x000B0A60 File Offset: 0x000AEE60
 	public static void LoadBlock(string resource)
 	{
-        string model = resource;
-        BlockEntry modBlock = null;
-        foreach (string key in BlockItemsRegistry.GetBlockEntries().Keys)
-        {
-            if (key == resource)
-            {
-                modBlock = BlockItemsRegistry.GetBlockEntries()[key];
-                model = modBlock.modelName;
-            }
-        }
-        Blocksworld.prefabs[resource] = (Resources.Load("Blocks/Prefab " + model) as GameObject);
-		Blocksworld.shapes[resource] = (Resources.Load("Blocks/Shape " + model) as GameObject);
-		Blocksworld.glues[resource] = (Resources.Load("Blocks/Glue " + model) as GameObject);
-		Blocksworld.joints[resource] = (Resources.Load("Blocks/Joint " + model) as GameObject);
-		GameObject gameObject = Resources.Load("Blocks/Collider " + model) as GameObject;
-		if (gameObject != null)
+		if (string.IsNullOrEmpty(resource))
 		{
-			Blocksworld.compoundColliders[resource] = gameObject;
+			return;
 		}
-        if (modBlock != null)
-        {
-            if (modBlock.metaData != null)
-            {
-                BlockMetaData org = Blocksworld.prefabs[resource].GetComponent<BlockMetaData>();
-                BlockMetaData mod = modBlock.metaData;
-                if (mod.meshDatas != null) org.meshDatas = mod.meshDatas;
-				//org.massK = mod.massK;
-				//org.massM = mod.massM;
-				//org.hideInFirstPersonCamera = mod.hideInFirstPersonCamera;
-				//org.gearType = mod.gearType;
-				//org.blockSize = mod.blockSize;
-				//org.canScale = mod.canScale;
-				//org.scaleConstraints = mod.scaleConstraints;
-				//org.disableBuildModeMove = mod.disableBuildModeMove;
-				//org.disableBuildModeScale = mod.disableBuildModeScale;
-				//org.isBlocksterMassless = mod.isBlocksterMassless;
-				org.scaleType = mod.scaleType;
-                // TODO: add others
-            }
-        }
-    }
+		try
+		{
+			string text = resource;
+			BlockEntry blockEntry = null;
+			Dictionary<string, BlockEntry> blockEntries = BlockItemsRegistry.GetBlockEntries();
+			if (blockEntries != null)
+			{
+				foreach (string key in blockEntries.Keys)
+				{
+					if (key == resource)
+					{
+						blockEntry = blockEntries[key];
+						if (blockEntry != null && !string.IsNullOrEmpty(blockEntry.modelName))
+						{
+							text = blockEntry.modelName;
+						}
+						break;
+					}
+				}
+			}
+			prefabs[resource] = Resources.Load("Blocks/Prefab " + text) as GameObject;
+			shapes[resource] = Resources.Load("Blocks/Shape " + text) as GameObject;
+			glues[resource] = Resources.Load("Blocks/Glue " + text) as GameObject;
+			joints[resource] = Resources.Load("Blocks/Joint " + text) as GameObject;
+			GameObject gameObject = Resources.Load("Blocks/Collider " + text) as GameObject;
+			if (gameObject != null)
+			{
+				compoundColliders[resource] = gameObject;
+			}
+			if (blockEntry == null || !(blockEntry.metaData != null) || !(prefabs[resource] != null))
+			{
+				return;
+			}
+			BlockMetaData component = prefabs[resource].GetComponent<BlockMetaData>();
+			if (component != null)
+			{
+				BlockMetaData metaData = blockEntry.metaData;
+				if (metaData.meshDatas != null)
+				{
+					component.meshDatas = metaData.meshDatas;
+				}
+				component.scaleType = metaData.scaleType;
+			}
+		}
+		catch (Exception ex)
+		{
+			BWLog.Error("Error loading block '" + resource + "': " + ex.Message);
+		}
+	}
 
-	// Token: 0x060018FF RID: 6399 RVA: 0x000B0B1B File Offset: 0x000AEF1B
 	[Conditional("DEBUG")]
 	public static void Display(string s)
 	{
-		Blocksworld.displayString = Blocksworld.displayString + s + "\n";
+		displayString = displayString + s + "\n";
 	}
 
-	// Token: 0x06001900 RID: 6400 RVA: 0x000B0B32 File Offset: 0x000AEF32
 	[Conditional("DEBUG")]
 	private void DisplayOnGUI()
 	{
-		GUI.Label(new Rect(10f * NormalizedScreen.scale, 10f * NormalizedScreen.scale, (float)Screen.width * NormalizedScreen.scale, (float)Screen.height * NormalizedScreen.scale), Blocksworld.displayString);
+		GUI.Label(new Rect(10f * NormalizedScreen.scale, 10f * NormalizedScreen.scale, (float)Screen.width * NormalizedScreen.scale, (float)Screen.height * NormalizedScreen.scale), displayString);
 	}
 
-	// Token: 0x06001901 RID: 6401 RVA: 0x000B0B74 File Offset: 0x000AEF74
 	private void OnHudMesh()
 	{
-		this.ExecuteOnHudMesh(Blocksworld.fixedUpdateCommands);
-		if (Blocksworld.CurrentState == State.Play)
+		ExecuteOnHudMesh(fixedUpdateCommands);
+		if (CurrentState == State.Play)
 		{
 			BWSceneManager.OnHudMesh();
 		}
 		Scarcity.PaintScarcityBadges();
-		if (Blocksworld.timerStart >= 0f && Blocksworld.CurrentState != State.FrameCapture)
+		if (timerStart >= 0f && CurrentState != State.FrameCapture)
 		{
-			HudMeshOnGUI.Label(ref this.labelTimer, new Rect(350f * NormalizedScreen.scale, (float)Blocksworld.defaultPanelPadding * NormalizedScreen.scale, (float)(NormalizedScreen.width - 600) * NormalizedScreen.scale, 120f * NormalizedScreen.scale), (((Blocksworld.timerStop <= 0f) ? Time.time : Blocksworld.timerStop) - Blocksworld.timerStart).ToString("0.0"), HudMeshOnGUI.dataSource.GetStyle("label"), 0f);
+			HudMeshOnGUI.Label(ref labelTimer, new Rect(350f * NormalizedScreen.scale, (float)defaultPanelPadding * NormalizedScreen.scale, (float)(NormalizedScreen.width - 600) * NormalizedScreen.scale, 120f * NormalizedScreen.scale), (((timerStop <= 0f) ? Time.time : timerStop) - timerStart).ToString("0.0"), HudMeshOnGUI.dataSource.GetStyle("label"));
 		}
 		HudMeshStyle defaultStyle = HudMeshOnGUI.dataSource.defaultStyle;
 		int num = 0;
 		for (int i = 1; i <= 2; i++)
 		{
-			string key = Blocksworld.counterNames[i];
-			if (Blocksworld.countersActivated[key] && Blocksworld.CurrentState == State.Play)
+			string key = counterNames[i];
+			if (!countersActivated[key] || CurrentState != State.Play)
 			{
-				bool flag = Blocksworld.counterTargetsActivated[key];
-				int num2 = Blocksworld.counterTargets[key];
-				int num3 = Blocksworld.counters[key];
-				if (flag)
+				continue;
+			}
+			bool flag = counterTargetsActivated[key];
+			int num2 = counterTargets[key];
+			int num3 = counters[key];
+			if (flag)
+			{
+				float num4 = NormalizedScreen.scale * 70f;
+				float height = NormalizedScreen.scale * 70f;
+				float num5 = (float)num2 * num4;
+				for (int j = 0; j < num2; j++)
 				{
-					float num4 = NormalizedScreen.scale * 70f;
-					float height = NormalizedScreen.scale * 70f;
-					float num5 = (float)num2 * num4;
-					for (int j = 0; j < num2; j++)
+					Rect rect = new Rect((float)(Screen.width / 2) - num5 / 2f + num4 * (float)j, NormalizedScreen.scale * 20f, num4, height);
+					if (j < num3)
 					{
-						Rect rect = new Rect((float)(Screen.width / 2) - num5 / 2f + num4 * (float)j, NormalizedScreen.scale * 20f, num4, height);
-						if (j < num3)
-						{
-							HudMeshOnGUI.Label(this.labelCounters, num++, rect, Blocksworld.starTexture, null);
-						}
-						else
-						{
-							HudMeshOnGUI.Label(this.labelCounters, num++, rect, Blocksworld.starOutlineTexture, null);
-						}
+						HudMeshOnGUI.Label(labelCounters, num++, rect, starTexture);
+					}
+					else
+					{
+						HudMeshOnGUI.Label(labelCounters, num++, rect, starOutlineTexture);
 					}
 				}
-				else
-				{
-					string text = (!flag) ? (string.Empty + num3) : (num3 + "/" + num2);
-					float num6 = NormalizedScreen.scale * 100f;
-					float height2 = NormalizedScreen.scale * 100f;
-					Rect rect2 = new Rect((float)(Screen.width / 2) - num6 / 2f + (float)(i - 1) * num6, NormalizedScreen.scale * 40f, num6, height2);
-					HudMeshOnGUI.Label(this.labelCounters, num++, rect2, text, defaultStyle);
-				}
+			}
+			else
+			{
+				string text = ((!flag) ? (string.Empty + num3) : (num3 + "/" + num2));
+				float num6 = NormalizedScreen.scale * 100f;
+				float height2 = NormalizedScreen.scale * 100f;
+				HudMeshOnGUI.Label(rect: new Rect((float)(Screen.width / 2) - num6 / 2f + (float)(i - 1) * num6, NormalizedScreen.scale * 40f, num6, height2), labelList: labelCounters, index: num++, text: text, style: defaultStyle);
 			}
 		}
 		Tutorial.OnHudMesh();
-    }
+	}
 
-	// Token: 0x06001902 RID: 6402 RVA: 0x000B0E00 File Offset: 0x000AF200
 	private void ExecuteOnHudMesh(List<Command> commands)
 	{
 		for (int i = 0; i < commands.Count; i++)
@@ -1206,232 +1656,210 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x06001903 RID: 6403 RVA: 0x000B0E30 File Offset: 0x000AF230
 	private void ShowPlayerProfilePictureHint()
 	{
-		GUI.Label(new Rect(0f, (float)(Screen.height - 100), (float)Screen.width, 100f), "Tap the camera button to take a profile picture of your Blockster");
+		GUI.Label(new Rect(0f, Screen.height - 100, Screen.width, 100f), "Tap the camera button to take a profile picture of your Blockster");
 	}
 
-	// Token: 0x06001904 RID: 6404 RVA: 0x000B0E5A File Offset: 0x000AF25A
 	private void OnApplicationQuit()
 	{
 		if (BW.Options.saveOnApplicationQuit())
 		{
-			this.FastSave();
+			FastSave();
 		}
 	}
 
-	// Token: 0x06001905 RID: 6405 RVA: 0x000B0E74 File Offset: 0x000AF274
 	public void OnApplicationPause(bool pauseStatus)
 	{
-		if (!Blocksworld.IsStarted())
+		if (IsStarted() && (!pauseStatus || CurrentState != State.Paused))
 		{
-			return;
+			if (pauseStatus && WorldSession.current != null && (CurrentState == State.Play || CurrentState == State.Build || CurrentState == State.Paused) && !WinLoseManager.winning && !WinLoseManager.ending && !UI.Tapedeck.RecordButtonActive())
+			{
+				ShowOptionsScreen();
+			}
+			if (pauseStatus)
+			{
+				SetVRMode(enabled: false);
+			}
+			else if (bw != null && !UI.IsOptionsScreenVisible())
+			{
+				WorldSession.UnpauseCurrentSession();
+			}
+			if (musicPlayer != null)
+			{
+				musicPlayer.BWApplicationPause(pauseStatus);
+			}
+			UI.Tapedeck.BWApplicationPause(pauseStatus);
 		}
-		if (pauseStatus && Blocksworld.CurrentState == State.Paused)
-		{
-			return;
-		}
-		if (pauseStatus && WorldSession.current != null && (Blocksworld.CurrentState == State.Play || Blocksworld.CurrentState == State.Build || Blocksworld.CurrentState == State.Paused) && !WinLoseManager.winning && !WinLoseManager.ending && !Blocksworld.UI.Tapedeck.RecordButtonActive())
-		{
-			this.ShowOptionsScreen();
-		}
-		if (pauseStatus)
-		{
-			Blocksworld.SetVRMode(false);
-		}
-		else if (Blocksworld.bw != null && !Blocksworld.UI.IsOptionsScreenVisible())
-		{
-			WorldSession.UnpauseCurrentSession();
-		}
-		if (Blocksworld.musicPlayer != null)
-		{
-			Blocksworld.musicPlayer.BWApplicationPause(pauseStatus);
-		}
-		Blocksworld.UI.Tapedeck.BWApplicationPause(pauseStatus);
 	}
 
-	// Token: 0x06001906 RID: 6406 RVA: 0x000B0F5E File Offset: 0x000AF35E
 	public static bool GUIButton(Rect rect, string str, bool enabled = true)
 	{
 		GUI.enabled = enabled;
-		return GUI.RepeatButton(rect, str) && Input.GetMouseButtonUp(0) && (Blocksworld.consumeEvent = true);
+		if (GUI.RepeatButton(rect, str) && Input.GetMouseButtonUp(0))
+		{
+			return consumeEvent = true;
+		}
+		return false;
 	}
 
-	// Token: 0x06001907 RID: 6407 RVA: 0x000B0F87 File Offset: 0x000AF387
 	public static bool GUIButton(Rect rect, string str, GUIStyle style, bool enabled = true)
 	{
-		return GUI.RepeatButton(rect, str, style) && Input.GetMouseButtonUp(0) && (Blocksworld.consumeEvent = true);
+		if (GUI.RepeatButton(rect, str, style) && Input.GetMouseButtonUp(0))
+		{
+			return consumeEvent = true;
+		}
+		return false;
 	}
 
-	// Token: 0x06001908 RID: 6408 RVA: 0x000B0FAB File Offset: 0x000AF3AB
 	public static bool GUIButton(Rect rect, Texture tex)
 	{
-		return GUI.RepeatButton(rect, tex) && Input.GetMouseButtonUp(0) && (Blocksworld.consumeEvent = true);
+		if (GUI.RepeatButton(rect, tex) && Input.GetMouseButtonUp(0))
+		{
+			return consumeEvent = true;
+		}
+		return false;
 	}
 
-	// Token: 0x06001909 RID: 6409 RVA: 0x000B0FCE File Offset: 0x000AF3CE
 	public static void MainMenuButtonsDidShow()
 	{
 		BWLog.Info("Sending custom 'MainMenu' signal to main menu world.");
-		Blocksworld.sendingCustom["MainMenu"] = 1f;
+		sendingCustom["MainMenu"] = 1f;
 	}
 
-	// Token: 0x0600190A RID: 6410 RVA: 0x000B0FEE File Offset: 0x000AF3EE
 	private static void SetupVRCamera()
 	{
-		if (Blocksworld.vrEnabled)
-		{
-		}
+		_ = vrEnabled;
 	}
 
-	// Token: 0x0600190B RID: 6411 RVA: 0x000B0FFA File Offset: 0x000AF3FA
 	private static void TakedownVRCamera()
 	{
-		if (Blocksworld.vrEnabled)
-		{
-		}
+		_ = vrEnabled;
 	}
 
-	// Token: 0x0600190C RID: 6412 RVA: 0x000B1006 File Offset: 0x000AF406
 	public static Ray CameraScreenPointToRay(Vector3 screenPos)
 	{
-		if (Blocksworld.vrEnabled)
-		{
-			return Blocksworld._mainCamera.ScreenPointToRay(screenPos);
-		}
-		return Blocksworld._mainCamera.ScreenPointToRay(screenPos);
+		_ = vrEnabled;
+		return _mainCamera.ScreenPointToRay(screenPos);
 	}
 
-	// Token: 0x0600190D RID: 6413 RVA: 0x000B102C File Offset: 0x000AF42C
 	public static void SetupCameraHierarchy()
 	{
 		GameObject gameObject = new GameObject("Camera Tilt Transform");
-		Blocksworld.bw.cameraTiltTransform = gameObject.transform;
-		Blocksworld.bw.cameraTiltTransform.parent = Blocksworld.cameraTransform;
-		Blocksworld.bw.cameraTiltTransform.localPosition = Vector3.zero;
-		Blocksworld.bw.cameraTiltTransform.localRotation = Quaternion.identity;
-		Blocksworld.vrCameraAdjust = new GameObject("VR Camera Straightener");
-		Blocksworld.vrCameraAdjust.transform.parent = Blocksworld.bw.cameraTiltTransform;
-		Blocksworld.vrCameraAdjust.transform.localPosition = Vector3.zero;
-		Blocksworld.vrCameraAdjust.transform.localRotation = Quaternion.identity;
-		Blocksworld.bw.cameraParentTransform = Blocksworld.vrCameraAdjust.transform;
-		Blocksworld.mainCamera.transform.parent = Blocksworld.bw.cameraParentTransform;
-		Blocksworld.mainCamera.gameObject.SetActive(false);
+		bw.cameraTiltTransform = gameObject.transform;
+		bw.cameraTiltTransform.parent = cameraTransform;
+		bw.cameraTiltTransform.localPosition = Vector3.zero;
+		bw.cameraTiltTransform.localRotation = Quaternion.identity;
+		vrCameraAdjust = new GameObject("VR Camera Straightener");
+		vrCameraAdjust.transform.parent = bw.cameraTiltTransform;
+		vrCameraAdjust.transform.localPosition = Vector3.zero;
+		vrCameraAdjust.transform.localRotation = Quaternion.identity;
+		bw.cameraParentTransform = vrCameraAdjust.transform;
+		mainCamera.transform.parent = bw.cameraParentTransform;
+		mainCamera.gameObject.SetActive(value: false);
 	}
 
-	// Token: 0x0600190E RID: 6414 RVA: 0x000B111D File Offset: 0x000AF51D
 	public static void ResetVRSensor()
 	{
-		Blocksworld.vrCameraAdjust.transform.localRotation = Quaternion.identity;
-		if (!Blocksworld.vrEnabled)
-		{
-			return;
-		}
+		vrCameraAdjust.transform.localRotation = Quaternion.identity;
+		_ = vrEnabled;
 	}
 
-	// Token: 0x0600190F RID: 6415 RVA: 0x000B1140 File Offset: 0x000AF540
 	public void SetVRModeFromJS(int trueFalse)
 	{
 		BWLog.Info("SetVRModeFromJS(" + trueFalse + ")");
-		bool vrmode = 1 == trueFalse;
-		Blocksworld.SetVRMode(vrmode);
+		bool vRMode = 1 == trueFalse;
+		SetVRMode(vRMode);
 	}
 
-	// Token: 0x06001910 RID: 6416 RVA: 0x000B1174 File Offset: 0x000AF574
 	public static void SetVRMode(bool enabled)
 	{
-		if (enabled == Blocksworld.vrEnabled)
+		if (enabled == vrEnabled)
 		{
 			return;
 		}
-		Blocksworld.vrEnabled = enabled;
-		Blocksworld.worldSessionHadVR |= Blocksworld.vrEnabled;
-		BWLog.Info(((!Blocksworld.vrEnabled) ? "Disabling" : "Enabling") + " VR Mode " + Blocksworld.currentVRType);
-		if (Blocksworld.vrEnabled)
+		vrEnabled = enabled;
+		worldSessionHadVR |= vrEnabled;
+		BWLog.Info(((!vrEnabled) ? "Disabling" : "Enabling") + " VR Mode " + currentVRType);
+		if (vrEnabled)
 		{
-			BWLog.Error("VR type " + Blocksworld.currentVRType + " is not enabled in this build.");
+			BWLog.Error("VR type " + currentVRType.ToString() + " is not enabled in this build.");
 		}
-		Blocksworld.UI.SpeechBubble.SetWorldSpaceMode(Blocksworld.vrEnabled);
-		if (Blocksworld.vrEnabled)
+		UI.SpeechBubble.SetWorldSpaceMode(vrEnabled);
+		if (vrEnabled)
 		{
-			Vector3 vector = new Vector3(Blocksworld.cameraTransform.forward.x, 0f, Blocksworld.cameraTransform.forward.z);
+			Vector3 vector = new Vector3(cameraTransform.forward.x, 0f, cameraTransform.forward.z);
 			if (vector.sqrMagnitude < 0.1f)
 			{
-				vector = new Vector3(Blocksworld.cameraTransform.up.x, 0f, Blocksworld.cameraTransform.up.z);
+				vector = new Vector3(cameraTransform.up.x, 0f, cameraTransform.up.z);
 			}
-			Blocksworld.vrCameraAdjust.transform.rotation = Quaternion.LookRotation(vector.normalized, Vector3.up);
+			vrCameraAdjust.transform.rotation = Quaternion.LookRotation(vector.normalized, Vector3.up);
 		}
 		else
 		{
-			Blocksworld.vrCameraAdjust.transform.localRotation = Quaternion.identity;
+			vrCameraAdjust.transform.localRotation = Quaternion.identity;
 		}
-		Blocksworld.blocksworldCamera.SetReticleParent((!Blocksworld.vrEnabled) ? null : Blocksworld.mainCamera.transform);
+		blocksworldCamera.SetReticleParent((!vrEnabled) ? null : mainCamera.transform);
 	}
 
-	// Token: 0x06001911 RID: 6417 RVA: 0x000B12EF File Offset: 0x000AF6EF
 	public static bool IsVRCameraMode()
 	{
-		return Blocksworld.vrEnabled;
+		return vrEnabled;
 	}
 
-	// Token: 0x06001912 RID: 6418 RVA: 0x000B12F6 File Offset: 0x000AF6F6
 	public static bool IsBlockVRCameraFocus(Block b)
 	{
 		return false;
 	}
 
-	// Token: 0x06001913 RID: 6419 RVA: 0x000B12F9 File Offset: 0x000AF6F9
 	public static bool IsBlockVRCameraLookAt(Block b)
 	{
 		return false;
 	}
 
-	// Token: 0x06001914 RID: 6420 RVA: 0x000B12FC File Offset: 0x000AF6FC
 	public void CancelTileDragGestures()
 	{
-		if (Blocksworld.tileDragGesture.IsActive)
+		if (tileDragGesture.IsActive)
 		{
-			Blocksworld.tileDragGesture.Cancel();
+			tileDragGesture.Cancel();
 		}
-		if (Blocksworld.createTileDragGesture.IsActive)
+		if (createTileDragGesture.IsActive)
 		{
-			Blocksworld.createTileDragGesture.Cancel();
+			createTileDragGesture.Cancel();
 		}
-		if (Blocksworld.replaceBodyPartGesture.IsActive)
+		if (replaceBodyPartGesture.IsActive)
 		{
-			Blocksworld.replaceBodyPartGesture.Cancel();
+			replaceBodyPartGesture.Cancel();
 		}
-		if (Blocksworld.characterEditGearGesture.IsActive)
+		if (characterEditGearGesture.IsActive)
 		{
-			Blocksworld.characterEditGearGesture.Cancel();
+			characterEditGearGesture.Cancel();
 		}
 	}
 
-	// Token: 0x06001915 RID: 6421 RVA: 0x000B1370 File Offset: 0x000AF770
 	public void Play()
 	{
 		if (CharacterEditor.Instance.InEditMode())
 		{
 			CharacterEditor.Instance.Exit();
 		}
-		if (!Blocksworld.resettingPlay)
+		if (!resettingPlay)
 		{
-			this.lastBuildModeSelectedBlock = Blocksworld.selectedBlock;
-			this.lastBuildModeSelectedBunch = Blocksworld.selectedBunch;
-			Blocksworld._buildModeFogColor = RenderSettings.fogColor;
-			Blocksworld._buildModeFogStart = RenderSettings.fogStartDistance;
-			Blocksworld._buildModeFogEnd = RenderSettings.fogEndDistance;
+			lastBuildModeSelectedBlock = selectedBlock;
+			lastBuildModeSelectedBunch = selectedBunch;
+			_buildModeFogColor = RenderSettings.fogColor;
+			_buildModeFogStart = RenderSettings.fogStartDistance;
+			_buildModeFogEnd = RenderSettings.fogEndDistance;
 		}
 		EventSystem.current.SetSelectedGameObject(null);
-		Blocksworld.Select(null, false, true);
-		Blocksworld.scriptPanel.Show(false);
-		this.CancelTileDragGestures();
+		Select(null);
+		scriptPanel.Show(show: false);
+		CancelTileDragGestures();
 		WorldSession.current.OnPlay();
 		MappedInput.SetMode(MappableInputMode.Play);
 		Block.ClearConnectedCache();
 		Block.ResetTiltOrientation();
-		Blocksworld.playFixedUpdateCounter = 0;
+		playFixedUpdateCounter = 0;
 		BWSceneManager.ResetPlayBlocksAndPredicates();
 		Block.vanishingOrAppearingBlocks.Clear();
 		TextureAndPaintBlockRegistry.Clear();
@@ -1440,35 +1868,33 @@ public class Blocksworld : MonoBehaviour
 		VariableManager.Clear();
 		WinLoseManager.Reset();
 		Invincibility.Clear();
-		Blocksworld.UpdateEditorMusicPlayerEnabled();
+		UpdateEditorMusicPlayerEnabled();
 		ModelSignals.Clear();
 		TiltManager.Instance.StartMonitoring();
-		Physics.gravity = -Blocksworld.defaultGravityStrength * Vector3.up;
-		Blocksworld.angularDragMultiplier = 1f;
-		Blocksworld.dragMultiplier = 1f;
-		Blocksworld.hasWon = false;
-		Blocksworld.winIsWaiting = false;
-		Blocksworld.waitForSetPurchase = false;
-		Blocksworld.worldSessionHadBlockTap = false;
-		Blocksworld.isFirstFrame = true;
-		Blocksworld.dynamicLockPull = false;
-		Blocksworld.interpolateRigidBodies = BW.Options.interpolateRigidbodies();
-		if (Tutorial.state != TutorialState.None)
-		{
-		}
-		Blocksworld.resettingPlay = false;
-		Blocksworld.UpdateCameraPosesMap();
-		Blocksworld.currentBackgroundMusic = string.Empty;
+		Physics.gravity = (0f - defaultGravityStrength) * Vector3.up;
+		angularDragMultiplier = 1f;
+		dragMultiplier = 1f;
+		hasWon = false;
+		winIsWaiting = false;
+		waitForSetPurchase = false;
+		worldSessionHadBlockTap = false;
+		isFirstFrame = true;
+		dynamicLockPull = false;
+		interpolateRigidBodies = BW.Options.interpolateRigidbodies();
+		_ = Tutorial.state;
+		resettingPlay = false;
+		UpdateCameraPosesMap();
+		currentBackgroundMusic = string.Empty;
 		Tutorial.StartPlay();
 		BWSceneManager.InitPlay();
 		List<List<Block>> list = ConnectednessGraph.FindChunkSubgraphs();
-		foreach (List<Block> blocks in list)
+		foreach (List<Block> item in list)
 		{
-			Blocksworld.chunks.Add(new Chunk(blocks, false));
+			chunks.Add(new Chunk(item));
 		}
-		for (int i = 0; i < Blocksworld.chunks.Count; i++)
+		for (int i = 0; i < chunks.Count; i++)
 		{
-			Blocksworld.chunks[i].blocks[0].UpdateConnectedCache();
+			chunks[i].blocks[0].UpdateConnectedCache();
 		}
 		BWSceneManager.BeforePlay();
 		BlockAbstractLegs.InitPlay();
@@ -1480,33 +1906,33 @@ public class Blocksworld : MonoBehaviour
 		BWSceneManager.ExecutePlay();
 		BWSceneManager.MakeFixedAndSpawnpointBeforeFirstFrame();
 		BWSceneManager.ExecutePlay2();
-		this.ResetState();
-		TagManager.ClearRegisteredBlocks(true);
+		ResetState();
+		TagManager.ClearRegisteredBlocks(hard: true);
 		BWSceneManager.ExecutePlayLegs();
-		Blocksworld.blocksworldCamera.Store();
-		Blocksworld.blocksworldCamera.Play();
-		Blocksworld.SetBlocksworldState(State.Play);
-		TBox.Show(false);
-		Blocksworld.gameStart = true;
-		Blocksworld.gameTime = 0f;
-		Blocksworld.UI.SidePanel.Hide();
-		Blocksworld.UI.Controls.OnPlay();
-		Blocksworld.orbitDuringControlGesture.IsEnabled = true;
-		if (this.pullObject != null)
+		blocksworldCamera.Store();
+		blocksworldCamera.Play();
+		SetBlocksworldState(State.Play);
+		TBox.Show(show: false);
+		gameStart = true;
+		gameTime = 0f;
+		UI.SidePanel.Hide();
+		UI.Controls.OnPlay();
+		orbitDuringControlGesture.IsEnabled = true;
+		if (pullObject != null)
 		{
-			this.pullObject.HideLine();
+			pullObject.HideLine();
 		}
 		Sound.Play();
 		CollisionManager.Play();
-		Blocksworld.UpdateCenterOfMasses();
-		this.RemoveAllCommands();
-		this.storeFogDistances = this.GetDefaultFog();
-		Blocksworld.leaderboardData.SetupLeaderboard();
-		Blocksworld.AddFixedUpdateCommand(new DelegateCommand(delegate(DelegateCommand a)
+		UpdateCenterOfMasses();
+		RemoveAllCommands();
+		storeFogDistances = GetDefaultFog();
+		leaderboardData.SetupLeaderboard();
+		AddFixedUpdateCommand(new DelegateCommand(delegate
 		{
-			for (int j = 0; j < Blocksworld.chunks.Count; j++)
+			for (int j = 0; j < chunks.Count; j++)
 			{
-				Rigidbody rb = Blocksworld.chunks[j].rb;
+				Rigidbody rb = chunks[j].rb;
 				if (rb != null && rb.IsSleeping() && rb.isKinematic)
 				{
 					rb.isKinematic = false;
@@ -1516,38 +1942,35 @@ public class Blocksworld : MonoBehaviour
 		}));
 	}
 
-	// Token: 0x06001916 RID: 6422 RVA: 0x000B1674 File Offset: 0x000AFA74
 	public static void UpdateCameraPosesMap()
 	{
-		Blocksworld.cameraPosesMap.Clear();
-		for (int i = 0; i < Blocksworld.cameraPoses.Count; i++)
+		cameraPosesMap.Clear();
+		for (int i = 0; i < cameraPoses.Count; i++)
 		{
-			NamedPose namedPose = Blocksworld.cameraPoses[i];
+			NamedPose namedPose = cameraPoses[i];
 			if (!string.IsNullOrEmpty(namedPose.name))
 			{
-				Blocksworld.cameraPosesMap[namedPose.name] = namedPose;
+				cameraPosesMap[namedPose.name] = namedPose;
 			}
 		}
 	}
 
-	// Token: 0x06001917 RID: 6423 RVA: 0x000B16D4 File Offset: 0x000AFAD4
 	public static void GoToCameraFrameFor(Vector3 pos, Vector3 scale)
 	{
-		float d = 7f + 1.3f * Util.MaxComponent(scale);
-		Vector3 position = Blocksworld.cameraTransform.position;
+		float num = 7f + 1.3f * Util.MaxComponent(scale);
+		Vector3 position = cameraTransform.position;
 		Vector3 normalized = (pos - position).normalized;
-		Vector3 vector = pos - normalized * d;
-		Blocksworld.blocksworldCamera.SetCameraPosition(vector);
-		Blocksworld.blocksworldCamera.SetTargetPosition(pos);
-		Blocksworld.cameraTransform.LookAt(pos);
+		Vector3 vector = pos - normalized * num;
+		blocksworldCamera.SetCameraPosition(vector);
+		blocksworldCamera.SetTargetPosition(pos);
+		cameraTransform.LookAt(pos);
 	}
 
-	// Token: 0x06001918 RID: 6424 RVA: 0x000B1744 File Offset: 0x000AFB44
 	public static HashSet<Predicate> GetAnalogStickPredicates()
 	{
-		if (Blocksworld.analogStickPredicates == null)
+		if (analogStickPredicates == null)
 		{
-			Blocksworld.analogStickPredicates = new HashSet<Predicate>
+			analogStickPredicates = new HashSet<Predicate>
 			{
 				BlockQuadped.predicateQuadpedMover,
 				BlockSphere.predicateSphereMover,
@@ -1568,15 +1991,14 @@ public class Blocksworld : MonoBehaviour
 				BlockSteeringWheel.predicateSteeringWheelMoverSteer
 			};
 		}
-		return Blocksworld.analogStickPredicates;
+		return analogStickPredicates;
 	}
 
-	// Token: 0x06001919 RID: 6425 RVA: 0x000B1838 File Offset: 0x000AFC38
 	public static HashSet<Predicate> GetTiltMoverPredicates()
 	{
-		if (Blocksworld.tiltMoverPredicates == null)
+		if (tiltMoverPredicates == null)
 		{
-			Blocksworld.tiltMoverPredicates = new HashSet<Predicate>
+			tiltMoverPredicates = new HashSet<Predicate>
 			{
 				BlockCharacter.predicateCharacterTiltMover,
 				BlockAnimatedCharacter.predicateChracterTiltMover,
@@ -1585,13 +2007,12 @@ public class Blocksworld : MonoBehaviour
 				BlockFlightYoke.predicateTiltFlightSim
 			};
 		}
-		return Blocksworld.tiltMoverPredicates;
+		return tiltMoverPredicates;
 	}
 
-	// Token: 0x0600191A RID: 6426 RVA: 0x000B189C File Offset: 0x000AFC9C
 	public static bool DPadTilesInWorld(string key)
 	{
-		HashSet<Predicate> hashSet = Blocksworld.GetAnalogStickPredicates();
+		HashSet<Predicate> hashSet = GetAnalogStickPredicates();
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
@@ -1612,8 +2033,8 @@ public class Blocksworld : MonoBehaviour
 						{
 							num = 1;
 						}
-						string a = (args.Length <= num) ? "L" : ((string)args[num]);
-						return a == key;
+						string text = ((args.Length <= num) ? "L" : ((string)args[num]));
+						return text == key;
 					}
 				}
 			}
@@ -1621,7 +2042,6 @@ public class Blocksworld : MonoBehaviour
 		return false;
 	}
 
-	// Token: 0x0600191B RID: 6427 RVA: 0x000B19A8 File Offset: 0x000AFDA8
 	public void Stop(bool force = false, bool resetBlocks = true)
 	{
 		if (WorldSession.current != null)
@@ -1632,166 +2052,156 @@ public class Blocksworld : MonoBehaviour
 		{
 			EventSystem.current.SetSelectedGameObject(null);
 		}
-		if (force || Blocksworld.CurrentState == State.Play || (Blocksworld.LastState == State.Play && Blocksworld.CurrentState == State.Menu))
-		{
-			BWSceneManager.StopPlay();
-			TiltManager.Instance.StopMonitoring();
-			MappedInput.SetMode(MappableInputMode.Build);
-			Blocksworld.customIntVariables.Clear();
-			Blocksworld.blockIntVariables.Clear();
-			BlockData.Clear();
-			ScriptRowData.Clear();
-			ModelSignals.Clear();
-			TBox.ResetTargetSnapping();
-			TextureAndPaintBlockRegistry.Clear();
-			Blocksworld.UpdateEditorMusicPlayerEnabled();
-			Blocksworld.UpdateTiles();
-			Blocksworld.currentBackgroundMusic = string.Empty;
-			Blocksworld.lockInput = false;
-			Blocksworld.SetBlocksworldState(State.Build);
-			BlockAccelerations.Stop();
-			BWSceneManager.playBlocksRemoved.Clear();
-			Blocksworld.orbitDuringControlGesture.IsEnabled = false;
-			for (int i = 1; i <= Blocksworld.numCounters; i++)
-			{
-				string key = i + string.Empty;
-				Blocksworld.countersActivated[key] = false;
-				Blocksworld.counters[key] = 0;
-			}
-			Blocksworld.resetting = true;
-			BWSceneManager.ExecuteStop(resetBlocks);
-			Blocksworld.resetting = false;
-			Blocksworld.dynamicLockPull = false;
-			this.ClearChunks();
-			Blocksworld.blocksworldCamera.Restore();
-			Blocksworld.rewardCamera.enabled = false;
-			if (!this.forcePlayMode)
-			{
-				Blocksworld.UI.SidePanel.Show();
-				Blocksworld.buildPanel.Layout();
-			}
-			Blocksworld.blocksworldCamera.Stop();
-			Blocksworld.blocksworldCamera.Follow(Blocksworld.selectedBunch);
-			Blocksworld.ResetSkyAndFogSettings();
-			CollisionManager.Stop();
-			Tutorial.StopPlay();
-			if (this.pullObject != null)
-			{
-				this.pullObject.HideLine();
-			}
-			Blocksworld.UI.Controls.ResetAllControls();
-			Blocksworld.UI.Controls.Hide();
-			if (!Blocksworld.resettingPlay)
-			{
-			}
-			TagManager.ClearRegisteredBlocks(true);
-			VisualEffect.StopVfxs();
-			TreasureHandler.Stop();
-			Invincibility.Clear();
-			this.RemoveAllCommands();
-			Block.ClearConnectedCache();
-			Blocksworld.leaderboardData.Reset();
-			if (BW.isUnityEditor)
-			{
-				Tile.UpdateTileParameterSettings();
-			}
-			Resources.UnloadUnusedAssets();
-			GC.Collect();
-			if (!Blocksworld.resettingPlay)
-			{
-				if (this.lastBuildModeSelectedBunch != null)
-				{
-					Blocksworld.SelectBunch(this.lastBuildModeSelectedBunch.blocks, false, true);
-				}
-				else if (this.lastBuildModeSelectedBlock != null)
-				{
-					Blocksworld.Select(this.lastBuildModeSelectedBlock, false, true);
-				}
-				this.lastBuildModeSelectedBunch = null;
-				this.lastBuildModeSelectedBlock = null;
-			}
-		}
-	}
-
-	// Token: 0x0600191C RID: 6428 RVA: 0x000B1C1C File Offset: 0x000B001C
-	private void ClearChunks()
-	{
-		foreach (Chunk chunk in Blocksworld.chunks)
-		{
-			chunk.Destroy(false);
-		}
-		Blocksworld.chunks.Clear();
-	}
-
-	// Token: 0x0600191D RID: 6429 RVA: 0x000B1C84 File Offset: 0x000B0084
-	private void RemoveAllCommands()
-	{
-		Command.RemoveCommands(Blocksworld.fixedUpdateCommands);
-		Command.RemoveCommands(Blocksworld.updateCommands);
-		Command.RemoveCommands(Blocksworld.resetStateCommands);
-	}
-
-	// Token: 0x0600191E RID: 6430 RVA: 0x000B1CA4 File Offset: 0x000B00A4
-	public void Restart()
-	{
-		if (Blocksworld.resettingPlay)
+		if (!force && CurrentState != State.Play && (LastState != State.Play || CurrentState != State.Menu))
 		{
 			return;
 		}
-		Blocksworld.buildPanel.ignoreShow = true;
-		Blocksworld.scriptPanel.ignoreShow = true;
-		if (WorldSession.jumpRestoreConfig != null)
+		BWSceneManager.StopPlay();
+		TiltManager.Instance.StopMonitoring();
+		MappedInput.SetMode(MappableInputMode.Build);
+		customIntVariables.Clear();
+		blockIntVariables.Clear();
+		BlockData.Clear();
+		ScriptRowData.Clear();
+		ModelSignals.Clear();
+		TBox.ResetTargetSnapping();
+		TextureAndPaintBlockRegistry.Clear();
+		UpdateEditorMusicPlayerEnabled();
+		UpdateTiles();
+		currentBackgroundMusic = string.Empty;
+		lockInput = false;
+		SetBlocksworldState(State.Build);
+		BlockAccelerations.Stop();
+		BWSceneManager.playBlocksRemoved.Clear();
+		orbitDuringControlGesture.IsEnabled = false;
+		for (int i = 1; i <= numCounters; i++)
 		{
-			WorldSession.RestoreJumpConfig();
+			string key = i + string.Empty;
+			countersActivated[key] = false;
+			counters[key] = 0;
 		}
-		else
+		resetting = true;
+		BWSceneManager.ExecuteStop(resetBlocks);
+		resetting = false;
+		dynamicLockPull = false;
+		ClearChunks();
+		blocksworldCamera.Restore();
+		rewardCamera.enabled = false;
+		if (!forcePlayMode)
 		{
-			Blocksworld.resettingPlay = true;
-			this.Stop(false, true);
-			base.StartCoroutine(this.DoRestart());
+			UI.SidePanel.Show();
+			buildPanel.Layout();
+		}
+		blocksworldCamera.Stop();
+		blocksworldCamera.Follow(selectedBunch);
+		ResetSkyAndFogSettings();
+		CollisionManager.Stop();
+		Tutorial.StopPlay();
+		if (pullObject != null)
+		{
+			pullObject.HideLine();
+		}
+		UI.Controls.ResetAllControls();
+		UI.Controls.Hide();
+		_ = resettingPlay;
+		TagManager.ClearRegisteredBlocks(hard: true);
+		VisualEffect.StopVfxs();
+		TreasureHandler.Stop();
+		Invincibility.Clear();
+		RemoveAllCommands();
+		Block.ClearConnectedCache();
+		leaderboardData.Reset();
+		if (BW.isUnityEditor)
+		{
+			Tile.UpdateTileParameterSettings();
+		}
+		Resources.UnloadUnusedAssets();
+		GC.Collect();
+		if (!resettingPlay)
+		{
+			if (lastBuildModeSelectedBunch != null)
+			{
+				SelectBunch(lastBuildModeSelectedBunch.blocks);
+			}
+			else if (lastBuildModeSelectedBlock != null)
+			{
+				Select(lastBuildModeSelectedBlock);
+			}
+			lastBuildModeSelectedBunch = null;
+			lastBuildModeSelectedBlock = null;
 		}
 	}
 
-	// Token: 0x0600191F RID: 6431 RVA: 0x000B1D04 File Offset: 0x000B0104
+	private void ClearChunks()
+	{
+		foreach (Chunk chunk in chunks)
+		{
+			chunk.Destroy();
+		}
+		chunks.Clear();
+	}
+
+	private void RemoveAllCommands()
+	{
+		Command.RemoveCommands(fixedUpdateCommands);
+		Command.RemoveCommands(updateCommands);
+		Command.RemoveCommands(resetStateCommands);
+	}
+
+	public void Restart()
+	{
+		if (!resettingPlay)
+		{
+			buildPanel.ignoreShow = true;
+			scriptPanel.ignoreShow = true;
+			if (WorldSession.jumpRestoreConfig != null)
+			{
+				WorldSession.RestoreJumpConfig();
+				return;
+			}
+			resettingPlay = true;
+			Stop();
+			StartCoroutine(DoRestart());
+		}
+	}
+
 	public IEnumerator DoRestart()
 	{
 		WorldSession.current.OnRestart();
 		yield return 2;
-		this.Play();
-		yield break;
+		Play();
 	}
 
-	// Token: 0x06001920 RID: 6432 RVA: 0x000B1D20 File Offset: 0x000B0120
 	public void Save()
 	{
-		if (!Blocksworld.worldSaveEnabled || Blocksworld.f3PressedInCurrentWorld)
+		if (worldSaveEnabled && !f3PressedInCurrentWorld)
 		{
-			return;
+			if (CurrentState == State.Play || (CurrentState != State.Build && LastState == State.Play))
+			{
+				BWLog.Info("Skipping save since in play mode");
+			}
+			else
+			{
+				WorldSession.Save();
+			}
 		}
-		if (Blocksworld.CurrentState == State.Play || (Blocksworld.CurrentState != State.Build && Blocksworld.LastState == State.Play))
-		{
-			BWLog.Info("Skipping save since in play mode");
-			return;
-		}
-		WorldSession.Save();
 	}
 
-	// Token: 0x06001921 RID: 6433 RVA: 0x000B1D72 File Offset: 0x000B0172
 	public void FastSave()
 	{
-		if (!Blocksworld.worldSaveEnabled || Blocksworld.f3PressedInCurrentWorld)
+		if (worldSaveEnabled && !f3PressedInCurrentWorld)
 		{
-			return;
+			if (CurrentState == State.Play)
+			{
+				BWLog.Info("Skipping fast save since in play mode");
+			}
+			else
+			{
+				WorldSession.FastSave();
+			}
 		}
-		if (Blocksworld.CurrentState == State.Play)
-		{
-			BWLog.Info("Skipping fast save since in play mode");
-			return;
-		}
-		WorldSession.FastSave();
 	}
 
-	// Token: 0x06001922 RID: 6434 RVA: 0x000B1DA4 File Offset: 0x000B01A4
 	private void WriteTilesAsJSON(JSONStreamEncoder encoder, List<List<Tile>> tileRows, bool lockBlocks, bool compact)
 	{
 		encoder.BeginArray();
@@ -1803,27 +2213,27 @@ public class Blocksworld : MonoBehaviour
 			if (!flag2 || i != tileRows.Count - 1 || list.Count != 1 || list[0].gaf.Predicate != Block.predicateThen)
 			{
 				encoder.BeginArray();
-				foreach (Tile tile in list)
+				foreach (Tile item in list)
 				{
 					if (flag2 && i == 0)
 					{
-						GAF gaf = tile.gaf;
+						GAF gaf = item.gaf;
 						if ((gaf.Predicate == Block.predicateTextureTo && (string)gaf.Args[0] == "Plain") || gaf.Predicate == Block.predicateStop)
 						{
 							continue;
 						}
 					}
-					tile.ToJSON(encoder, compact);
+					item.ToJSON(encoder, compact);
 				}
 				encoder.EndArray();
 			}
 			if (flag)
 			{
 				encoder.BeginArray();
-				Tile tile2 = new Tile(new GAF("Meta.Then", new object[0]));
-				Tile tile3 = new Tile(new GAF("Block.Locked", new object[0]));
+				Tile tile = new Tile(new GAF("Meta.Then"));
+				Tile tile2 = new Tile(new GAF("Block.Locked"));
+				tile.ToJSON(encoder, compact);
 				tile2.ToJSON(encoder, compact);
-				tile3.ToJSON(encoder, compact);
 				encoder.EndArray();
 				flag = false;
 			}
@@ -1831,49 +2241,47 @@ public class Blocksworld : MonoBehaviour
 		encoder.EndArray();
 	}
 
-	// Token: 0x06001923 RID: 6435 RVA: 0x000B1FA4 File Offset: 0x000B03A4
 	private void WriteBlockAsJSON(JSONStreamEncoder encoder, List<List<Tile>> blockTiles, bool lockBlocks, bool compact)
 	{
 		encoder.InsertNewline();
 		encoder.BeginObject();
-		encoder.WriteKey((!Blocksworld.useCompactGafWriteRenamings) ? "tile-rows" : "r");
-		this.WriteTilesAsJSON(encoder, blockTiles, lockBlocks, compact);
+		encoder.WriteKey((!useCompactGafWriteRenamings) ? "tile-rows" : "r");
+		WriteTilesAsJSON(encoder, blockTiles, lockBlocks, compact);
 		encoder.EndObject();
 	}
 
-	// Token: 0x06001924 RID: 6436 RVA: 0x000B1FE4 File Offset: 0x000B03E4
 	private void WriteBlocksAsJSON(JSONStreamEncoder encoder, bool compact)
 	{
 		encoder.BeginArray();
 		bool flag = Tutorial.state != TutorialState.None && Tutorial.state != TutorialState.Puzzle;
 		if (flag && Tutorial.safeState != null)
 		{
-			foreach (List<List<Tile>> blockTiles in Tutorial.safeState.placedBlockTiles)
+			foreach (List<List<Tile>> placedBlockTile in Tutorial.safeState.placedBlockTiles)
 			{
-				this.WriteBlockAsJSON(encoder, blockTiles, flag, compact);
+				WriteBlockAsJSON(encoder, placedBlockTile, flag, compact);
 			}
-			foreach (List<List<Tile>> blockTiles2 in Tutorial.safeState.notPlacedBlockTiles)
+			foreach (List<List<Tile>> notPlacedBlockTile in Tutorial.safeState.notPlacedBlockTiles)
 			{
-				this.WriteBlockAsJSON(encoder, blockTiles2, false, compact);
+				WriteBlockAsJSON(encoder, notPlacedBlockTile, lockBlocks: false, compact);
 			}
 		}
 		else
 		{
 			List<Block> list = BWSceneManager.AllBlocks();
-			Block block = (list.Count <= 0) ? null : list[list.Count - 1];
+			Block block = ((list.Count <= 0) ? null : list[list.Count - 1]);
 			for (int i = 0; i < list.Count; i++)
 			{
 				Block block2 = list[i];
 				if (!flag || !Tutorial.IsLastBlockIncomplete() || Tutorial.state == TutorialState.BuildingCompleted || Tutorial.numGivenBlocks == list.Count || block2 != block)
 				{
-					this.WriteBlockAsJSON(encoder, block2.tiles, flag, compact);
+					WriteBlockAsJSON(encoder, block2.tiles, flag, compact);
 				}
 			}
 			if (Tutorial.blocks != null && flag && Tutorial.step >= 0)
 			{
 				for (int j = Tutorial.step; j < Tutorial.blocks.Count; j++)
 				{
-					this.WriteBlockAsJSON(encoder, Tutorial.blocks[j].tiles, false, compact);
+					WriteBlockAsJSON(encoder, Tutorial.blocks[j].tiles, lockBlocks: false, compact);
 				}
 			}
 		}
@@ -1881,78 +2289,76 @@ public class Blocksworld : MonoBehaviour
 		encoder.EndArray();
 	}
 
-	// Token: 0x06001925 RID: 6437 RVA: 0x000B21D4 File Offset: 0x000B05D4
 	private void WriteCameraAsJSON(JSONStreamEncoder encoder)
 	{
 		encoder.BeginObject();
 		encoder.InsertNewline();
 		encoder.WriteKey("rotation");
-		Blocksworld.cameraTransform.rotation.ToJSON(encoder);
+		cameraTransform.rotation.ToJSON(encoder);
 		encoder.InsertNewline();
 		encoder.WriteKey("position");
-		Blocksworld.cameraTransform.position.ToJSON(encoder, false, false, false);
+		cameraTransform.position.ToJSON(encoder);
 		encoder.InsertNewline();
 		encoder.WriteKey("playDistance");
-		encoder.WriteNumber(Blocksworld.blocksworldCamera.manualCameraDistance);
+		encoder.WriteNumber(blocksworldCamera.manualCameraDistance);
 		encoder.InsertNewline();
 		encoder.WriteKey("playAngle");
-		encoder.WriteNumber(Blocksworld.blocksworldCamera.manualCameraAngle);
+		encoder.WriteNumber(blocksworldCamera.manualCameraAngle);
 		encoder.InsertNewline();
 		encoder.EndObject();
 	}
 
-	// Token: 0x06001926 RID: 6438 RVA: 0x000B227C File Offset: 0x000B067C
 	public string Serialize(bool saveCamera = true)
 	{
 		StringBuilder stringBuilder = new StringBuilder(32768);
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder jsonstreamEncoder = new JSONStreamEncoder(writer, 20);
-		jsonstreamEncoder.BeginObject();
-		jsonstreamEncoder.InsertNewline();
-		if (Blocksworld.currentWorldId != null)
+		JSONStreamEncoder jSONStreamEncoder = new JSONStreamEncoder(writer);
+		jSONStreamEncoder.BeginObject();
+		jSONStreamEncoder.InsertNewline();
+		if (currentWorldId != null)
 		{
-			jsonstreamEncoder.WriteKey("id");
-			jsonstreamEncoder.WriteString(Blocksworld.currentWorldId);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("id");
+			jSONStreamEncoder.WriteString(currentWorldId);
+			jSONStreamEncoder.InsertNewline();
 		}
-		jsonstreamEncoder.WriteKey("blocks");
-		this.WriteBlocksAsJSON(jsonstreamEncoder, Blocksworld.useCompactGafWriteRenamings);
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("connections");
-		jsonstreamEncoder.BeginArray();
+		jSONStreamEncoder.WriteKey("blocks");
+		WriteBlocksAsJSON(jSONStreamEncoder, useCompactGafWriteRenamings);
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("connections");
+		jSONStreamEncoder.BeginArray();
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
-			jsonstreamEncoder.InsertNewline();
-			jsonstreamEncoder.BeginArray();
-			foreach (Block item in block.connections)
+			jSONStreamEncoder.InsertNewline();
+			jSONStreamEncoder.BeginArray();
+			foreach (Block connection in block.connections)
 			{
-				jsonstreamEncoder.WriteNumber((long)list.IndexOf(item));
+				jSONStreamEncoder.WriteNumber(list.IndexOf(connection));
 			}
-			jsonstreamEncoder.EndArray();
+			jSONStreamEncoder.EndArray();
 		}
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("connectionTypes");
-		jsonstreamEncoder.BeginArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("connectionTypes");
+		jSONStreamEncoder.BeginArray();
 		for (int j = 0; j < list.Count; j++)
 		{
 			Block block2 = list[j];
-			jsonstreamEncoder.InsertNewline();
-			jsonstreamEncoder.BeginArray();
-			foreach (int num in block2.connectionTypes)
+			jSONStreamEncoder.InsertNewline();
+			jSONStreamEncoder.BeginArray();
+			foreach (int connectionType in block2.connectionTypes)
 			{
-				jsonstreamEncoder.WriteNumber((long)num);
+				jSONStreamEncoder.WriteNumber(connectionType);
 			}
-			jsonstreamEncoder.EndArray();
+			jSONStreamEncoder.EndArray();
 		}
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("frozen-in-terrain");
-		jsonstreamEncoder.BeginArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("frozen-in-terrain");
+		jSONStreamEncoder.BeginArray();
 		for (int k = 0; k < list.Count; k++)
 		{
 			Block block3 = list[k];
@@ -1960,64 +2366,65 @@ public class Blocksworld : MonoBehaviour
 			{
 				block3.UpdateFrozenInTerrainStatus();
 			}
-			jsonstreamEncoder.WriteNumber((long)block3.frozenInTerrainStatus);
+			jSONStreamEncoder.WriteNumber(block3.frozenInTerrainStatus);
 		}
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
 		if (saveCamera)
 		{
-			jsonstreamEncoder.WriteKey("camera");
-			this.WriteCameraAsJSON(jsonstreamEncoder);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("camera");
+			WriteCameraAsJSON(jSONStreamEncoder);
+			jSONStreamEncoder.InsertNewline();
 		}
-		else if (this.lastLoadedCameraObj != null)
+		else if (lastLoadedCameraObj != null)
 		{
-			jsonstreamEncoder.WriteKey("camera");
-			jsonstreamEncoder.WriteJObject(this.lastLoadedCameraObj);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("camera");
+			jSONStreamEncoder.WriteJObject(lastLoadedCameraObj);
+			jSONStreamEncoder.InsertNewline();
 		}
-		this.WritePuzzleInventoryAndUsage(jsonstreamEncoder, Scarcity.puzzleInventory, "puzzle-gafs", "puzzle-gaf-usage");
-		this.WritePuzzleInventoryAndUsage(jsonstreamEncoder, Scarcity.puzzleInventoryAfterStepByStep, "puzzle-gafs-after-step-by-step", "puzzle-gaf-usage-after-step-by-step");
-		if (Blocksworld.editorSelectionLocked.Count > 0)
+		WritePuzzleInventoryAndUsage(jSONStreamEncoder, Scarcity.puzzleInventory, "puzzle-gafs", "puzzle-gaf-usage");
+		WritePuzzleInventoryAndUsage(jSONStreamEncoder, Scarcity.puzzleInventoryAfterStepByStep, "puzzle-gafs-after-step-by-step", "puzzle-gaf-usage-after-step-by-step");
+		if (editorSelectionLocked.Count > 0)
 		{
-			jsonstreamEncoder.WriteKey("selection-locked");
-			jsonstreamEncoder.BeginArray();
+			jSONStreamEncoder.WriteKey("selection-locked");
+			jSONStreamEncoder.BeginArray();
 			for (int l = 0; l < list.Count; l++)
 			{
-				Block item2 = list[l];
-				if (Blocksworld.editorSelectionLocked.Contains(item2))
+				Block item = list[l];
+				if (editorSelectionLocked.Contains(item))
 				{
-					jsonstreamEncoder.WriteNumber((long)l);
+					jSONStreamEncoder.WriteNumber(l);
 				}
 			}
-			jsonstreamEncoder.EndArray();
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.EndArray();
+			jSONStreamEncoder.InsertNewline();
 		}
-		if (Blocksworld.cameraPoses.Count > 0)
+		if (cameraPoses.Count > 0)
 		{
-			jsonstreamEncoder.WriteKey("camera-poses");
-			jsonstreamEncoder.BeginArray();
-			jsonstreamEncoder.InsertNewline();
-			for (int m = 0; m < Blocksworld.cameraPoses.Count; m++)
+			jSONStreamEncoder.WriteKey("camera-poses");
+			jSONStreamEncoder.BeginArray();
+			jSONStreamEncoder.InsertNewline();
+			for (int m = 0; m < cameraPoses.Count; m++)
 			{
-				NamedPose namedPose = Blocksworld.cameraPoses[m];
-				jsonstreamEncoder.BeginObject();
-				jsonstreamEncoder.WriteKey("name");
-				jsonstreamEncoder.WriteString(namedPose.name);
-				jsonstreamEncoder.WriteKey("position");
-				namedPose.position.ToJSON(jsonstreamEncoder, false, false, false);
-				jsonstreamEncoder.WriteKey("direction");
-				namedPose.direction.ToJSON(jsonstreamEncoder, false, false, false);
-				jsonstreamEncoder.EndObject();
-				jsonstreamEncoder.InsertNewline();
+				NamedPose namedPose = cameraPoses[m];
+				jSONStreamEncoder.BeginObject();
+				jSONStreamEncoder.WriteKey("name");
+				jSONStreamEncoder.WriteString(namedPose.name);
+				jSONStreamEncoder.WriteKey("position");
+				namedPose.position.ToJSON(jSONStreamEncoder);
+				jSONStreamEncoder.WriteKey("direction");
+				namedPose.direction.ToJSON(jSONStreamEncoder);
+				jSONStreamEncoder.EndObject();
+				jSONStreamEncoder.InsertNewline();
 			}
-			jsonstreamEncoder.EndArray();
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.EndArray();
+			jSONStreamEncoder.InsertNewline();
 		}
-		if (Blocksworld.signalNames.Length > 0)
+		if (signalNames.Length != 0)
 		{
 			bool flag = false;
-			foreach (string text in Blocksworld.signalNames)
+			string[] array = signalNames;
+			foreach (string text in array)
 			{
 				if (text != null && text.Length > 0)
 				{
@@ -2027,29 +2434,30 @@ public class Blocksworld : MonoBehaviour
 			}
 			if (flag)
 			{
-				jsonstreamEncoder.WriteKey("signal-names");
-				jsonstreamEncoder.BeginArray();
-				jsonstreamEncoder.InsertNewline();
-				foreach (string text2 in Blocksworld.signalNames)
+				jSONStreamEncoder.WriteKey("signal-names");
+				jSONStreamEncoder.BeginArray();
+				jSONStreamEncoder.InsertNewline();
+				string[] array2 = signalNames;
+				foreach (string text2 in array2)
 				{
 					string text3 = text2;
 					if (text3 == null)
 					{
 						text3 = string.Empty;
 					}
-					jsonstreamEncoder.WriteString(text3);
+					jSONStreamEncoder.WriteString(text3);
 				}
-				jsonstreamEncoder.EndArray();
-				jsonstreamEncoder.InsertNewline();
+				jSONStreamEncoder.EndArray();
+				jSONStreamEncoder.InsertNewline();
 			}
 		}
-		if (Blocksworld.blockNames.Count > 0)
+		if (blockNames.Count > 0)
 		{
 			bool flag2 = false;
-			for (int num3 = 0; num3 < list.Count; num3++)
+			for (int num2 = 0; num2 < list.Count; num2++)
 			{
-				Block key = list[num3];
-				if (Blocksworld.blockNames.ContainsKey(key) && !string.IsNullOrEmpty(Blocksworld.blockNames[key]))
+				Block key = list[num2];
+				if (blockNames.ContainsKey(key) && !string.IsNullOrEmpty(blockNames[key]))
 				{
 					flag2 = true;
 					break;
@@ -2057,79 +2465,72 @@ public class Blocksworld : MonoBehaviour
 			}
 			if (flag2)
 			{
-				jsonstreamEncoder.WriteKey("block-names");
-				jsonstreamEncoder.BeginArray();
-				jsonstreamEncoder.InsertNewline();
-				for (int num4 = 0; num4 < list.Count; num4++)
+				jSONStreamEncoder.WriteKey("block-names");
+				jSONStreamEncoder.BeginArray();
+				jSONStreamEncoder.InsertNewline();
+				for (int num3 = 0; num3 < list.Count; num3++)
 				{
-					Block key2 = list[num4];
+					Block key2 = list[num3];
 					string str = string.Empty;
-					if (Blocksworld.blockNames.ContainsKey(key2))
+					if (blockNames.ContainsKey(key2))
 					{
-						str = Blocksworld.blockNames[key2];
+						str = blockNames[key2];
 					}
-					jsonstreamEncoder.WriteString(str);
+					jSONStreamEncoder.WriteString(str);
 				}
-				jsonstreamEncoder.EndArray();
-				jsonstreamEncoder.InsertNewline();
+				jSONStreamEncoder.EndArray();
+				jSONStreamEncoder.InsertNewline();
 			}
 		}
-		if (Blocksworld.launchIntoPlayMode)
+		if (launchIntoPlayMode)
 		{
-			jsonstreamEncoder.WriteKey("launch-into-play-mode");
-			jsonstreamEncoder.WriteBool(Blocksworld.launchIntoPlayMode);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("launch-into-play-mode");
+			jSONStreamEncoder.WriteBool(launchIntoPlayMode);
+			jSONStreamEncoder.InsertNewline();
 		}
-		if (Blocksworld.staticLockPull)
+		if (staticLockPull)
 		{
-			jsonstreamEncoder.WriteKey("lock-pull");
-			jsonstreamEncoder.WriteBool(Blocksworld.staticLockPull);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("lock-pull");
+			jSONStreamEncoder.WriteBool(staticLockPull);
+			jSONStreamEncoder.InsertNewline();
 		}
 		if (WorldSession.isProfileBuildSession())
 		{
-			jsonstreamEncoder.WriteKey("player-profile-world");
-			jsonstreamEncoder.WriteBool(WorldSession.isProfileBuildSession());
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("player-profile-world");
+			jSONStreamEncoder.WriteBool(WorldSession.isProfileBuildSession());
+			jSONStreamEncoder.InsertNewline();
 		}
 		if (Tutorial.numGivenBlocks != list.Count && Tutorial.safeState == null && Tutorial.state != TutorialState.None && Tutorial.state != TutorialState.Puzzle && Tutorial.state != TutorialState.BuildingCompleted && Tutorial.IsLastBlockIncomplete())
 		{
-			jsonstreamEncoder.WriteKey("last-tutorial-block-tile-rows");
-			jsonstreamEncoder.InsertNewline();
-			this.WriteTilesAsJSON(jsonstreamEncoder, list[list.Count - 1].tiles, false, Blocksworld.useCompactGafWriteRenamings);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("last-tutorial-block-tile-rows");
+			jSONStreamEncoder.InsertNewline();
+			WriteTilesAsJSON(jSONStreamEncoder, list[list.Count - 1].tiles, lockBlocks: false, useCompactGafWriteRenamings);
+			jSONStreamEncoder.InsertNewline();
 		}
 		if (Tutorial.manualPaintOrTexture.Count > 0)
 		{
-			jsonstreamEncoder.WriteKey("manual-paint-or-texture");
-			jsonstreamEncoder.InsertNewline();
-			this.WriteTilesAsJSON(jsonstreamEncoder, new List<List<Tile>>
-			{
-				Tutorial.manualPaintOrTexture
-			}, false, Blocksworld.useCompactGafWriteRenamings);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("manual-paint-or-texture");
+			jSONStreamEncoder.InsertNewline();
+			WriteTilesAsJSON(jSONStreamEncoder, new List<List<Tile>> { Tutorial.manualPaintOrTexture }, lockBlocks: false, useCompactGafWriteRenamings);
+			jSONStreamEncoder.InsertNewline();
 		}
 		if (Tutorial.completedManualPaintOrTexture.Count > 0)
 		{
-			jsonstreamEncoder.WriteKey("completed-manual-paint-or-texture");
-			jsonstreamEncoder.InsertNewline();
-			this.WriteTilesAsJSON(jsonstreamEncoder, new List<List<Tile>>
-			{
-				Tutorial.completedManualPaintOrTexture
-			}, false, Blocksworld.useCompactGafWriteRenamings);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("completed-manual-paint-or-texture");
+			jSONStreamEncoder.InsertNewline();
+			WriteTilesAsJSON(jSONStreamEncoder, new List<List<Tile>> { Tutorial.completedManualPaintOrTexture }, lockBlocks: false, useCompactGafWriteRenamings);
+			jSONStreamEncoder.InsertNewline();
 		}
 		if (Tutorial.state != TutorialState.None)
 		{
-			jsonstreamEncoder.WriteKey("saved-tutorial-step");
-			jsonstreamEncoder.WriteNumber((long)(Tutorial.step + Tutorial.savedStep));
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey("saved-tutorial-step");
+			jSONStreamEncoder.WriteNumber(Tutorial.step + Tutorial.savedStep);
+			jSONStreamEncoder.InsertNewline();
 		}
-		jsonstreamEncoder.EndObject();
+		jSONStreamEncoder.EndObject();
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x06001927 RID: 6439 RVA: 0x000B29C4 File Offset: 0x000B0DC4
 	private void WritePuzzleInventoryAndUsage(JSONStreamEncoder encoder, Dictionary<GAF, int> puzzleInventory, string inventoryKey, string usageKey)
 	{
 		if (puzzleInventory != null)
@@ -2146,17 +2547,16 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x06001928 RID: 6440 RVA: 0x000B2A10 File Offset: 0x000B0E10
 	public List<List<Tile>> LoadJSONTiles(JObject tileRows)
 	{
 		List<List<Tile>> list = new List<List<Tile>>();
-		foreach (JObject jobject in tileRows.ArrayValue)
+		foreach (JObject item in tileRows.ArrayValue)
 		{
 			List<Tile> list2 = new List<Tile>();
 			list.Add(list2);
-			foreach (JObject obj in jobject.ArrayValue)
+			foreach (JObject item2 in item.ArrayValue)
 			{
-				Tile tile = Tile.FromJSON(obj);
+				Tile tile = Tile.FromJSON(item2);
 				if (tile == null)
 				{
 					return null;
@@ -2167,101 +2567,96 @@ public class Blocksworld : MonoBehaviour
 		return list;
 	}
 
-	// Token: 0x06001929 RID: 6441 RVA: 0x000B2AE4 File Offset: 0x000B0EE4
 	private void ReadSignalNames(JObject obj)
 	{
-		if (obj.ObjectValue.ContainsKey("signal-names"))
+		if (!obj.ObjectValue.ContainsKey("signal-names"))
 		{
-			List<JObject> arrayValue = obj["signal-names"].ArrayValue;
-			int num = 0;
-			foreach (JObject jobject in arrayValue)
+			return;
+		}
+		List<JObject> arrayValue = obj["signal-names"].ArrayValue;
+		int num = 0;
+		foreach (JObject item in arrayValue)
+		{
+			string stringValue = item.StringValue;
+			if (string.IsNullOrEmpty(stringValue))
 			{
-				string stringValue = jobject.StringValue;
-				if (string.IsNullOrEmpty(stringValue))
-				{
-					Blocksworld.signalNames[num] = null;
-				}
-				else
-				{
-					Blocksworld.signalNames[num] = stringValue;
-				}
-				num++;
+				signalNames[num] = null;
 			}
+			else
+			{
+				signalNames[num] = stringValue;
+			}
+			num++;
 		}
 	}
 
-	// Token: 0x0600192A RID: 6442 RVA: 0x000B2B8C File Offset: 0x000B0F8C
 	private void ReadBlockNames(JObject obj)
 	{
-		if (obj.ObjectValue.ContainsKey("block-names"))
+		if (!obj.ObjectValue.ContainsKey("block-names"))
 		{
-			List<JObject> arrayValue = obj["block-names"].ArrayValue;
-			int num = 0;
-			foreach (JObject jobject in arrayValue)
+			return;
+		}
+		List<JObject> arrayValue = obj["block-names"].ArrayValue;
+		int num = 0;
+		foreach (JObject item in arrayValue)
+		{
+			string stringValue = item.StringValue;
+			if (!string.IsNullOrEmpty(stringValue))
 			{
-				string stringValue = jobject.StringValue;
-				if (!string.IsNullOrEmpty(stringValue))
+				List<Block> list = BWSceneManager.AllBlocks();
+				if (num < list.Count)
 				{
-					List<Block> list = BWSceneManager.AllBlocks();
-					if (num < list.Count)
-					{
-						Blocksworld.blockNames[list[num]] = stringValue;
-					}
+					blockNames[list[num]] = stringValue;
 				}
-				num++;
 			}
+			num++;
 		}
 	}
 
-	// Token: 0x0600192B RID: 6443 RVA: 0x000B2C44 File Offset: 0x000B1044
 	private void ReadCameraPoses(JObject obj)
 	{
-		if (obj.ObjectValue.ContainsKey("camera-poses"))
+		if (!obj.ObjectValue.ContainsKey("camera-poses"))
 		{
-			List<JObject> arrayValue = obj["camera-poses"].ArrayValue;
-			foreach (JObject jobject in arrayValue)
+			return;
+		}
+		List<JObject> arrayValue = obj["camera-poses"].ArrayValue;
+		foreach (JObject item in arrayValue)
+		{
+			Dictionary<string, JObject> objectValue = item.ObjectValue;
+			if (!objectValue.ContainsKey("name") || !objectValue.ContainsKey("position") || !objectValue.ContainsKey("direction"))
 			{
-				Dictionary<string, JObject> objectValue = jobject.ObjectValue;
-				if (!objectValue.ContainsKey("name") || !objectValue.ContainsKey("position") || !objectValue.ContainsKey("direction"))
-				{
-					BWLog.Info("Invalid camera pose. Missing a key in object: 'name', 'position' or 'direction'");
-				}
-				else
-				{
-					string stringValue = objectValue["name"].StringValue;
-					Vector3 position = objectValue["position"].Vector3Value();
-					Vector3 direction = objectValue["direction"].Vector3Value();
-					NamedPose namedPose = new NamedPose(stringValue, position, direction);
-					Blocksworld.cameraPoses.Add(namedPose);
-					Blocksworld.cameraPosesMap[namedPose.name] = namedPose;
-				}
+				BWLog.Info("Invalid camera pose. Missing a key in object: 'name', 'position' or 'direction'");
+				continue;
 			}
+			string stringValue = objectValue["name"].StringValue;
+			Vector3 position = objectValue["position"].Vector3Value();
+			Vector3 direction = objectValue["direction"].Vector3Value();
+			NamedPose namedPose = new NamedPose(stringValue, position, direction);
+			cameraPoses.Add(namedPose);
+			cameraPosesMap[namedPose.name] = namedPose;
 		}
 	}
 
-	// Token: 0x0600192C RID: 6444 RVA: 0x000B2D64 File Offset: 0x000B1164
 	public static JObject GetTileRows(JObject obj)
 	{
 		Dictionary<string, JObject> objectValue = obj.ObjectValue;
-		JObject result;
-		if (objectValue.TryGetValue("r", out result))
+		if (objectValue.TryGetValue("r", out var value))
 		{
-			return result;
+			return value;
 		}
-		if (objectValue.TryGetValue("tile-rows", out result))
+		if (objectValue.TryGetValue("tile-rows", out value))
 		{
-			return result;
+			return value;
 		}
 		return null;
 	}
 
-	// Token: 0x0600192D RID: 6445 RVA: 0x000B2DA4 File Offset: 0x000B11A4
 	private List<List<List<Tile>>> ParseWorldJSON(JObject obj)
 	{
 		List<List<List<Tile>>> list = new List<List<List<Tile>>>();
-		foreach (JObject obj2 in obj["blocks"].ArrayValue)
+		foreach (JObject item in obj["blocks"].ArrayValue)
 		{
-			List<List<Tile>> list2 = this.LoadJSONTiles(Blocksworld.GetTileRows(obj2));
+			List<List<Tile>> list2 = LoadJSONTiles(GetTileRows(item));
 			if (list2 == null)
 			{
 				return null;
@@ -2271,26 +2666,25 @@ public class Blocksworld : MonoBehaviour
 		return list;
 	}
 
-	// Token: 0x0600192E RID: 6446 RVA: 0x000B2E30 File Offset: 0x000B1230
 	public static void UnlockTutorialGAFs(string source)
 	{
-		JObject jobject = JSONDecoder.Decode(source);
-		if (jobject == null)
+		JObject jObject = JSONDecoder.Decode(source);
+		if (jObject == null)
 		{
 			return;
 		}
 		List<List<List<Tile>>> list = new List<List<List<Tile>>>();
-		foreach (JObject obj in jobject["blocks"].ArrayValue)
+		foreach (JObject item in jObject["blocks"].ArrayValue)
 		{
-			JObject tileRows = Blocksworld.GetTileRows(obj);
+			JObject tileRows = GetTileRows(item);
 			List<List<Tile>> list2 = new List<List<Tile>>();
-			foreach (JObject jobject2 in tileRows.ArrayValue)
+			foreach (JObject item2 in tileRows.ArrayValue)
 			{
 				List<Tile> list3 = new List<Tile>();
 				list2.Add(list3);
-				foreach (JObject obj2 in jobject2.ArrayValue)
+				foreach (JObject item3 in item2.ArrayValue)
 				{
-					Tile tile = Tile.FromJSON(obj2);
+					Tile tile = Tile.FromJSON(item3);
 					if (tile != null)
 					{
 						list3.Add(tile);
@@ -2303,35 +2697,31 @@ public class Blocksworld : MonoBehaviour
 			}
 			list.Add(list2);
 		}
-		Blocksworld.SetupTutorialGAFs(list);
+		SetupTutorialGAFs(list);
 	}
 
-	// Token: 0x0600192F RID: 6447 RVA: 0x000B2F88 File Offset: 0x000B1388
 	public static string GetWorldGAFUsageAsBlocksInventory(string worldSource)
 	{
-		JObject jobject = JSONDecoder.Decode(worldSource);
-		if (jobject == null)
+		JObject jObject = JSONDecoder.Decode(worldSource);
+		if (jObject == null)
 		{
 			return null;
 		}
 		List<List<List<Tile>>> list = new List<List<List<Tile>>>();
-		foreach (JObject obj in jobject["blocks"].ArrayValue)
+		foreach (JObject item in jObject["blocks"].ArrayValue)
 		{
-			JObject tileRows = Blocksworld.GetTileRows(obj);
+			JObject tileRows = GetTileRows(item);
 			List<List<Tile>> list2 = new List<List<Tile>>();
-			foreach (JObject jobject2 in tileRows.ArrayValue)
+			foreach (JObject item2 in tileRows.ArrayValue)
 			{
 				List<Tile> list3 = new List<Tile>();
 				list2.Add(list3);
-				foreach (JObject obj2 in jobject2.ArrayValue)
+				foreach (JObject item3 in item2.ArrayValue)
 				{
-					Tile tile = Tile.FromJSON(obj2);
-					if (tile != null)
+					Tile tile = Tile.FromJSON(item3);
+					if (tile != null && !tile.IsLocked())
 					{
-						if (!tile.IsLocked())
-						{
-							list3.Add(tile);
-						}
+						list3.Add(tile);
 					}
 				}
 			}
@@ -2342,109 +2732,102 @@ public class Blocksworld : MonoBehaviour
 			list.Add(list2);
 		}
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		Scarcity.GetInventoryUse(list, WorldType.ForComplexityCalculation, dictionary, false);
-		HashSet<Predicate> infinitePredicates = new HashSet<Predicate>
-		{
-			Block.predicatePlaySoundDurational
-		};
+		Scarcity.GetInventoryUse(list, WorldType.ForComplexityCalculation, dictionary);
+		HashSet<Predicate> infinitePredicates = new HashSet<Predicate> { Block.predicatePlaySoundDurational };
 		return Scarcity.GetBlockIDInventoryString(dictionary, infinitePredicates);
 	}
 
-	// Token: 0x06001930 RID: 6448 RVA: 0x000B3128 File Offset: 0x000B1528
 	public static void SetupTutorialGAFs(List<List<List<Tile>>> tilesLists)
 	{
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-		Scarcity.GetInventoryUse(tilesLists, WorldType.StepByStepTutorial, dictionary, false);
+		Scarcity.GetInventoryUse(tilesLists, WorldType.StepByStepTutorial, dictionary);
 		HashSet<GAF> hashSet = new HashSet<GAF>();
-		if (Blocksworld.unlockedGAFs == null)
+		if (unlockedGAFs == null)
 		{
-			Blocksworld.unlockedGAFs = new List<GAF>();
+			unlockedGAFs = new List<GAF>();
 		}
-		for (int i = 0; i < Blocksworld.unlockedGAFs.Count; i++)
+		for (int i = 0; i < unlockedGAFs.Count; i++)
 		{
-			hashSet.Add(Blocksworld.unlockedGAFs[i]);
+			hashSet.Add(unlockedGAFs[i]);
 		}
-		foreach (GAF gaf in dictionary.Keys)
+		foreach (GAF key in dictionary.Keys)
 		{
-			BlockItem blockItem = BlockItem.FindByGafPredicateNameAndArguments(gaf.Predicate.Name, gaf.Args);
+			BlockItem blockItem = BlockItem.FindByGafPredicateNameAndArguments(key.Predicate.Name, key.Args);
 			if (blockItem != null)
 			{
-				if (!hashSet.Contains(gaf))
+				if (!hashSet.Contains(key))
 				{
-					hashSet.Add(gaf);
-					Blocksworld.unlockedGAFs.Add(gaf);
-					Predicate predicate = gaf.Predicate;
+					hashSet.Add(key);
+					unlockedGAFs.Add(key);
+					Predicate predicate = key.Predicate;
 					if (predicate == Block.predicateTextureTo)
 					{
-						string textureName = (string)gaf.Args[0];
-						Blocksworld.AddToPublicProvidedTextures(textureName);
+						string textureName = (string)key.Args[0];
+						AddToPublicProvidedTextures(textureName);
 					}
 					else if (predicate == Block.predicatePaintTo)
 					{
-						Blocksworld.unlockedPaints.Add((string)gaf.Args[0]);
+						unlockedPaints.Add((string)key.Args[0]);
 					}
 				}
+				continue;
 			}
-			else
+			List<BlockItem> list = BlockItem.FindByGafPredicateName(key.Predicate.Name);
+			foreach (BlockItem item2 in list)
 			{
-				List<BlockItem> list = BlockItem.FindByGafPredicateName(gaf.Predicate.Name);
-				foreach (BlockItem blockItem2 in list)
+				GAF item = new GAF(item2.GafPredicateName, item2.GafDefaultArgs);
+				if (!hashSet.Contains(item))
 				{
-					GAF item = new GAF(blockItem2.GafPredicateName, blockItem2.GafDefaultArgs);
-					if (!hashSet.Contains(item))
-					{
-						hashSet.Add(item);
-						Blocksworld.unlockedGAFs.Add(item);
-					}
+					hashSet.Add(item);
+					unlockedGAFs.Add(item);
 				}
 			}
 		}
-		List<GAF> implicitGAFs = Blocksworld.GetImplicitGAFs(Blocksworld.unlockedGAFs);
-		Blocksworld.unlockedGAFs.AddRange(implicitGAFs);
+		List<GAF> implicitGAFs = GetImplicitGAFs(unlockedGAFs);
+		unlockedGAFs.AddRange(implicitGAFs);
 	}
 
-	// Token: 0x06001931 RID: 6449 RVA: 0x000B3330 File Offset: 0x000B1730
 	private void HideBlockWithDelayedShow(Block block)
 	{
-		if (block.go != null)
+		if (!(block.go != null))
 		{
-			block.go.GetComponent<Renderer>().enabled = false;
-			if (block.goShadow != null)
-			{
-				block.goShadow.GetComponent<Renderer>().enabled = false;
-			}
-			Blocksworld.AddUpdateCommand(new DelayedDelegateCommand(delegate()
-			{
-				if (Blocksworld.CurrentState == State.Build && !Tutorial.InTutorialOrPuzzle() && block.go != null)
-				{
-					block.go.GetComponent<Renderer>().enabled = true;
-					if (block.goShadow != null)
-					{
-						block.goShadow.GetComponent<Renderer>().enabled = true;
-					}
-				}
-			}, 10));
+			return;
 		}
+		block.go.GetComponent<Renderer>().enabled = false;
+		if (block.goShadow != null)
+		{
+			block.goShadow.GetComponent<Renderer>().enabled = false;
+		}
+		AddUpdateCommand(new DelayedDelegateCommand(delegate
+		{
+			if (CurrentState == State.Build && !Tutorial.InTutorialOrPuzzle() && block.go != null)
+			{
+				block.go.GetComponent<Renderer>().enabled = true;
+				if (block.goShadow != null)
+				{
+					block.goShadow.GetComponent<Renderer>().enabled = true;
+				}
+			}
+		}, 10));
 	}
 
-	// Token: 0x06001932 RID: 6450 RVA: 0x000B33BC File Offset: 0x000B17BC
 	private bool LoadFromJSON(JObject obj, int version)
 	{
-		List<List<List<Tile>>> list = this.ParseWorldJSON(obj);
+		List<List<List<Tile>>> list = ParseWorldJSON(obj);
 		if (list == null)
 		{
 			WorldSession.NotifyFileTooNew();
 			return false;
 		}
-		foreach (List<List<Tile>> tiles in list)
+		foreach (List<List<Tile>> item in list)
 		{
-			Block block = Block.NewBlock(tiles, false, false);
+			Block block = Block.NewBlock(item);
 			if (block != null)
 			{
 				BWSceneManager.AddBlock(block);
 				if (!block.VisibleInPlayMode())
 				{
-					this.HideBlockWithDelayedShow(block);
+					HideBlockWithDelayedShow(block);
 				}
 			}
 		}
@@ -2453,33 +2836,33 @@ public class Blocksworld : MonoBehaviour
 		{
 			return false;
 		}
-		int i = 0;
-		foreach (JObject jobject in obj["connections"].ArrayValue)
+		int num = 0;
+		foreach (JObject item2 in obj["connections"].ArrayValue)
 		{
-			foreach (JObject obj2 in jobject.ArrayValue)
+			foreach (JObject item3 in item2.ArrayValue)
 			{
-				list2[i].connections.Add(list2[(int)obj2]);
+				list2[num].connections.Add(list2[(int)item3]);
 			}
-			i++;
+			num++;
 		}
-		i = 0;
-		foreach (JObject jobject2 in obj["connectionTypes"].ArrayValue)
+		num = 0;
+		foreach (JObject item4 in obj["connectionTypes"].ArrayValue)
 		{
-			foreach (JObject obj3 in jobject2.ArrayValue)
+			foreach (JObject item5 in item4.ArrayValue)
 			{
-				list2[i].connectionTypes.Add((int)obj3);
+				list2[num].connectionTypes.Add((int)item5);
 			}
-			i++;
+			num++;
 		}
 		List<Block> list3 = new List<Block>();
-		for (i = 0; i < list2.Count; i++)
+		for (num = 0; num < list2.Count; num++)
 		{
-			Block block2 = list2[i];
-			int num = block2.connections.IndexOf(block2);
-			if (num != -1)
+			Block block2 = list2[num];
+			int num2 = block2.connections.IndexOf(block2);
+			if (num2 != -1)
 			{
-				block2.connections.RemoveAt(num);
-				block2.connectionTypes.RemoveAt(num);
+				block2.connections.RemoveAt(num2);
+				block2.connectionTypes.RemoveAt(num2);
 			}
 			if (block2.connections.Count != block2.connectionTypes.Count)
 			{
@@ -2495,54 +2878,54 @@ public class Blocksworld : MonoBehaviour
 		Dictionary<string, JObject> objectValue = obj.ObjectValue;
 		if (objectValue.ContainsKey("id"))
 		{
-			Blocksworld.currentWorldId = obj["id"].StringValue;
+			currentWorldId = obj["id"].StringValue;
 		}
 		else
 		{
-			Blocksworld.currentWorldId = null;
+			currentWorldId = null;
 		}
 		if (objectValue.ContainsKey("frozen-in-terrain"))
 		{
 			List<JObject> arrayValue = objectValue["frozen-in-terrain"].ArrayValue;
-			for (int j = 0; j < arrayValue.Count; j++)
+			for (int i = 0; i < arrayValue.Count; i++)
 			{
-				if (j < list2.Count)
+				if (i < list2.Count)
 				{
-					list2[j].frozenInTerrainStatus = arrayValue[j].IntValue;
+					list2[i].frozenInTerrainStatus = arrayValue[i].IntValue;
 				}
 			}
 		}
 		if (objectValue.ContainsKey("camera"))
 		{
-			this.lastLoadedCameraObj = obj["camera"];
-			Blocksworld.blocksworldCamera.PlaceCamera(this.lastLoadedCameraObj["rotation"].QuaternionValue().eulerAngles, this.lastLoadedCameraObj["position"].Vector3Value());
-			if (this.lastLoadedCameraObj.ObjectValue.ContainsKey("playAngle"))
+			lastLoadedCameraObj = obj["camera"];
+			blocksworldCamera.PlaceCamera(lastLoadedCameraObj["rotation"].QuaternionValue().eulerAngles, lastLoadedCameraObj["position"].Vector3Value());
+			if (lastLoadedCameraObj.ObjectValue.ContainsKey("playAngle"))
 			{
-				Blocksworld.blocksworldCamera.manualCameraAngle = this.lastLoadedCameraObj["playAngle"].FloatValue;
+				blocksworldCamera.manualCameraAngle = lastLoadedCameraObj["playAngle"].FloatValue;
 			}
-			if (this.lastLoadedCameraObj.ObjectValue.ContainsKey("playDistance"))
+			if (lastLoadedCameraObj.ObjectValue.ContainsKey("playDistance"))
 			{
-				Blocksworld.blocksworldCamera.manualCameraDistance = this.lastLoadedCameraObj["playDistance"].FloatValue;
+				blocksworldCamera.manualCameraDistance = lastLoadedCameraObj["playDistance"].FloatValue;
 			}
-			Blocksworld.blocksworldCamera.CameraStateLoaded();
+			blocksworldCamera.CameraStateLoaded();
 		}
 		if (objectValue.ContainsKey("selection-locked"))
 		{
 			List<JObject> arrayValue2 = obj["selection-locked"].ArrayValue;
-			foreach (JObject obj4 in arrayValue2)
+			foreach (JObject item6 in arrayValue2)
 			{
-				int num2 = (int)obj4;
-				if (num2 < list2.Count)
+				int num3 = (int)item6;
+				if (num3 < list2.Count)
 				{
-					Blocksworld.editorSelectionLocked.Add(list2[num2]);
+					editorSelectionLocked.Add(list2[num3]);
 				}
 			}
 		}
-		this.ReadSignalNames(obj);
-		this.ReadBlockNames(obj);
-		this.ReadCameraPoses(obj);
+		ReadSignalNames(obj);
+		ReadBlockNames(obj);
+		ReadCameraPoses(obj);
 		BlockGroups.GatherBlockGroups(list2);
-		Blocksworld.bw.StatePlayUpdate();
+		bw.StatePlayUpdate();
 		list2.ForEach(delegate(Block b)
 		{
 			b.oldPos = Util.nullVector3;
@@ -2552,18 +2935,17 @@ public class Blocksworld : MonoBehaviour
 		GC.Collect();
 		if (version < 11)
 		{
-			for (i = 0; i < list2.Count; i++)
+			for (num = 0; num < list2.Count; num++)
 			{
-				Block block3 = list2[i];
-				foreach (List<Tile> list4 in block3.tiles)
+				Block block3 = list2[num];
+				foreach (List<Tile> tile in block3.tiles)
 				{
-					foreach (Tile tile in list4)
+					foreach (Tile item7 in tile)
 					{
-						if (tile.gaf.Predicate.Name == "Block.ButtonInput")
+						if (item7.gaf.Predicate.Name == "Block.ButtonInput")
 						{
-							object[] array = Util.CopyArray<object>(tile.gaf.Args);
-							string text = (string)tile.gaf.Args[0];
-							switch (text)
+							object[] array = Util.CopyArray(item7.gaf.Args);
+							switch ((string)item7.gaf.Args[0])
 							{
 							case "L1":
 							case "L2":
@@ -2586,35 +2968,26 @@ public class Blocksworld : MonoBehaviour
 								array[0] = "R";
 								break;
 							}
-							tile.gaf = new GAF(tile.gaf.Predicate, array);
+							item7.gaf = new GAF(item7.gaf.Predicate, array);
 						}
-						if (tile.gaf.Predicate.Name == "Block.DeviceTilt")
+						if (item7.gaf.Predicate.Name == "Block.DeviceTilt")
 						{
-							tile.gaf = new GAF("Block.ButtonInput", new object[]
-							{
-								((float)tile.gaf.Args[0] >= 0f) ? "R" : "L"
-							});
+							item7.gaf = new GAF("Block.ButtonInput", ((float)item7.gaf.Args[0] >= 0f) ? "R" : "L");
 						}
 					}
 				}
 			}
-			for (i = 0; i < list2.Count; i++)
+			for (num = 0; num < list2.Count; num++)
 			{
-				Block block4 = list2[i];
-				string paint = block4.GetPaint(0);
-				if (paint != null)
+				Block block4 = list2[num];
+				switch (block4.GetPaint())
 				{
-					if (!(paint == "Celeste"))
-					{
-						if (paint == "Grass")
-						{
-							block4.PaintTo("Green", true, 0);
-						}
-					}
-					else
-					{
-						block4.PaintTo("Blue", true, 0);
-					}
+				case "Grass":
+					block4.PaintTo("Green", permanent: true);
+					break;
+				case "Celeste":
+					block4.PaintTo("Blue", permanent: true);
+					break;
 				}
 			}
 		}
@@ -2644,89 +3017,87 @@ public class Blocksworld : MonoBehaviour
 		}
 		if (obj.ObjectValue.ContainsKey("launch-into-play-mode"))
 		{
-			Blocksworld.launchIntoPlayMode = (bool)obj["launch-into-play-mode"];
+			launchIntoPlayMode = (bool)obj["launch-into-play-mode"];
 		}
 		if (obj.ObjectValue.ContainsKey("lock-pull"))
 		{
-			Blocksworld.staticLockPull = (bool)obj["lock-pull"];
+			staticLockPull = (bool)obj["lock-pull"];
 		}
 		Tutorial.savedProgressTiles = null;
 		if (obj.ObjectValue.ContainsKey("last-tutorial-block-tile-rows"))
 		{
-			Tutorial.savedProgressTiles = this.LoadJSONTiles(obj["last-tutorial-block-tile-rows"]);
+			Tutorial.savedProgressTiles = LoadJSONTiles(obj["last-tutorial-block-tile-rows"]);
 		}
 		Tutorial.manualPaintOrTexture.Clear();
 		if (obj.ObjectValue.ContainsKey("manual-paint-or-texture"))
 		{
-			Tutorial.manualPaintOrTexture = this.LoadJSONTiles(obj["manual-paint-or-texture"])[0];
+			Tutorial.manualPaintOrTexture = LoadJSONTiles(obj["manual-paint-or-texture"])[0];
 		}
 		Tutorial.completedManualPaintOrTexture.Clear();
 		if (obj.ObjectValue.ContainsKey("completed-manual-paint-or-texture"))
 		{
-			Tutorial.completedManualPaintOrTexture = this.LoadJSONTiles(obj["completed-manual-paint-or-texture"])[0];
+			Tutorial.completedManualPaintOrTexture = LoadJSONTiles(obj["completed-manual-paint-or-texture"])[0];
 		}
 		return true;
 	}
 
-	// Token: 0x06001933 RID: 6451 RVA: 0x000B3E38 File Offset: 0x000B2238
 	public void ClearWorldState()
 	{
-		if (Blocksworld.CurrentState == State.Play)
+		if (CurrentState == State.Play)
 		{
-			this.Stop(true, false);
+			Stop(force: true, resetBlocks: false);
 		}
-		Blocksworld.worldSky = null;
-		Blocksworld.worldOcean = null;
-		Blocksworld.worldOceanBlock = null;
-		Blocksworld.rewardVisualizationGafs = null;
-		Blocksworld.fpsCounter = null;
-		Blocksworld.dynamicalLightChangers.Clear();
-		if (Blocksworld.f3PressedInCurrentWorld)
+		worldSky = null;
+		worldOcean = null;
+		worldOceanBlock = null;
+		rewardVisualizationGafs = null;
+		fpsCounter = null;
+		dynamicalLightChangers.Clear();
+		if (f3PressedInCurrentWorld)
 		{
-			Tutorial.Stop(false);
+			Tutorial.Stop();
 		}
-		Blocksworld.f3PressedInCurrentWorld = false;
-		Blocksworld.signalNames = new string[26];
-		Blocksworld.blockNames = new Dictionary<Block, string>();
+		f3PressedInCurrentWorld = false;
+		signalNames = new string[26];
+		blockNames = new Dictionary<Block, string>();
 		BWSceneManager.ClearTerrainBlocks();
 		BlockAbstractWater.waterCubes.Clear();
 		BlockGroups.Clear();
-		Blocksworld.editorSelectionLocked.Clear();
-		Blocksworld.recentSelectionUnlockedBlock = null;
-		Blocksworld.keyLReleased = true;
+		editorSelectionLocked.Clear();
+		recentSelectionUnlockedBlock = null;
+		keyLReleased = true;
 		BlockMissile.WorldLoaded();
 		if (Options.Cowlorded)
 		{
-			Blocksworld.fpsCounter = new FpsCounter();
+			fpsCounter = new FpsCounter();
 		}
-		Blocksworld.weather.Stop();
-		Blocksworld.weather = WeatherEffect.clear;
+		weather.Stop();
+		weather = WeatherEffect.clear;
 		SignalNameTileParameter.ResetDefaultIndex();
-		this.Reset();
-		Blocksworld.blocksworldCamera.Reset();
+		Reset();
+		blocksworldCamera.Reset();
 		Scarcity.puzzleInventory = null;
 		Scarcity.puzzleInventoryAfterStepByStep = null;
-		Blocksworld.launchIntoPlayMode = false;
-		Blocksworld.lockPull = false;
-		Blocksworld.cameraPoses.Clear();
-		Blocksworld.cameraPosesMap.Clear();
-		Blocksworld.staticLockPull = false;
+		launchIntoPlayMode = false;
+		lockPull = false;
+		cameraPoses.Clear();
+		cameraPosesMap.Clear();
+		staticLockPull = false;
 		Scarcity.worldGAFUsage = new Dictionary<GAF, int>();
 	}
 
-	// Token: 0x06001934 RID: 6452 RVA: 0x000B3F54 File Offset: 0x000B2354
 	public bool LoadFromString(string s)
 	{
-		this.Reset();
-		Blocksworld.blocksworldCamera.Reset();
+		Reset();
+		blocksworldCamera.Reset();
 		Scarcity.puzzleInventory = null;
 		Scarcity.puzzleInventoryAfterStepByStep = null;
-		Blocksworld.launchIntoPlayMode = false;
-		Blocksworld.lockPull = false;
-		Blocksworld.cameraPoses.Clear();
-		Blocksworld.cameraPosesMap.Clear();
-		Blocksworld.staticLockPull = false;
-		bool result = true;
+		launchIntoPlayMode = false;
+		lockPull = false;
+		cameraPoses.Clear();
+		cameraPosesMap.Clear();
+		staticLockPull = false;
+		bool flag = true;
 		try
 		{
 			PerformaceTest performaceTest = new PerformaceTest("Blocksworld.LoadFromString");
@@ -2736,7 +3107,7 @@ public class Blocksworld : MonoBehaviour
 			performaceTest.StopSubTest();
 			int version = 25;
 			performaceTest.StartSubTest("LoadFromJSON");
-			result = this.LoadFromJSON(obj, version);
+			flag = LoadFromJSON(obj, version);
 			performaceTest.StopSubTest();
 			performaceTest.Stop();
 			performaceTest.DebugLogTestResults();
@@ -2744,54 +3115,44 @@ public class Blocksworld : MonoBehaviour
 		catch (Exception ex)
 		{
 			BWLog.Warning("Unable to decode JSON for '" + s + "'");
-			BWLog.Warning(string.Concat(new string[]
-			{
-				ex.GetType().Name,
-				" exception message: ",
-				ex.Message,
-				" stacktrace: ",
-				ex.StackTrace
-			}));
-			result = false;
+			BWLog.Warning(ex.GetType().Name + " exception message: " + ex.Message + " stacktrace: " + ex.StackTrace);
+			flag = false;
 		}
-		return result;
+		return flag;
 	}
 
-	// Token: 0x06001935 RID: 6453 RVA: 0x000B4070 File Offset: 0x000B2470
 	public void ProcessLoadedWorld()
 	{
-		Blocksworld.UI.gameObject.SetActive(true);
-		Blocksworld.buildPanel.ResetState();
-		Blocksworld.buildPanel.UpdateGestureRecognizer(Blocksworld.recognizer);
-		Blocksworld.UI.Controls.ResetContolVariants();
-		Blocksworld.UI.Controls.SetControlVariantsFromBlocks(BWSceneManager.AllBlocks());
-		Blocksworld.UI.Controls.ResetTiltPrompt();
-		Blocksworld.UpdateLightColor(true);
+		UI.gameObject.SetActive(value: true);
+		buildPanel.ResetState();
+		buildPanel.UpdateGestureRecognizer(recognizer);
+		UI.Controls.ResetContolVariants();
+		UI.Controls.SetControlVariantsFromBlocks(BWSceneManager.AllBlocks());
+		UI.Controls.ResetTiltPrompt();
+		UpdateLightColor();
 		Tutorial.UpdateCheatButton();
 		History.Initialize();
-		Blocksworld.RemoveUnusedAssets();
-		Blocksworld.inBackground = false;
+		RemoveUnusedAssets();
+		inBackground = false;
 	}
 
-	// Token: 0x06001936 RID: 6454 RVA: 0x000B40F4 File Offset: 0x000B24F4
 	private void SetDynamicalLightBlocks()
 	{
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
-			if (block.HasDynamicalLight() && !Blocksworld.dynamicalLightChangers.Contains(block))
+			if (block.HasDynamicalLight() && !dynamicalLightChangers.Contains(block))
 			{
-				Blocksworld.dynamicalLightChangers.Add(block);
+				dynamicalLightChangers.Add(block);
 			}
 		}
 	}
 
-	// Token: 0x06001937 RID: 6455 RVA: 0x000B414C File Offset: 0x000B254C
 	private void Reset()
 	{
-		Blocksworld.Deselect(false, true);
-		TBox.Show(false);
+		Deselect();
+		TBox.Show(show: false);
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
@@ -2803,129 +3164,98 @@ public class Blocksworld : MonoBehaviour
 			}
 		}
 		BWSceneManager.ClearBlocks();
-		this.ClearChunks();
-		Blocksworld.mainCamera.backgroundColor = this._defaultBackgroundColor;
-		Blocksworld.locked.Clear();
+		ClearChunks();
+		mainCamera.backgroundColor = _defaultBackgroundColor;
+		locked.Clear();
 		foreach (Block block2 in Tutorial.blocks)
 		{
 			block2.Destroy();
 		}
 		Tutorial.blocks.Clear();
-		Blocksworld.buildPanel.PositionReset(false);
-		this.copyModelAnimationCommand = new CopyModelAnimationCommand();
-		this.saveModelAnimationCommand = new SaveModelAnimationCommand();
+		buildPanel.PositionReset();
+		copyModelAnimationCommand = new CopyModelAnimationCommand();
+		saveModelAnimationCommand = new SaveModelAnimationCommand();
 	}
 
-	// Token: 0x06001938 RID: 6456 RVA: 0x000B4248 File Offset: 0x000B2648
 	public static void GenerateTerrain(bool flat = false)
 	{
 		int num = 5;
 		int num2 = 5;
 		int num3 = 27;
 		int num4 = num3;
-		float num5 = Mathf.Floor((float)(num / 2));
-		float num6 = Mathf.Floor((float)(num2 / 2));
-		Blocksworld.CreateTerrainBlock("Sky", Vector3.zero, Vector3.one, "Celeste", "Clouds");
+		float num5 = Mathf.Floor(num / 2);
+		float num6 = Mathf.Floor(num2 / 2);
+		CreateTerrainBlock("Sky", Vector3.zero, Vector3.one, "Celeste", "Clouds");
 		for (int i = 0; i < num2; i++)
 		{
 			for (int j = 0; j < num; j++)
 			{
-				float num7 = -Mathf.Floor((float)(num4 / 2));
+				float num7 = 0f - Mathf.Floor(num4 / 2);
 				if (flat)
 				{
 					if (j == 0 || j == num - 1 || i == 0 || i == num2 - 1)
 					{
-						num7 += 2f + Mathf.Round((float)UnityEngine.Random.Range(0, 5));
+						num7 += 2f + Mathf.Round(UnityEngine.Random.Range(0, 5));
 					}
 				}
 				else if ((float)j != num5 || (float)i != num6)
 				{
-					num7 += Mathf.Round((float)UnityEngine.Random.Range(0, 10));
+					num7 += Mathf.Round(UnityEngine.Random.Range(0, 10));
 				}
-				Vector3 a = new Vector3(((float)j - num5) * (float)num3, num7, ((float)i - num6) * (float)num3);
-				Blocksworld.CreateTerrainBlock("Terrain Cube", a + Mathf.Floor((float)(num3 / 2)) * Vector3.up, new Vector3((float)num3, 1f, (float)num3), "Green", "Checkered");
-				Blocksworld.CreateTerrainBlock("Terrain Cube", a - Vector3.up, new Vector3((float)num3, (float)num4, (float)num3), "Beige", "Checkered");
+				Vector3 vector = new Vector3(((float)j - num5) * (float)num3, num7, ((float)i - num6) * (float)num3);
+				CreateTerrainBlock("Terrain Cube", vector + Mathf.Floor(num3 / 2) * Vector3.up, new Vector3(num3, 1f, num3), "Green", "Checkered");
+				CreateTerrainBlock("Terrain Cube", vector - Vector3.up, new Vector3(num3, num4, num3), "Beige", "Checkered");
 			}
 		}
 		ConnectednessGraph.Update(BWSceneManager.AllBlocks());
 	}
 
-	// Token: 0x06001939 RID: 6457 RVA: 0x000B43C4 File Offset: 0x000B27C4
 	private static void CreateTerrainBlock(string type, Vector3 pos, Vector3 scale, string color, string texture)
 	{
 		List<List<Tile>> list = new List<List<Tile>>();
 		list.Add(new List<Tile>());
-		list[0].Add(new Tile(new GAF("Meta.Stop", new object[0])));
-		list[0].Add(new Tile(new GAF("Block.Create", new object[]
-		{
-			type
-		})));
-		list[0].Add(new Tile(new GAF("Block.MoveTo", new object[]
-		{
-			pos
-		})));
-		list[0].Add(new Tile(new GAF("Block.RotateTo", new object[]
-		{
-			Vector3.zero
-		})));
-		list[0].Add(new Tile(new GAF("Block.PaintTo", new object[]
-		{
-			color
-		})));
-		list[0].Add(new Tile(new GAF("Block.TextureTo", new object[]
-		{
-			texture,
-			Vector3.zero
-		})));
-		list[0].Add(new Tile(new GAF("Block.ScaleTo", new object[]
-		{
-			scale
-		})));
+		list[0].Add(new Tile(new GAF("Meta.Stop")));
+		list[0].Add(new Tile(new GAF("Block.Create", type)));
+		list[0].Add(new Tile(new GAF("Block.MoveTo", pos)));
+		list[0].Add(new Tile(new GAF("Block.RotateTo", Vector3.zero)));
+		list[0].Add(new Tile(new GAF("Block.PaintTo", color)));
+		list[0].Add(new Tile(new GAF("Block.TextureTo", texture, Vector3.zero)));
+		list[0].Add(new Tile(new GAF("Block.ScaleTo", scale)));
 		list.Add(new List<Tile>());
-		list[1].Add(new Tile(new GAF("Meta.Then", new object[0])));
-		list[1].Add(new Tile(new GAF("Block.Locked", new object[0])));
+		list[1].Add(new Tile(new GAF("Meta.Then")));
+		list[1].Add(new Tile(new GAF("Block.Locked")));
 		list.Add(new List<Tile>());
-		list[2].Add(new Tile(new GAF("Meta.Then", new object[0])));
-		list[2].Add(new Tile(new GAF("Block.Fixed", new object[0])));
+		list[2].Add(new Tile(new GAF("Meta.Then")));
+		list[2].Add(new Tile(new GAF("Block.Fixed")));
 		list.Add(new List<Tile>());
-		list[3].Add(new Tile(new GAF("Meta.Then", new object[0])));
-		Block block;
-		if (type == "Sky")
-		{
-			block = new BlockSky(type, list);
-		}
-		else
-		{
-			block = new Block(list);
-		}
-		block.Reset(false);
+		list[3].Add(new Tile(new GAF("Meta.Then")));
+		Block block = ((!(type == "Sky")) ? new Block(list) : new BlockSky(type, list));
+		block.Reset();
 		BWSceneManager.AddBlock(block);
 	}
 
-	// Token: 0x0600193A RID: 6458 RVA: 0x000B45FC File Offset: 0x000B29FC
 	private bool Close(Vector3 v1, Vector3 v2)
 	{
 		return (v2 - v1).sqrMagnitude < 0.1f;
 	}
 
-	// Token: 0x0600193B RID: 6459 RVA: 0x000B4620 File Offset: 0x000B2A20
 	public static List<List<Tile>> CloneBlockTiles(List<List<Tile>> tiles, Dictionary<Tile, Tile> origToCopy = null, bool excludeFirstRow = false, bool ignoreLockedGroupTiles = false)
 	{
 		List<List<Tile>> list = new List<List<Tile>>();
-		int num = (!excludeFirstRow) ? 0 : 1;
+		int num = (excludeFirstRow ? 1 : 0);
 		for (int i = num; i < tiles.Count; i++)
 		{
 			List<Tile> list2 = tiles[i];
 			List<Tile> list3 = new List<Tile>();
-			foreach (Tile tile in list2)
+			foreach (Tile item in list2)
 			{
-				if (!ignoreLockedGroupTiles || tile.gaf.Predicate != Block.predicateGroup || !(BlockGroups.GroupType(tile) == "locked-model"))
+				if (!ignoreLockedGroupTiles || item.gaf.Predicate != Block.predicateGroup || !(BlockGroups.GroupType(item) == "locked-model"))
 				{
-					Tile tile2 = tile.Clone();
-					list3.Add(tile2);
+					Tile tile = item.Clone();
+					list3.Add(tile);
 					if (origToCopy != null)
 					{
-						origToCopy[tile] = tile2;
+						origToCopy[item] = tile;
 					}
 				}
 			}
@@ -2934,136 +3264,132 @@ public class Blocksworld : MonoBehaviour
 		return list;
 	}
 
-	// Token: 0x0600193C RID: 6460 RVA: 0x000B4710 File Offset: 0x000B2B10
 	public static List<List<Tile>> CloneBlockTiles(Block block, bool excludeFirstRow = false, bool ignoreLockedGroupTiles = false)
 	{
-		return Blocksworld.CloneBlockTiles(block.tiles, null, excludeFirstRow, ignoreLockedGroupTiles);
+		return CloneBlockTiles(block.tiles, null, excludeFirstRow, ignoreLockedGroupTiles);
 	}
 
-	// Token: 0x0600193D RID: 6461 RVA: 0x000B4720 File Offset: 0x000B2B20
 	public static Block CloneBlock(Block block)
 	{
-		Block block2 = Block.NewBlock(Blocksworld.CloneBlockTiles(block, false, false), false, false);
+		Block block2 = Block.NewBlock(CloneBlockTiles(block));
 		BWSceneManager.AddBlock(block2);
 		return block2;
 	}
 
-	// Token: 0x0600193E RID: 6462 RVA: 0x000B4744 File Offset: 0x000B2B44
 	private void UpdateCopyPaste()
 	{
-		if (Blocksworld.CurrentState == State.Play)
+		if (CurrentState == State.Play)
 		{
 			return;
 		}
-		if (MappedInput.InputDown(MappableInput.COPY) && (Blocksworld.selectedBlock != null || Blocksworld.selectedBunch != null))
+		if (MappedInput.InputDown(MappableInput.COPY) && (selectedBlock != null || selectedBunch != null))
 		{
-			this.ButtonCopyTapped();
+			ButtonCopyTapped();
 		}
-		if (MappedInput.InputDown(MappableInput.CUT) && (Blocksworld.selectedBlock != null || Blocksworld.selectedBunch != null))
+		if (MappedInput.InputDown(MappableInput.CUT) && (selectedBlock != null || selectedBunch != null))
 		{
-			this.ButtonCopyTapped();
+			ButtonCopyTapped();
 			List<Block> list = new List<Block>();
-			if (Blocksworld.selectedBlock != null)
+			if (selectedBlock != null)
 			{
-				list.Add(Blocksworld.selectedBlock);
+				list.Add(selectedBlock);
 			}
-			else if (Blocksworld.selectedBunch != null)
+			else if (selectedBunch != null)
 			{
-				list.AddRange(Blocksworld.selectedBunch.blocks);
+				list.AddRange(selectedBunch.blocks);
 			}
-			Blocksworld.DeselectBlock(false, true);
-			foreach (Block block in list)
+			DeselectBlock();
+			foreach (Block item in list)
 			{
-				if (block == Blocksworld.worldOceanBlock)
+				if (item == worldOceanBlock)
 				{
-					Blocksworld.worldOceanBlock = null;
-					Blocksworld.worldOcean = null;
+					worldOceanBlock = null;
+					worldOcean = null;
 				}
-				Blocksworld.DestroyBlock(block);
+				DestroyBlock(item);
 			}
 		}
-		if (this.keyboardPasteInProgress)
+		if (keyboardPasteInProgress)
 		{
 			if (MappedInput.InputPressed(MappableInput.PASTE) && !Input.GetMouseButtonDown(0))
 			{
-				TBox.ContinueMove(NormalizedInput.mousePosition, false);
+				TBox.ContinueMove(NormalizedInput.mousePosition);
+				return;
 			}
-			else
-			{
-				this.keyboardPasteInProgress = false;
-				TBox.StopMove();
-			}
+			keyboardPasteInProgress = false;
+			TBox.StopMove();
 		}
-		else if (MappedInput.InputDown(MappableInput.PASTE) && Blocksworld.clipboard.modelCopyPasteBuffer.Count > 0 && Blocksworld.mouseBlock != null)
+		else
 		{
+			if (!MappedInput.InputDown(MappableInput.PASTE) || clipboard.modelCopyPasteBuffer.Count <= 0 || mouseBlock == null)
+			{
+				return;
+			}
 			Dictionary<GAF, int> missing = new Dictionary<GAF, int>();
 			List<GAF> uniquesInModel = new List<GAF>();
-			if (Blocksworld.clipboard.AvailablityCountForBlockList(Blocksworld.clipboard.modelCopyPasteBuffer, missing, uniquesInModel) == 0)
+			if (clipboard.AvailablityCountForBlockList(clipboard.modelCopyPasteBuffer, missing, uniquesInModel) == 0)
 			{
-				Blocksworld.UI.Dialog.ShowPasteFailInfo(missing, uniquesInModel, "Not enough blocks!");
+				UI.Dialog.ShowPasteFailInfo(missing, uniquesInModel, "Not enough blocks!");
+				return;
+			}
+			keyboardPasteInProgress = true;
+			Vector3 vector = Util.Round(mouseBlockHitPosition);
+			List<Block> list2 = PasteBlocks(clipboard.modelCopyPasteBuffer, vector);
+			foreach (Block item2 in list2)
+			{
+				item2.Update();
+			}
+			Vector2 touchPos = mainCamera.WorldToScreenPoint(vector);
+			selectedBlock = null;
+			selectedBunch = null;
+			SelectBunch(list2, silent: true);
+			TBox.StartMove(touchPos, TBox.MoveMode.Raycast);
+			Bounds bounds = Util.ComputeBoundsWithSize(list2, ignoreInvisible: false);
+			Vector3 vector2 = mouseBlockNormal;
+			float num = Mathf.Abs(vector2.x);
+			float num2 = Mathf.Abs(vector2.y);
+			float num3 = Mathf.Abs(vector2.z);
+			float num4;
+			if (num2 >= num && num2 >= num3)
+			{
+				vector2 = Vector3.up * Mathf.Sign(vector2.y);
+				num4 = bounds.size.y;
+			}
+			else if (num > num3)
+			{
+				vector2 = Vector3.right * Mathf.Sign(vector2.x);
+				num4 = bounds.size.x;
 			}
 			else
 			{
-				this.keyboardPasteInProgress = true;
-				Vector3 vector = Util.Round(Blocksworld.mouseBlockHitPosition);
-				List<Block> list2 = this.PasteBlocks(Blocksworld.clipboard.modelCopyPasteBuffer, vector);
-				foreach (Block block2 in list2)
-				{
-					block2.Update();
-				}
-				Vector2 touchPos = Blocksworld.mainCamera.WorldToScreenPoint(vector);
-				Blocksworld.selectedBlock = null;
-				Blocksworld.selectedBunch = null;
-				Blocksworld.SelectBunch(list2, true, true);
-				TBox.StartMove(touchPos, TBox.MoveMode.Raycast);
-				Bounds bounds = Util.ComputeBoundsWithSize(list2, false);
-				Vector3 a = Blocksworld.mouseBlockNormal;
-				float num = Mathf.Abs(a.x);
-				float num2 = Mathf.Abs(a.y);
-				float num3 = Mathf.Abs(a.z);
-				float d;
-				if (num2 >= num && num2 >= num3)
-				{
-					a = Vector3.up * Mathf.Sign(a.y);
-					d = bounds.size.y;
-				}
-				else if (num > num3)
-				{
-					a = Vector3.right * Mathf.Sign(a.x);
-					d = bounds.size.x;
-				}
-				else
-				{
-					a = Vector3.forward * Mathf.Sign(a.z);
-					d = bounds.size.z;
-				}
-				vector = Util.Round(Blocksworld.mouseBlockHitPosition + d * a);
-				Vector2 touchPos2 = Blocksworld.mainCamera.WorldToScreenPoint(vector);
-				bool flag = TBox.ContinueMove(touchPos2, true);
-				TBox.PaintRed(!flag);
-				TBox.Update();
+				vector2 = Vector3.forward * Mathf.Sign(vector2.z);
+				num4 = bounds.size.z;
 			}
+			vector = Util.Round(mouseBlockHitPosition + num4 * vector2);
+			Vector2 touchPos2 = mainCamera.WorldToScreenPoint(vector);
+			bool flag = TBox.ContinueMove(touchPos2, forceUpdate: true);
+			TBox.PaintRed(!flag);
+			TBox.Update();
 		}
 	}
 
-	// Token: 0x0600193F RID: 6463 RVA: 0x000B4AD4 File Offset: 0x000B2ED4
 	private void UpdateWASDEQMouseCameraMovement()
 	{
-		Transform transform = Blocksworld.cameraTransform;
+		Transform transform = cameraTransform;
 		Vector3 position = transform.position;
-		float d = 15f;
+		float num = 15f;
 		if (Input.GetMouseButton(1))
 		{
 			Vector3 vector = Vector3.zero;
-			Vector3 b = transform.forward * d;
-			float d2 = 1f;
+			Vector3 vector2 = transform.forward * num;
+			float num2 = 1f;
 			if (MappedInput.InputPressed(MappableInput.SPEED_MULTIPLIER))
 			{
-				d2 = 4f;
+				num2 = 4f;
 			}
 			else if (MappedInput.InputPressed(MappableInput.SLOW_MULTIPLIER))
 			{
-				d2 = 0.05f;
+				num2 = 0.05f;
 			}
 			if (MappedInput.InputPressed(MappableInput.CAM_FORWARD))
 			{
@@ -3091,45 +3417,42 @@ public class Blocksworld : MonoBehaviour
 			}
 			if (vector.sqrMagnitude > 0.001f)
 			{
-				vector = vector.normalized * d2;
-				float num = Options.WASDMovementSpeedup;
-				if (num < 0.0001f)
+				vector = vector.normalized * num2;
+				float num3 = Options.WASDMovementSpeedup;
+				if (num3 < 0.0001f)
 				{
-					num = 1f;
+					num3 = 1f;
 				}
-				vector *= num;
+				vector *= num3;
 			}
-			if (this.mousePositionDelta.sqrMagnitude > 0.01f)
+			_ = mousePositionDelta.sqrMagnitude;
+			_ = 0.01f;
+			Quaternion quaternion = Quaternion.AngleAxis(0.25f * mousePositionDelta.x, transform.up);
+			Quaternion quaternion2 = Quaternion.AngleAxis(-0.25f * mousePositionDelta.y, transform.right);
+			Vector3 normalized = (wasdeqMouseCamLookAtTarget - wasdeqMouseCamPosTarget).normalized;
+			Vector3 vector3 = quaternion * normalized;
+			vector3 = quaternion2 * vector3;
+			vector2 = vector3 * num;
+			if (true)
 			{
+				wasdeqMouseCamPosTarget += vector;
+				wasdeqMouseCamLookAtTarget = wasdeqMouseCamPosTarget + vector2;
 			}
-			Quaternion rotation = Quaternion.AngleAxis(0.25f * this.mousePositionDelta.x, transform.up);
-			Quaternion rotation2 = Quaternion.AngleAxis(-0.25f * this.mousePositionDelta.y, transform.right);
-			Vector3 normalized = (this.wasdeqMouseCamLookAtTarget - this.wasdeqMouseCamPosTarget).normalized;
-			Vector3 vector2 = rotation * normalized;
-			vector2 = rotation2 * vector2;
-			b = vector2 * d;
-			bool flag = true;
-			if (flag)
-			{
-				this.wasdeqMouseCamPosTarget += vector;
-				this.wasdeqMouseCamLookAtTarget = this.wasdeqMouseCamPosTarget + b;
-			}
-			float wasdsmoothness = Options.WASDSmoothness;
-			Vector3 vector3 = wasdsmoothness * position + (1f - wasdsmoothness) * this.wasdeqMouseCamPosTarget;
-			Vector3 vector4 = wasdsmoothness * (position + Blocksworld.cameraTransform.forward * d) + (1f - wasdsmoothness) * this.wasdeqMouseCamLookAtTarget;
-			Blocksworld.blocksworldCamera.SetCameraPosition(vector3);
-			Blocksworld.cameraTransform.LookAt(vector4);
-			Blocksworld.blocksworldCamera.SetTargetPosition(vector4);
-			Blocksworld.blocksworldCamera.SetFilteredPositionAndTarget();
+			float wASDSmoothness = Options.WASDSmoothness;
+			Vector3 vector4 = wASDSmoothness * position + (1f - wASDSmoothness) * wasdeqMouseCamPosTarget;
+			Vector3 vector5 = wASDSmoothness * (position + cameraTransform.forward * num) + (1f - wASDSmoothness) * wasdeqMouseCamLookAtTarget;
+			blocksworldCamera.SetCameraPosition(vector4);
+			cameraTransform.LookAt(vector5);
+			blocksworldCamera.SetTargetPosition(vector5);
+			blocksworldCamera.SetFilteredPositionAndTarget();
 		}
 		else
 		{
-			this.wasdeqMouseCamPosTarget = position;
-			this.wasdeqMouseCamLookAtTarget = position + Blocksworld.cameraTransform.forward * d;
+			wasdeqMouseCamPosTarget = position;
+			wasdeqMouseCamLookAtTarget = position + cameraTransform.forward * num;
 		}
 	}
 
-	// Token: 0x06001940 RID: 6464 RVA: 0x000B4D9C File Offset: 0x000B319C
 	private void UpdateWASDEQOrbitMouseCameraMovement()
 	{
 		UnityEngine.Debug.Log("Right click cam orbit");
@@ -3142,9 +3465,9 @@ public class Blocksworld : MonoBehaviour
 		{
 			num = 0.05f;
 		}
-		Vector3 vector = (Blocksworld.selectedBlock == null) ? Blocksworld.selectedBunch.GetPosition() : Blocksworld.selectedBlock.GetPosition();
-		Vector3 v = (Blocksworld.selectedBlock == null) ? Blocksworld.selectedBunch.GetScale() : Blocksworld.selectedBlock.Scale();
-		Vector3 position = Blocksworld.cameraTransform.position;
+		Vector3 vector = ((selectedBlock == null) ? selectedBunch.GetPosition() : selectedBlock.GetPosition());
+		Vector3 v = ((selectedBlock == null) ? selectedBunch.GetScale() : selectedBlock.Scale());
+		Vector3 position = cameraTransform.position;
 		float num2 = Vector3.Distance(vector, position);
 		if (MappedInput.InputPressed(MappableInput.CAM_FORWARD))
 		{
@@ -3157,203 +3480,200 @@ public class Blocksworld : MonoBehaviour
 		}
 		Vector3 normalized = (vector - position).normalized;
 		Vector3 vector2 = vector - normalized * num2;
-		Blocksworld.blocksworldCamera.SetCameraPosition(vector2);
-		Blocksworld.blocksworldCamera.SetTargetPosition(vector);
-		Blocksworld.cameraTransform.LookAt(vector);
+		blocksworldCamera.SetCameraPosition(vector2);
+		blocksworldCamera.SetTargetPosition(vector);
+		cameraTransform.LookAt(vector);
 		if (MappedInput.InputPressed(MappableInput.CAM_LEFT))
 		{
-			Blocksworld.blocksworldCamera.HardOrbit(-Vector2.right * 3f * num);
+			blocksworldCamera.HardOrbit(-Vector2.right * 3f * num);
 		}
 		if (MappedInput.InputPressed(MappableInput.CAM_RIGHT))
 		{
-			Blocksworld.blocksworldCamera.HardOrbit(Vector2.right * 3f * num);
+			blocksworldCamera.HardOrbit(Vector2.right * 3f * num);
 		}
 		if (MappedInput.InputPressed(MappableInput.CAM_UP))
 		{
-			Blocksworld.blocksworldCamera.HardOrbit(Vector2.up * 3f * num);
+			blocksworldCamera.HardOrbit(Vector2.up * 3f * num);
 		}
 		if (MappedInput.InputPressed(MappableInput.CAM_DOWN))
 		{
-			Blocksworld.blocksworldCamera.HardOrbit(-Vector2.up * 3f * num);
+			blocksworldCamera.HardOrbit(-Vector2.up * 3f * num);
 		}
 	}
 
-	// Token: 0x06001941 RID: 6465 RVA: 0x000B4F6C File Offset: 0x000B336C
 	private void UpdateAxisLockManipulation()
 	{
-		if (Blocksworld.CurrentState == State.Build && Options.AxisLockMoveAndScaleEnabled)
+		if (CurrentState == State.Build && Options.AxisLockMoveAndScaleEnabled)
 		{
-			if ((Blocksworld.selectedBlock != null || Blocksworld.selectedBunch != null) && (this.controlPressesInShortTime == 0 || Time.time < this.lastControlPressTime + 0.5f))
+			if ((selectedBlock != null || selectedBunch != null) && (controlPressesInShortTime == 0 || Time.time < lastControlPressTime + 0.5f))
 			{
 				if (MappedInput.InputDown(MappableInput.AXIS_LOCK))
 				{
-					this.lastControlPressTime = Time.time;
-					this.controlPressesInShortTime++;
+					lastControlPressTime = Time.time;
+					controlPressesInShortTime++;
 				}
 			}
 			else if (!MappedInput.InputPressed(MappableInput.AXIS_LOCK))
 			{
-				this.controlPressesInShortTime = 0;
+				controlPressesInShortTime = 0;
 			}
-			int num = (this.controlPressesInShortTime - 1) % 3;
-			if (num == 0 || this.controlPressesInShortTime == 0)
+			int num = (controlPressesInShortTime - 1) % 3;
+			if (num == 0 || controlPressesInShortTime == 0)
 			{
-				Blocksworld.constrainedManipulationAxis = Vector3.up;
+				constrainedManipulationAxis = Vector3.up;
 			}
-			else if (num == 1)
+			else
 			{
-				Blocksworld.constrainedManipulationAxis = Vector3.forward;
-			}
-			else if (num == 2)
-			{
-				Blocksworld.constrainedManipulationAxis = Vector3.right;
-			}
-			if (Time.time < this.lastControlPressTime + 1f)
-			{
-				Vector3 a = Vector3.zero;
-				bool flag = false;
-				if (Blocksworld.selectedBlock != null)
+				switch (num)
 				{
-					a = Blocksworld.selectedBlock.goT.position;
+				case 1:
+					constrainedManipulationAxis = Vector3.forward;
+					break;
+				case 2:
+					constrainedManipulationAxis = Vector3.right;
+					break;
+				}
+			}
+			if (Time.time < lastControlPressTime + 1f)
+			{
+				Vector3 vector = Vector3.zero;
+				bool flag = false;
+				if (selectedBlock != null)
+				{
+					vector = selectedBlock.goT.position;
 					flag = true;
 				}
-				else if (Blocksworld.selectedBunch != null)
+				else if (selectedBunch != null)
 				{
-					a = Util.ComputeCenter(Blocksworld.selectedBunch.blocks, false);
+					vector = Util.ComputeCenter(selectedBunch.blocks);
 					flag = true;
 				}
 				if (flag)
 				{
-					UnityEngine.Debug.DrawLine(a - Blocksworld.constrainedManipulationAxis * 100f, a + Blocksworld.constrainedManipulationAxis * 100f, Color.white);
+					UnityEngine.Debug.DrawLine(vector - constrainedManipulationAxis * 100f, vector + constrainedManipulationAxis * 100f, Color.white);
 				}
 			}
 		}
 		else
 		{
-			Blocksworld.constrainedManipulationAxis = Vector3.up;
+			constrainedManipulationAxis = Vector3.up;
 		}
 	}
 
-	// Token: 0x06001942 RID: 6466 RVA: 0x000B50F8 File Offset: 0x000B34F8
 	private void UpdateQuickScroll()
 	{
-		if (Blocksworld.CurrentState == State.Build && Options.QuickKeyScroll && Blocksworld.buildPanel.IsShowing())
+		if (CurrentState == State.Build && Options.QuickKeyScroll && buildPanel.IsShowing())
 		{
-			if (this.quickScrollKeys.Count > 0 && Time.time > this.lastQuickScrollPressTime + 0.2f)
+			if (quickScrollKeys.Count > 0 && Time.time > lastQuickScrollPressTime + 0.2f)
 			{
 				int num = 0;
 				int num2 = 1;
-				for (int i = this.quickScrollKeys.Count - 1; i >= 0; i--)
+				for (int num3 = quickScrollKeys.Count - 1; num3 >= 0; num3--)
 				{
-					num += this.quickScrollKeys[i] * num2;
+					num += quickScrollKeys[num3] * num2;
 					num2 *= 10;
 				}
-				Tile firstTileInSection = Blocksworld.buildPanel.GetFirstTileInSection(num);
+				Tile firstTileInSection = buildPanel.GetFirstTileInSection(num);
 				if (firstTileInSection != null)
 				{
-					Blocksworld.buildPanel.ScrollToVisible(firstTileInSection, true, true, true);
+					buildPanel.ScrollToVisible(firstTileInSection, immediately: true, showTileAtTopOfScreen: true, forceScroll: true);
 				}
-				this.quickScrollKeys.Clear();
+				quickScrollKeys.Clear();
 			}
-			int num3 = -1;
+			int num4 = -1;
 			if (MappedInput.InputDown(MappableInput.TILES_1))
 			{
-				num3 = 1;
+				num4 = 1;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_2))
 			{
-				num3 = 2;
+				num4 = 2;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_3))
 			{
-				num3 = 3;
+				num4 = 3;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_4))
 			{
-				num3 = 4;
+				num4 = 4;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_5))
 			{
-				num3 = 5;
+				num4 = 5;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_6))
 			{
-				num3 = 6;
+				num4 = 6;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_7))
 			{
-				num3 = 7;
+				num4 = 7;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_8))
 			{
-				num3 = 8;
+				num4 = 8;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_9))
 			{
-				num3 = 9;
+				num4 = 9;
 			}
 			if (MappedInput.InputDown(MappableInput.TILES_0))
 			{
-				num3 = 0;
+				num4 = 0;
 			}
-			if (num3 > -1)
+			if (num4 > -1)
 			{
-				this.quickScrollKeys.Add(num3);
-				this.lastQuickScrollPressTime = Time.time;
+				quickScrollKeys.Add(num4);
+				lastQuickScrollPressTime = Time.time;
 			}
 		}
 		else
 		{
-			this.quickScrollKeys.Clear();
-			this.lastQuickScrollPressTime = -1f;
+			quickScrollKeys.Clear();
+			lastQuickScrollPressTime = -1f;
 		}
 	}
 
-	// Token: 0x06001943 RID: 6467 RVA: 0x000B5287 File Offset: 0x000B3687
 	private void UpdateTimeChanges()
 	{
-		if (Blocksworld.CurrentState != State.Play)
-		{
-			return;
-		}
+		_ = CurrentState;
+		_ = 1;
 	}
 
-	// Token: 0x06001944 RID: 6468 RVA: 0x000B5298 File Offset: 0x000B3698
 	private void UpdateGlueJointShapeDisplays()
 	{
 		if (Options.GlueVolumeDisplay)
 		{
-			foreach (Block block in BWSceneManager.AllBlocks())
+			foreach (Block item in BWSceneManager.AllBlocks())
 			{
-				CollisionTest.DrawCollisionMeshes(block.glueMeshes, Color.red);
+				CollisionTest.DrawCollisionMeshes(item.glueMeshes, Color.red);
 			}
 		}
 		if (Options.JointMeshDisplay)
 		{
-			foreach (Block block2 in BWSceneManager.AllBlocks())
+			foreach (Block item2 in BWSceneManager.AllBlocks())
 			{
-				CollisionTest.DrawCollisionMeshes(block2.jointMeshes, Color.black);
+				CollisionTest.DrawCollisionMeshes(item2.jointMeshes, Color.black);
 			}
 		}
-		if (Options.ShapeVolumeDisplay)
-		{
-			foreach (Block block3 in BWSceneManager.AllBlocks())
-			{
-				CollisionTest.DrawCollisionMeshes(block3.shapeMeshes, Color.blue);
-			}
-		}
-	}
-
-	// Token: 0x06001945 RID: 6469 RVA: 0x000B53C4 File Offset: 0x000B37C4
-	private void UpdateTutorialTiles()
-	{
-		if (Blocksworld.selectedBlock == null || Blocksworld.CurrentState != State.Build)
+		if (!Options.ShapeVolumeDisplay)
 		{
 			return;
 		}
-		Transform transform = Blocksworld.cameraTransform;
-		RaycastHit raycastHit;
-		if (MappedInput.InputDown(MappableInput.APPLY_TUTORIAL_TILE) && Physics.Raycast(Blocksworld.mainCamera.ScreenPointToRay(Blocksworld.mouse * NormalizedScreen.scale), out raycastHit))
+		foreach (Block item3 in BWSceneManager.AllBlocks())
+		{
+			CollisionTest.DrawCollisionMeshes(item3.shapeMeshes, Color.blue);
+		}
+	}
+
+	private void UpdateTutorialTiles()
+	{
+		if (selectedBlock == null || CurrentState != State.Build)
+		{
+			return;
+		}
+		Transform transform = cameraTransform;
+		if (MappedInput.InputDown(MappableInput.APPLY_TUTORIAL_TILE) && Physics.Raycast(mainCamera.ScreenPointToRay(mouse * NormalizedScreen.scale), out var hitInfo))
 		{
 			string text = "Block.TutorialPaintExistingBlock";
 			string text2 = "Black";
@@ -3364,50 +3684,35 @@ public class Blocksworld : MonoBehaviour
 				text = "Block.TutorialTextureExistingBlock";
 				text2 = "Plain";
 			}
-			Block block = BWSceneManager.FindBlock(raycastHit.collider.gameObject, true);
+			Block block = BWSceneManager.FindBlock(hitInfo.collider.gameObject, checkChildGos: true);
 			int num = 0;
 			if (block != null)
 			{
-				if (flag)
-				{
-					text2 = block.GetPaint(0);
-				}
-				else
-				{
-					text2 = block.GetTexture(0);
-				}
+				text2 = ((!flag) ? block.GetTexture() : block.GetPaint());
 				num = BWSceneManager.IndexOfBlock(block);
 				if (num == -1)
 				{
-					OnScreenLog.AddLogItem("Failed to find block index", 5f, true);
+					OnScreenLog.AddLogItem("Failed to find block index", 5f, log: true);
 					num = 0;
 				}
 			}
 			else
 			{
-				OnScreenLog.AddLogItem("Failed to find the target block. Using index 0", 5f, true);
+				OnScreenLog.AddLogItem("Failed to find the target block. Using index 0", 5f, log: true);
 			}
 			List<Tile> list = new List<Tile>();
-			list.Add(new Tile(new GAF("Meta.Then", new object[0])));
-			list.Add(new Tile(new GAF(text, new object[]
-			{
-				num,
-				text2,
-				transform.position,
-				raycastHit.point
-			})));
-			List<List<Tile>> tiles = Blocksworld.selectedBlock.tiles;
+			list.Add(new Tile(new GAF("Meta.Then")));
+			list.Add(new Tile(new GAF(text, num, text2, transform.position, hitInfo.point)));
+			List<List<Tile>> tiles = selectedBlock.tiles;
 			tiles.Insert(tiles.Count - 1, list);
-			Blocksworld.ShowSelectedBlockPanel();
-			OnScreenLog.AddLogItem("Added " + text + " tile", 5f, true);
+			ShowSelectedBlockPanel();
+			OnScreenLog.AddLogItem("Added " + text + " tile", 5f, log: true);
 			History.AddStateIfNecessary();
 		}
-		bool flag2 = MappedInput.InputDown(MappableInput.TUTORIAL_ROTATE_BLOCK);
-		RaycastHit raycastHit2;
-		if (flag2 && Physics.Raycast(Blocksworld.mainCamera.ScreenPointToRay(Blocksworld.mouse * NormalizedScreen.scale), out raycastHit2))
+		if (MappedInput.InputDown(MappableInput.TUTORIAL_ROTATE_BLOCK) && Physics.Raycast(mainCamera.ScreenPointToRay(mouse * NormalizedScreen.scale), out var hitInfo2))
 		{
 			string text3 = "Block.TutorialRotateExistingBlock";
-			Block block2 = BWSceneManager.FindBlock(raycastHit2.collider.gameObject, true);
+			Block block2 = BWSceneManager.FindBlock(hitInfo2.collider.gameObject, checkChildGos: true);
 			int num2 = 0;
 			Vector3 zero = Vector3.zero;
 			if (block2 != null)
@@ -3415,112 +3720,72 @@ public class Blocksworld : MonoBehaviour
 				num2 = BWSceneManager.IndexOfBlock(block2);
 				if (num2 == -1)
 				{
-					OnScreenLog.AddLogItem("Failed to find block index", 5f, true);
+					OnScreenLog.AddLogItem("Failed to find block index", 5f, log: true);
 					num2 = 0;
 				}
 			}
 			else
 			{
-				OnScreenLog.AddLogItem("Failed to find the target block. Using index 0 and rotation 0, 0, 0", 5f, true);
+				OnScreenLog.AddLogItem("Failed to find the target block. Using index 0 and rotation 0, 0, 0", 5f, log: true);
 			}
 			List<Tile> list2 = new List<Tile>();
-			list2.Add(new Tile(new GAF("Meta.Then", new object[0])));
-			list2.Add(new Tile(new GAF(text3, new object[]
-			{
-				num2,
-				zero,
-				transform.position,
-				raycastHit2.point
-			})));
-			List<List<Tile>> tiles2 = Blocksworld.selectedBlock.tiles;
+			list2.Add(new Tile(new GAF("Meta.Then")));
+			list2.Add(new Tile(new GAF(text3, num2, zero, transform.position, hitInfo2.point)));
+			List<List<Tile>> tiles2 = selectedBlock.tiles;
 			tiles2.Insert(tiles2.Count - 1, list2);
-			Blocksworld.ShowSelectedBlockPanel();
-			OnScreenLog.AddLogItem("Added " + text3 + " tile", 5f, true);
+			ShowSelectedBlockPanel();
+			OnScreenLog.AddLogItem("Added " + text3 + " tile", 5f, log: true);
 			History.AddStateIfNecessary();
 		}
-		bool flag3 = MappedInput.InputDown(MappableInput.TUTORIAL_ADD_HINT);
-		bool flag4 = MappedInput.InputDown(MappableInput.TUTORIAL_REMOVE_HINT);
-		RaycastHit raycastHit3;
-		if ((flag3 || flag4) && Physics.Raycast(Blocksworld.mainCamera.ScreenPointToRay(Blocksworld.mouse * NormalizedScreen.scale), out raycastHit3))
+		bool flag2 = MappedInput.InputDown(MappableInput.TUTORIAL_ADD_HINT);
+		bool flag3 = MappedInput.InputDown(MappableInput.TUTORIAL_REMOVE_HINT);
+		if (!(flag2 || flag3) || !Physics.Raycast(mainCamera.ScreenPointToRay(mouse * NormalizedScreen.scale), out var hitInfo3))
 		{
-			Vector3 vector = Util.Round2(raycastHit3.point);
-			Vector3 vector2 = Util.Round(raycastHit3.normal);
-			Vector3 eulerAngles = transform.eulerAngles;
-			float magnitude = (vector - Blocksworld.cameraTransform.position).magnitude;
-			List<Tile> list3 = new List<Tile>();
-			list3.Add(new Tile(new GAF("Meta.Then", new object[0])));
-			if (flag3)
+			return;
+		}
+		Vector3 vector = Util.Round2(hitInfo3.point);
+		Vector3 vector2 = Util.Round(hitInfo3.normal);
+		Vector3 eulerAngles = transform.eulerAngles;
+		float magnitude = (vector - cameraTransform.position).magnitude;
+		List<Tile> list3 = new List<Tile>();
+		list3.Add(new Tile(new GAF("Meta.Then")));
+		if (flag2)
+		{
+			list3.Add(new Tile(new GAF("Block.TutorialCreateBlockHint", vector, vector2, eulerAngles, magnitude, 0, 0, 0, Vector3.zero)));
+			BWLog.Info(string.Concat("Added hint pos ", vector, ", normal ", vector2, ", cam ", eulerAngles, ", dist ", magnitude, " to block ", hitInfo3.collider.gameObject.name));
+		}
+		else
+		{
+			Block block3 = BWSceneManager.FindBlock(hitInfo3.collider.gameObject, checkChildGos: true);
+			if (block3 != null)
 			{
-				list3.Add(new Tile(new GAF("Block.TutorialCreateBlockHint", new object[]
+				int num3 = BWSceneManager.IndexOfBlock(block3);
+				if (num3 == -1)
 				{
-					vector,
-					vector2,
-					eulerAngles,
-					magnitude,
-					0,
-					0,
-					0,
-					Vector3.zero
-				})));
-				BWLog.Info(string.Concat(new object[]
-				{
-					"Added hint pos ",
-					vector,
-					", normal ",
-					vector2,
-					", cam ",
-					eulerAngles,
-					", dist ",
-					magnitude,
-					" to block ",
-					raycastHit3.collider.gameObject.name
-				}));
+					OnScreenLog.AddLogItem("Failed to find block index", 5f, log: true);
+					num3 = 0;
+				}
+				list3.Add(new Tile(new GAF("Block.TutorialRemoveBlockHint", num3, transform.position, hitInfo3.point)));
+				BWLog.Info("Added remove block hint tile for the block " + block3.go.name + " with index " + num3);
 			}
 			else
 			{
-				Block block3 = BWSceneManager.FindBlock(raycastHit3.collider.gameObject, true);
-				if (block3 != null)
-				{
-					int num3 = BWSceneManager.IndexOfBlock(block3);
-					if (num3 == -1)
-					{
-						OnScreenLog.AddLogItem("Failed to find block index", 5f, true);
-						num3 = 0;
-					}
-					list3.Add(new Tile(new GAF("Block.TutorialRemoveBlockHint", new object[]
-					{
-						num3,
-						transform.position,
-						raycastHit3.point
-					})));
-					BWLog.Info(string.Concat(new object[]
-					{
-						"Added remove block hint tile for the block ",
-						block3.go.name,
-						" with index ",
-						num3
-					}));
-				}
-				else
-				{
-					OnScreenLog.AddLogItem("Failed to find the target block. Using index 0 and rotation 0, 0, 0", 5f, true);
-				}
+				OnScreenLog.AddLogItem("Failed to find the target block. Using index 0 and rotation 0, 0, 0", 5f, log: true);
 			}
-			Block selectedScriptBlock = Blocksworld.GetSelectedScriptBlock();
-			selectedScriptBlock.tiles.Insert(1, list3);
-			Blocksworld.ShowSelectedBlockPanel();
-			History.AddStateIfNecessary();
 		}
+		Block selectedScriptBlock = GetSelectedScriptBlock();
+		selectedScriptBlock.tiles.Insert(1, list3);
+		ShowSelectedBlockPanel();
+		History.AddStateIfNecessary();
 	}
 
-	// Token: 0x06001946 RID: 6470 RVA: 0x000B593C File Offset: 0x000B3D3C
 	private void ToggleVolumeBlockVisibility()
 	{
-		foreach (Block block in BWSceneManager.AllBlocks())
+		foreach (Block item in BWSceneManager.AllBlocks())
 		{
-			if (block is BlockPosition)
+			if (item is BlockPosition)
 			{
-				BlockPosition blockPosition = (BlockPosition)block;
+				BlockPosition blockPosition = (BlockPosition)item;
 				if (blockPosition.IsHiddenAndTrigger())
 				{
 					blockPosition.ShowAndRemoveIsTrigger();
@@ -3535,33 +3800,31 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x06001947 RID: 6471 RVA: 0x000B59E0 File Offset: 0x000B3DE0
 	private void ToggleSkyAndFogVisibility()
 	{
-		if (Blocksworld.worldSky != null)
+		if (worldSky != null)
 		{
-			Renderer component = Blocksworld.worldSky.go.GetComponent<Renderer>();
+			Renderer component = worldSky.go.GetComponent<Renderer>();
 			if (component.enabled)
 			{
-				this.SetFog(2500f, 3000f);
+				SetFog(2500f, 3000f);
 				component.enabled = false;
 			}
 			else
 			{
 				component.enabled = true;
-				this.storeFogDistances = this.GetDefaultFog();
-				this.SetFog(this.storeFogDistances.x, this.storeFogDistances.y);
+				storeFogDistances = GetDefaultFog();
+				SetFog(storeFogDistances.x, storeFogDistances.y);
 			}
 		}
 	}
 
-	// Token: 0x06001948 RID: 6472 RVA: 0x000B5A60 File Offset: 0x000B3E60
 	private Vector2 GetDefaultFog()
 	{
 		Vector2 result = new Vector2(40f, 100f);
-		if (Blocksworld.worldSky != null)
+		if (worldSky != null)
 		{
-			GAF simpleInitGAF = Blocksworld.worldSky.GetSimpleInitGAF("Block.SetFog");
+			GAF simpleInitGAF = worldSky.GetSimpleInitGAF("Block.SetFog");
 			if (simpleInitGAF != null)
 			{
 				object[] args = simpleInitGAF.Args;
@@ -3573,202 +3836,197 @@ public class Blocksworld : MonoBehaviour
 		return result;
 	}
 
-	// Token: 0x06001949 RID: 6473 RVA: 0x000B5ACD File Offset: 0x000B3ECD
 	private void UnityStandaloneUpdate()
 	{
-		if (Blocksworld.CurrentState == State.Build)
+		if (CurrentState == State.Build)
 		{
-			this.StandaloneBuildModeUpdate();
+			StandaloneBuildModeUpdate();
 		}
-		else if (Blocksworld.CurrentState == State.FrameCapture)
+		else if (CurrentState == State.FrameCapture)
 		{
-			this.StandaloneFrameCaptureUpdate();
+			StandaloneFrameCaptureUpdate();
 		}
-		else if (Blocksworld.CurrentState == State.Play)
+		else if (CurrentState == State.Play)
 		{
-			this.StandalonePlayModeUpdate();
+			StandalonePlayModeUpdate();
 		}
 	}
 
-	// Token: 0x0600194A RID: 6474 RVA: 0x000B5B0C File Offset: 0x000B3F0C
 	private void StandaloneBuildModeUpdate()
 	{
 		if (MappedInput.InputDown(MappableInput.SAVE) && !Input.GetMouseButton(1))
 		{
 			WorldSession.Save();
 		}
-		this.UpdateCopyPaste();
+		UpdateCopyPaste();
 		if (MappedInput.InputDown(MappableInput.CYCLE_BLOCK_PREV))
 		{
-			this.CycleSelectedScriptBlock(true);
+			CycleSelectedScriptBlock(back: true);
 		}
 		if (MappedInput.InputDown(MappableInput.CYCLE_BLOCK_NEXT))
 		{
-			this.CycleSelectedScriptBlock(false);
+			CycleSelectedScriptBlock(back: false);
 		}
 		if (MappedInput.InputDown(MappableInput.DELETE_BLOCK))
 		{
 			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
 			{
-				Blocksworld.RemoveScriptsFromSelection();
+				RemoveScriptsFromSelection();
 			}
 			else
 			{
 				List<Block> list = new List<Block>();
-				if (Blocksworld.selectedBlock != null)
+				if (selectedBlock != null)
 				{
-					list.Add(Blocksworld.selectedBlock);
+					list.Add(selectedBlock);
 				}
-				else if (Blocksworld.selectedBunch != null)
+				else if (selectedBunch != null)
 				{
-					list.AddRange(Blocksworld.selectedBunch.blocks);
+					list.AddRange(selectedBunch.blocks);
 				}
-				Blocksworld.DeselectBlock(false, true);
-				foreach (Block block in list)
+				DeselectBlock();
+				foreach (Block item in list)
 				{
-					if (block == Blocksworld.worldOceanBlock)
+					if (item == worldOceanBlock)
 					{
-						Blocksworld.worldOceanBlock = null;
-						Blocksworld.worldOcean = null;
+						worldOceanBlock = null;
+						worldOcean = null;
 					}
-					Blocksworld.DestroyBlock(block);
+					DestroyBlock(item);
 				}
 			}
-			Sound.PlayOneShotSound("Destroy", 1f);
-			Scarcity.UpdateInventory(true, null);
+			Sound.PlayOneShotSound("Destroy");
+			Scarcity.UpdateInventory();
 			History.AddStateIfNecessary();
 		}
 		if (MappedInput.InputDown(MappableInput.UNDO))
 		{
 			if (Input.GetKey(KeyCode.LeftShift))
 			{
-				this.ButtonRedoTapped();
+				ButtonRedoTapped();
 			}
 			else
 			{
-				this.ButtonUndoTapped();
+				ButtonUndoTapped();
 			}
 		}
 		if (MappedInput.InputDown(MappableInput.REDO))
 		{
-			this.ButtonRedoTapped();
+			ButtonRedoTapped();
 		}
 		bool flag = false;
 		if (MappedInput.InputDown(MappableInput.TOGGLE_ORBIT_CAM))
 		{
-			this.cameraSelectionOrbitMode = !this.cameraSelectionOrbitMode;
-			flag = this.cameraSelectionOrbitMode;
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			cameraSelectionOrbitMode = !cameraSelectionOrbitMode;
+			flag = cameraSelectionOrbitMode;
+			Sound.PlayOneShotSound("Button Generic");
 		}
-		if ((MappedInput.InputDown(MappableInput.FOCUS_CAMERA) || flag) && (Blocksworld.selectedBlock != null || Blocksworld.selectedBunch != null))
+		if ((MappedInput.InputDown(MappableInput.FOCUS_CAMERA) || flag) && (selectedBlock != null || selectedBunch != null))
 		{
-			Vector3 pos = Vector3.zero;
-			Vector3 scale = Vector3.one;
-			if (Blocksworld.selectedBunch != null)
+			Vector3 zero = Vector3.zero;
+			Vector3 one = Vector3.one;
+			if (selectedBunch != null)
 			{
-				pos = Blocksworld.selectedBunch.GetPosition();
-				scale = Blocksworld.selectedBunch.GetScale();
+				zero = selectedBunch.GetPosition();
+				one = selectedBunch.GetScale();
 			}
 			else
 			{
-				pos = Blocksworld.selectedBlock.GetPosition();
-				scale = Blocksworld.selectedBlock.Scale();
+				zero = selectedBlock.GetPosition();
+				one = selectedBlock.Scale();
 			}
-			Blocksworld.GoToCameraFrameFor(pos, scale);
+			GoToCameraFrameFor(zero, one);
 		}
 		bool flag2 = MappedInput.InputDown(MappableInput.YANK_COLOR_AND_TEXTURE);
 		bool flag3 = MappedInput.InputDown(MappableInput.APPLY_COLOR);
 		bool flag4 = MappedInput.InputDown(MappableInput.APPLY_TEXTURE);
-		if ((flag2 || flag3 || flag4) && Blocksworld.mouseBlock != null)
+		if ((flag2 || flag3 || flag4) && mouseBlock != null)
 		{
-			Ray ray = Blocksworld.mainCamera.ScreenPointToRay(this.mousePositionLast * NormalizedScreen.scale);
-			Vector3 vector = default(Vector3);
-			int meshIndexForRay = Blocksworld.mouseBlock.GetMeshIndexForRay(ray, true, out vector, out vector);
+			Ray ray = mainCamera.ScreenPointToRay(mousePositionLast * NormalizedScreen.scale);
+			Vector3 point = default(Vector3);
+			int meshIndexForRay = mouseBlock.GetMeshIndexForRay(ray, refresh: true, out point, out point);
 			if (flag2)
 			{
-				Blocksworld.clipboard.SetPaintColor(Blocksworld.mouseBlock.GetPaint(meshIndexForRay), true);
-				Blocksworld.clipboard.SetTexture(Blocksworld.mouseBlock.GetTexture(meshIndexForRay), true);
+				clipboard.SetPaintColor(mouseBlock.GetPaint(meshIndexForRay));
+				clipboard.SetTexture(mouseBlock.GetTexture(meshIndexForRay));
 			}
 			else if (flag3)
 			{
-				Blocksworld.mouseBlock.PaintTo((string)Blocksworld.clipboard.GetLastPaintedColorGAF().Args[0], true, meshIndexForRay);
+				mouseBlock.PaintTo((string)clipboard.GetLastPaintedColorGAF().Args[0], permanent: true, meshIndexForRay);
 				History.AddStateIfNecessary();
 			}
 			else if (flag4)
 			{
-				Blocksworld.mouseBlock.TextureTo((string)Blocksworld.clipboard.GetLastTextureGAF().Args[0], Blocksworld.mouseBlockNormal, true, meshIndexForRay, false);
-				Blocksworld.mouseBlock.ScaleTo(Blocksworld.mouseBlockLast.Scale(), true, true);
+				mouseBlock.TextureTo((string)clipboard.GetLastTextureGAF().Args[0], mouseBlockNormal, permanent: true, meshIndexForRay);
+				mouseBlock.ScaleTo(mouseBlockLast.Scale(), recalculateCollider: true, forceRescale: true);
 				History.AddStateIfNecessary();
 			}
 		}
 		if (MappedInput.InputDown(MappableInput.DESELECT_BLOCK))
 		{
-			Blocksworld.DeselectBlock(false, true);
+			DeselectBlock();
 		}
 		Vector3 v = Input.mousePosition / NormalizedScreen.scale;
 		bool flag5 = v.x >= 0f && v.x <= (float)NormalizedScreen.width && v.y >= 0f && v.y <= (float)NormalizedScreen.height;
-		bool flag6 = Blocksworld.CurrentState == State.Build && Blocksworld.buildPanel.Hit(v);
-		float num = -50f * Input.GetAxis("Mouse ScrollWheel");
-		num = Mathf.Clamp(num, -100f, 100f);
-		float num2 = Mathf.Abs(num);
-		if (flag6 && num2 > 0.1f)
+		bool flag6 = CurrentState == State.Build && buildPanel.Hit(v);
+		float value = -50f * Input.GetAxis("Mouse ScrollWheel");
+		value = Mathf.Clamp(value, -100f, 100f);
+		float num = Mathf.Abs(value);
+		if (flag6 && num > 0.1f)
 		{
-			Blocksworld.buildPanel.Move(new Vector3(0f, num, 0f));
+			buildPanel.Move(new Vector3(0f, value, 0f));
 		}
 		if (!flag6 && flag5)
 		{
-			float num3 = Mathf.Abs(num);
-			if (num3 > 0.1f && !Blocksworld.lockInput)
+			float num2 = Mathf.Abs(value);
+			if (num2 > 0.1f && !lockInput)
 			{
-				Blocksworld.blocksworldCamera.ZoomBy(-num * 10f);
+				blocksworldCamera.ZoomBy((0f - value) * 10f);
 			}
-			if (this.cameraSelectionOrbitMode && Input.GetMouseButton(1) && (Blocksworld.selectedBlock != null || Blocksworld.selectedBunch != null))
+			if (cameraSelectionOrbitMode && Input.GetMouseButton(1) && (selectedBlock != null || selectedBunch != null))
 			{
-				this.UpdateWASDEQOrbitMouseCameraMovement();
+				UpdateWASDEQOrbitMouseCameraMovement();
 			}
 			else
 			{
-				this.UpdateWASDEQMouseCameraMovement();
+				UpdateWASDEQMouseCameraMovement();
 			}
 		}
 	}
 
-	// Token: 0x0600194B RID: 6475 RVA: 0x000B5FD0 File Offset: 0x000B43D0
 	private void StandaloneFrameCaptureUpdate()
 	{
 		Vector3 vector = Input.mousePosition / NormalizedScreen.scale;
 		bool flag = vector.x >= 0f && vector.x <= (float)NormalizedScreen.width && vector.y >= 0f && vector.y <= (float)NormalizedScreen.height;
-		float num = -50f * Input.GetAxis("Mouse ScrollWheel");
-		num = Mathf.Clamp(num, -100f, 100f);
-		float num2 = Mathf.Abs(num);
+		float value = -50f * Input.GetAxis("Mouse ScrollWheel");
+		value = Mathf.Clamp(value, -100f, 100f);
+		float num = Mathf.Abs(value);
 		if (flag)
 		{
-			float num3 = Mathf.Abs(num);
-			if (num3 > 0.1f && !Blocksworld.lockInput)
+			float num2 = Mathf.Abs(value);
+			if (num2 > 0.1f && !lockInput)
 			{
-				Blocksworld.blocksworldCamera.ZoomBy(-num * 10f);
+				blocksworldCamera.ZoomBy((0f - value) * 10f);
 			}
-			this.UpdateWASDEQMouseCameraMovement();
+			UpdateWASDEQMouseCameraMovement();
 		}
 	}
 
-	// Token: 0x0600194C RID: 6476 RVA: 0x000B609C File Offset: 0x000B449C
 	private void StandalonePlayModeUpdate()
 	{
 		if (Input.GetMouseButton(1))
 		{
-			Blocksworld.blocksworldCamera.OrbitBy(-this.mousePositionDelta);
+			blocksworldCamera.OrbitBy(-mousePositionDelta);
 		}
-		float num = -50f * Input.GetAxis("Mouse ScrollWheel");
-		num = Mathf.Clamp(num, -100f, 100f);
-		float num2 = Mathf.Abs(num);
-		if (num2 > 0.1f && !Blocksworld.lockInput)
+		float value = -50f * Input.GetAxis("Mouse ScrollWheel");
+		value = Mathf.Clamp(value, -100f, 100f);
+		float num = Mathf.Abs(value);
+		if (num > 0.1f && !lockInput)
 		{
-			Blocksworld.blocksworldCamera.ZoomBy(-num * 10f);
+			blocksworldCamera.ZoomBy((0f - value) * 10f);
 		}
 	}
 
-	// Token: 0x0600194D RID: 6477 RVA: 0x000B6120 File Offset: 0x000B4520
 	private void PrintMaterials()
 	{
 		Material[] array = UnityEngine.Object.FindObjectsOfType<Material>();
@@ -3788,25 +4046,18 @@ public class Blocksworld : MonoBehaviour
 			}
 			stringBuilder.Append(array[i].name + "\n");
 		}
-		foreach (KeyValuePair<string, int> keyValuePair in dictionary)
+		foreach (KeyValuePair<string, int> item in dictionary)
 		{
-			int num = keyValuePair.Value;
-			int num2;
-			if (this.materialUsage.TryGetValue(keyValuePair.Key, out num2))
+			int num = item.Value;
+			if (materialUsage.TryGetValue(item.Key, out var value))
 			{
-				num -= num2;
+				num -= value;
 			}
 			if (num > 0)
 			{
-				stringBuilder2.Append(string.Concat(new object[]
-				{
-					num,
-					" new materials with name: ",
-					keyValuePair.Key,
-					"\n"
-				}));
+				stringBuilder2.Append(num + " new materials with name: " + item.Key + "\n");
 			}
-			this.materialUsage[keyValuePair.Key] = keyValuePair.Value;
+			materialUsage[item.Key] = item.Value;
 		}
 		BWLog.Info(stringBuilder.ToString());
 		BWLog.Info(stringBuilder2.ToString());
@@ -3815,14 +4066,13 @@ public class Blocksworld : MonoBehaviour
 		BWLog.Info("Material texture cache size: " + Materials.materialCacheTexture.Count);
 	}
 
-	// Token: 0x0600194E RID: 6478 RVA: 0x000B6314 File Offset: 0x000B4714
 	private void Update()
 	{
-        if (!Blocksworld.IsStarted())
+		if (!IsStarted())
 		{
 			return;
 		}
-		if (Blocksworld.inBackground)
+		if (inBackground)
 		{
 			TileIconManager.Instance.Update();
 			return;
@@ -3832,64 +4082,64 @@ public class Blocksworld : MonoBehaviour
 		{
 			if (MappedInput.InputDown(MappableInput.PLAY))
 			{
-				if (Blocksworld.CurrentState == State.Play)
+				if (CurrentState == State.Play)
 				{
-					this.ButtonPauseTapped();
+					ButtonPauseTapped();
 				}
 				else
 				{
-					this.ButtonPlayTapped();
+					ButtonPlayTapped();
 				}
 			}
-			if (MappedInput.InputDown(MappableInput.STOP) && Blocksworld.CurrentState == State.Play && WorldSession.isNormalBuildAndPlaySession())
+			if (MappedInput.InputDown(MappableInput.STOP) && CurrentState == State.Play && WorldSession.isNormalBuildAndPlaySession())
 			{
-				this.ButtonStopTapped();
+				ButtonStopTapped();
 			}
-			if (MappedInput.InputDown(MappableInput.RESTART_PLAY) && Blocksworld.CurrentState == State.Play)
+			if (MappedInput.InputDown(MappableInput.RESTART_PLAY) && CurrentState == State.Play)
 			{
-				this.ButtonRestartTapped();
+				ButtonRestartTapped();
 			}
 		}
 		MappedInput.Update();
-		Blocksworld.displayString = string.Empty;
-		Blocksworld.cameraForward = Blocksworld.cameraTransform.forward;
-		Blocksworld.cameraUp = Blocksworld.cameraTransform.up;
-		Blocksworld.cameraRight = Blocksworld.cameraTransform.right;
-		Blocksworld.cameraPosition = Blocksworld.cameraTransform.position;
-		Blocksworld.cameraMoved = ((double)(Blocksworld.cameraPosition - Blocksworld.prevCamPos).sqrMagnitude > 9.9999997764825828E-05);
-		if (Blocksworld.cameraMoved)
+		displayString = string.Empty;
+		cameraForward = cameraTransform.forward;
+		cameraUp = cameraTransform.up;
+		cameraRight = cameraTransform.right;
+		cameraPosition = cameraTransform.position;
+		cameraMoved = (double)(cameraPosition - prevCamPos).sqrMagnitude > 9.999999776482583E-05;
+		if (cameraMoved)
 		{
-			Blocksworld.frustumPlanes = GeometryUtility.CalculateFrustumPlanes(Blocksworld.mainCamera);
-			Blocksworld.prevCamPos = Blocksworld.cameraPosition;
+			frustumPlanes = GeometryUtility.CalculateFrustumPlanes(mainCamera);
+			prevCamPos = cameraPosition;
 		}
 		Sound.sfxEnabled = true;
 		if (MappedInput.InputDown(MappableInput.SCREENSHOT))
 		{
-			this.ButtonCaptureTapped();
+			ButtonCaptureTapped();
 		}
 		OnScreenLog.Update();
-		if (Blocksworld.CurrentState != State.WaitForOption && Blocksworld.CurrentState != State.EditTile)
+		if (CurrentState != State.WaitForOption && CurrentState != State.EditTile)
 		{
-			this.UnityStandaloneUpdate();
+			UnityStandaloneUpdate();
 		}
-		if (Blocksworld.consumeEvent)
+		if (consumeEvent)
 		{
-			Blocksworld.consumeEvent = false;
+			consumeEvent = false;
 			return;
 		}
-		Blocksworld.deltaTime = Time.realtimeSinceStartup - Blocksworld.lastRealtimeSinceStartup;
-		Blocksworld.lastRealtimeSinceStartup = Time.realtimeSinceStartup;
-		Blocksworld.updateCounter++;
-		Blocksworld.gameTime = (float)Blocksworld.updateCounter * Time.deltaTime;
-		Blocksworld._stateTime += Time.deltaTime;
-		Blocksworld.mouse = Input.mousePosition / Blocksworld.screenScale;
-		Blocksworld.numTouches = 0;
+		deltaTime = Time.realtimeSinceStartup - lastRealtimeSinceStartup;
+		lastRealtimeSinceStartup = Time.realtimeSinceStartup;
+		updateCounter++;
+		gameTime = (float)updateCounter * Time.deltaTime;
+		_stateTime += Time.deltaTime;
+		mouse = Input.mousePosition / screenScale;
+		numTouches = 0;
 		if (Input.touchCount == 0)
 		{
-			Blocksworld.touches[0] = Input.mousePosition / Blocksworld.screenScale;
-			if (Input.GetMouseButton(0) && !Blocksworld.UI.IsBlocking(Blocksworld.touches[0]))
+			touches[0] = Input.mousePosition / screenScale;
+			if (Input.GetMouseButton(0) && !UI.IsBlocking(touches[0]))
 			{
-				Blocksworld.numTouches++;
+				numTouches++;
 			}
 		}
 		else
@@ -3897,262 +4147,248 @@ public class Blocksworld : MonoBehaviour
 			for (int i = 0; i < Input.touchCount; i++)
 			{
 				UnityEngine.Touch touch = Input.GetTouch(i);
-				Blocksworld.touches[Blocksworld.numTouches] = touch.position / Blocksworld.screenScale;
-				if (!Blocksworld.UI.IsBlocking(Blocksworld.touches[Blocksworld.numTouches]))
+				touches[numTouches] = touch.position / screenScale;
+				if (!UI.IsBlocking(touches[numTouches]))
 				{
-					Blocksworld.numTouches++;
+					numTouches++;
 				}
 			}
 		}
 		if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
 		{
-			this.mousePositionLast = Input.mousePosition;
+			mousePositionLast = Input.mousePosition;
 		}
-		this.mousePositionDelta = Input.mousePosition - this.mousePositionLast;
-		this.mousePositionLast = Input.mousePosition;
-		if (Blocksworld.CurrentState != State.Play)
+		mousePositionDelta = Input.mousePosition - mousePositionLast;
+		mousePositionLast = Input.mousePosition;
+		if (CurrentState != State.Play)
 		{
-			Blocksworld.mouseBlockLast = Blocksworld.mouseBlock;
-			Blocksworld.mouseBlockNormalLast = Blocksworld.mouseBlockNormal;
-			Blocksworld.mouseBlock = Blocksworld.BlockAtMouse(NormalizedInput.mousePosition, out Blocksworld.mouseBlockIndex);
+			mouseBlockLast = mouseBlock;
+			mouseBlockNormalLast = mouseBlockNormal;
+			mouseBlock = BlockAtMouse(NormalizedInput.mousePosition, out mouseBlockIndex);
 		}
-		if (Blocksworld.CurrentState != State.Menu && !Blocksworld.lockInput)
+		if (CurrentState != State.Menu && !lockInput)
 		{
-			for (int j = 0; j < this.buildOnlyGestures.Length; j++)
+			for (int j = 0; j < buildOnlyGestures.Length; j++)
 			{
-				this.buildOnlyGestures[j].IsEnabled = (Blocksworld.CurrentState == State.Build && !this.forcePlayMode);
+				buildOnlyGestures[j].IsEnabled = CurrentState == State.Build && !forcePlayMode;
 			}
-			bool isEnabled = Blocksworld.CurrentState == State.Play;
-			this.pullObject.IsEnabled = isEnabled;
-			this.tapControl.IsEnabled = isEnabled;
-			Blocksworld.recognizer.Update();
+			bool isEnabled = CurrentState == State.Play;
+			pullObject.IsEnabled = isEnabled;
+			tapControl.IsEnabled = isEnabled;
+			recognizer.Update();
 		}
-		if (Blocksworld.inBackground)
+		if (!inBackground)
 		{
-			return;
-		}
-		Blocksworld.buildPanel.Update();
-		Blocksworld.scriptPanel.Update();
-		Blocksworld.blocksworldCamera.Update();
-		if (Blocksworld.CurrentState != State.Play)
-		{
-			TBox.Update();
-		}
-		this.StatePlayUpdate();
-		if (Input.GetMouseButtonDown(0))
-		{
-			Blocksworld.mousePositionFirst = NormalizedInput.mousePosition;
-		}
-		if (Blocksworld.CurrentState == State.FrameCapture && Blocksworld.timerStart >= 0f)
-		{
-			Blocksworld.timerStart += Time.deltaTime;
-		}
-		if (Blocksworld.CurrentState == State.Build && !Blocksworld.f3PressedInCurrentWorld)
-		{
-			WorldSession.FastSaveAutoUpdate();
-		}
-		Tutorial.Update();
-		Util.Update();
-		Blocksworld.UpdateDynamicalLights(true, false);
-		if (Blocksworld.stopASAP)
-		{
-			this.Stop(false, true);
-			Blocksworld.stopASAP = false;
-		}
-		Command.ExecuteCommands(Blocksworld.updateCommands);
-		this.OnHudMesh();
-		if (WorldSession.current != null)
-		{
-			WorldSession.current.UpdateLoop();
+			buildPanel.Update();
+			scriptPanel.Update();
+			blocksworldCamera.Update();
+			if (CurrentState != State.Play)
+			{
+				TBox.Update();
+			}
+			StatePlayUpdate();
+			if (Input.GetMouseButtonDown(0))
+			{
+				mousePositionFirst = NormalizedInput.mousePosition;
+			}
+			if (CurrentState == State.FrameCapture && timerStart >= 0f)
+			{
+				timerStart += Time.deltaTime;
+			}
+			if (CurrentState == State.Build && !f3PressedInCurrentWorld)
+			{
+				WorldSession.FastSaveAutoUpdate();
+			}
+			Tutorial.Update();
+			Util.Update();
+			UpdateDynamicalLights();
+			if (stopASAP)
+			{
+				Stop();
+				stopASAP = false;
+			}
+			Command.ExecuteCommands(updateCommands);
+			OnHudMesh();
+			if (WorldSession.current != null)
+			{
+				WorldSession.current.UpdateLoop();
+			}
 		}
 	}
 
-	// Token: 0x0600194F RID: 6479 RVA: 0x000B67B4 File Offset: 0x000B4BB4
 	public static void SelectionLock(Block b)
 	{
-		Blocksworld.editorSelectionLocked.Add(b);
+		editorSelectionLocked.Add(b);
 	}
 
-	// Token: 0x06001950 RID: 6480 RVA: 0x000B67C2 File Offset: 0x000B4BC2
 	public static bool IsSelectionLocked(Block b)
 	{
-		return Blocksworld.editorSelectionLocked.Contains(b);
+		return editorSelectionLocked.Contains(b);
 	}
 
-	// Token: 0x06001951 RID: 6481 RVA: 0x000B67D0 File Offset: 0x000B4BD0
 	private static void UpdateModelUnlockInput()
 	{
-		if (Blocksworld.CurrentState != State.Build)
+		if (CurrentState != State.Build || !MappedInput.InputDown(MappableInput.MODEL_UNLOCK) || selectedBunch == null)
 		{
 			return;
 		}
-		if (MappedInput.InputDown(MappableInput.MODEL_UNLOCK) && Blocksworld.selectedBunch != null)
+		if (selectedBunch.blocks.Exists((Block b) => b.HasGroup("locked-model")))
 		{
-			bool flag = Blocksworld.selectedBunch.blocks.Exists((Block b) => b.HasGroup("locked-model"));
-			if (flag)
+			selectedBunch.blocks.ForEach(delegate(Block b)
 			{
-				Blocksworld.selectedBunch.blocks.ForEach(delegate(Block b)
+				BlockGroup groupOfType = b.GetGroupOfType("locked-model");
+				if (groupOfType is LockedModelBlockGroup)
 				{
-					BlockGroup groupOfType = b.GetGroupOfType("locked-model");
-					if (groupOfType is LockedModelBlockGroup)
-					{
-						b.RemoveGroup("locked-model");
-						BlockGroups.RemoveGroup(groupOfType);
-					}
-				});
-				Blocksworld.SelectBunch(Blocksworld.selectedBunch.blocks, false, true);
-			}
-			else
-			{
-				BlockGroups.AddGroup(Blocksworld.selectedBunch.blocks, "locked-model");
-				Blocksworld.Select(Blocksworld.selectedBunch.blocks[0], false, true);
-			}
+					b.RemoveGroup("locked-model");
+					BlockGroups.RemoveGroup(groupOfType);
+				}
+			});
+			SelectBunch(selectedBunch.blocks);
+		}
+		else
+		{
+			BlockGroups.AddGroup(selectedBunch.blocks, "locked-model");
+			Select(selectedBunch.blocks[0]);
 		}
 	}
 
-	// Token: 0x06001952 RID: 6482 RVA: 0x000B68A0 File Offset: 0x000B4CA0
 	private static void UpdateSelectionLockInput()
 	{
-		if (Blocksworld.CurrentState != State.Build)
+		if (CurrentState != State.Build)
 		{
 			return;
 		}
 		if (!MappedInput.InputPressed(MappableInput.SELECTION_LOCK))
 		{
-			Blocksworld.keyLReleased = true;
-			Blocksworld.recentSelectionUnlockedBlock = null;
+			keyLReleased = true;
+			recentSelectionUnlockedBlock = null;
 		}
-		if (MappedInput.InputDown(MappableInput.SELECTION_LOCK))
+		if (!MappedInput.InputDown(MappableInput.SELECTION_LOCK))
 		{
-			Blocksworld.keyLReleased = false;
-			if (Blocksworld.selectedBunch != null)
+			return;
+		}
+		keyLReleased = false;
+		if (selectedBunch != null)
+		{
+			OnScreenLog.AddLogItem("Selection-locked an entire model");
+			foreach (Block block in selectedBunch.blocks)
 			{
-				OnScreenLog.AddLogItem("Selection-locked an entire model", 5f, false);
-				foreach (Block b in Blocksworld.selectedBunch.blocks)
-				{
-					Blocksworld.SelectionLock(b);
-				}
-				Blocksworld.Select(null, false, true);
+				SelectionLock(block);
 			}
-			else if (Blocksworld.selectedBlock != null)
-			{
-				OnScreenLog.AddLogItem("Selection-locked a block of type '" + Blocksworld.selectedBlock.BlockType() + "'", 5f, false);
-				Blocksworld.SelectionLock(Blocksworld.selectedBlock);
-				Blocksworld.Select(null, false, true);
-			}
+			Select(null);
+		}
+		else if (selectedBlock != null)
+		{
+			OnScreenLog.AddLogItem("Selection-locked a block of type '" + selectedBlock.BlockType() + "'");
+			SelectionLock(selectedBlock);
+			Select(null);
 		}
 	}
 
-	// Token: 0x06001953 RID: 6483 RVA: 0x000B699C File Offset: 0x000B4D9C
 	public static void UpdateDynamicalLights(bool updateFog = true, bool forceUpdate = false)
 	{
-		Color color = Blocksworld.lightColor;
-		Vector4 b = Blocksworld.dynamicLightColor;
-		float num = Blocksworld.fogMultiplier;
-		float num2 = Blocksworld.weather.GetFogMultiplier();
-		Color color2 = Color.white;
+		Color color = lightColor;
+		Vector4 vector = dynamicLightColor;
+		float num = fogMultiplier;
+		float num2 = weather.GetFogMultiplier();
+		Color white = Color.white;
 		float num3 = 1f;
-		for (int i = 0; i < Blocksworld.dynamicalLightChangers.Count; i++)
+		for (int i = 0; i < dynamicalLightChangers.Count; i++)
 		{
-			ILightChanger lightChanger = Blocksworld.dynamicalLightChangers[i];
+			ILightChanger lightChanger = dynamicalLightChangers[i];
 			Color dynamicalLightTint = lightChanger.GetDynamicalLightTint();
 			color *= dynamicalLightTint;
 			num2 *= lightChanger.GetFogMultiplier();
-			color2 *= lightChanger.GetFogColorOverride();
+			white *= lightChanger.GetFogColorOverride();
 			num3 *= lightChanger.GetLightIntensityMultiplier();
 		}
-		Vector4 b2 = Blocksworld.fogColor;
-		Vector4 a = (!(color2 == Color.white)) ? color2 : Blocksworld.fogColor;
-		Vector4 a2 = color;
-		if (Mathf.Abs(num3 - Blocksworld.dynamicLightIntensityMultiplier) > 0.01f || (a2 - b).sqrMagnitude > 0.001f || (a - b2).sqrMagnitude > 0.001f || Mathf.Abs(num - num2) > 0.01f || forceUpdate)
+		Vector4 vector2 = fogColor;
+		Vector4 vector3 = ((!(white == Color.white)) ? white : fogColor);
+		Vector4 vector4 = color;
+		if (!(Mathf.Abs(num3 - dynamicLightIntensityMultiplier) > 0.01f || (vector4 - vector).sqrMagnitude > 0.001f || (vector3 - vector2).sqrMagnitude > 0.001f || Mathf.Abs(num - num2) > 0.01f || forceUpdate))
 		{
-			Blocksworld.dynamicLightColor = color;
-			Light component = Blocksworld.directionalLight.GetComponent<Light>();
-			component.color = color;
-			component.intensity = num3;
-			Blocksworld.dynamicLightIntensityMultiplier = num3;
-			if (updateFog && Blocksworld.worldSky != null)
+			return;
+		}
+		dynamicLightColor = color;
+		Light component = directionalLight.GetComponent<Light>();
+		component.color = color;
+		component.intensity = num3;
+		dynamicLightIntensityMultiplier = num3;
+		if (updateFog && worldSky != null)
+		{
+			if (white != Color.white)
 			{
-				if (color2 != Color.white)
-				{
-					Blocksworld.UpdateFogColor(color2 * color);
-				}
-				else
-				{
-					Blocksworld.UpdateFogColor(BlockSky.GetFogColor());
-				}
-				if (Mathf.Abs(num2 - num) > 0.001f)
-				{
-					Blocksworld.bw.SetFogMultiplier(num2);
-				}
+				UpdateFogColor(white * color);
+			}
+			else
+			{
+				UpdateFogColor(BlockSky.GetFogColor());
+			}
+			if (Mathf.Abs(num2 - num) > 0.001f)
+			{
+				bw.SetFogMultiplier(num2);
 			}
 		}
 	}
 
-	// Token: 0x06001954 RID: 6484 RVA: 0x000B6B60 File Offset: 0x000B4F60
 	private void FixedUpdate()
 	{
-		if (!Blocksworld.IsStarted())
+		if (!IsStarted() || inBackground)
 		{
 			return;
 		}
-		if (Blocksworld.inBackground)
+		fixedDeltaTime = Time.fixedDeltaTime;
+		if (CurrentState == State.Play)
 		{
-			return;
+			StatePlayFixedUpdate();
+			bool showControls = MappedInput.InputDown(MappableInput.SHOW_CONTROLS) || TimeInCurrentState() < 1f;
+			UI.Controls.UpdateAll(showControls);
 		}
-		Blocksworld.fixedDeltaTime = Time.fixedDeltaTime;
-		if (Blocksworld.CurrentState == State.Play)
+		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> stateController in BlockAnimatedCharacter.stateControllers)
 		{
-			this.StatePlayFixedUpdate();
-			bool showControls = MappedInput.InputDown(MappableInput.SHOW_CONTROLS) || Blocksworld.TimeInCurrentState() < 1f;
-			Blocksworld.UI.Controls.UpdateAll(showControls);
+			stateController.Value.Update();
 		}
-		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> keyValuePair in BlockAnimatedCharacter.stateControllers)
+		if (pullObject != null && pullObject.IsEnabled)
 		{
-			keyValuePair.Value.Update();
+			pullObject.FixedUpdate();
 		}
-		if (this.pullObject != null && this.pullObject.IsEnabled)
+		if (rewardVisualizationGafs != null && !waitForSetPurchase)
 		{
-			this.pullObject.FixedUpdate();
-		}
-		if (Blocksworld.rewardVisualizationGafs != null && !Blocksworld.waitForSetPurchase)
-		{
-			if (Blocksworld.rewardVisualizationIndex >= Blocksworld.rewardVisualizationGafs.Count)
+			if (rewardVisualizationIndex >= rewardVisualizationGafs.Count)
 			{
-				Blocksworld.rewardVisualizationGafs = null;
-				Blocksworld.winIsWaiting = false;
-				Blocksworld.hasWon = true;
+				rewardVisualizationGafs = null;
+				winIsWaiting = false;
+				hasWon = true;
 				WorldSession.current.OnRewardVisualizationComplete();
 			}
 			else
 			{
-				Blocksworld.rewardExecutionInfo.timer += Blocksworld.fixedDeltaTime;
-				GAF gaf = Blocksworld.rewardVisualizationGafs[Blocksworld.rewardVisualizationIndex];
+				rewardExecutionInfo.timer += fixedDeltaTime;
+				GAF gAF = rewardVisualizationGafs[rewardVisualizationIndex];
 				List<Block> list = BWSceneManager.AllBlocks();
-				if (gaf == null || list.Count == 0 || gaf.RunAction(list[0], Blocksworld.rewardExecutionInfo) == TileResultCode.True)
+				if (gAF == null || list.Count == 0 || gAF.RunAction(list[0], rewardExecutionInfo) == TileResultCode.True)
 				{
-					Blocksworld.rewardVisualizationIndex++;
-					Blocksworld.rewardExecutionInfo.timer = 0f;
+					rewardVisualizationIndex++;
+					rewardExecutionInfo.timer = 0f;
 				}
 			}
 		}
-		else if (Blocksworld.CurrentState != State.WaitForOption && Blocksworld.winIsWaiting && !Blocksworld.waitForSetPurchase)
+		else if (CurrentState != State.WaitForOption && winIsWaiting && !waitForSetPurchase)
 		{
-			Blocksworld.hasWon = true;
-			Blocksworld.winIsWaiting = false;
+			hasWon = true;
+			winIsWaiting = false;
 		}
-		Blocksworld.blocksworldCamera.FixedUpdate();
+		blocksworldCamera.FixedUpdate();
 		Scarcity.StepInventoryScales();
-		Blocksworld.UI.UpdateSpeechBubbles();
-		Blocksworld.UI.UpdateTextWindows();
-		Blocksworld.UI.Controls.HandleInputControlVisibility(Blocksworld.CurrentState);
-		Command.ExecuteCommands(Blocksworld.fixedUpdateCommands);
+		UI.UpdateSpeechBubbles();
+		UI.UpdateTextWindows();
+		UI.Controls.HandleInputControlVisibility(CurrentState);
+		Command.ExecuteCommands(fixedUpdateCommands);
 	}
 
-	// Token: 0x06001955 RID: 6485 RVA: 0x000B6D70 File Offset: 0x000B5170
 	public void StatePlayUpdate()
 	{
-		if (Blocksworld.CurrentState == State.Play)
+		if (CurrentState == State.Play)
 		{
 			BWSceneManager.ExecutePlayBlocksUpdate();
 		}
@@ -4160,22 +4396,21 @@ public class Blocksworld : MonoBehaviour
 		{
 			BWSceneManager.ExecuteAllBlocksUpdate();
 		}
-		Blocksworld.weather.Update();
-		Blocksworld.leaderboardData.UpdateGUI();
+		weather.Update();
+		leaderboardData.UpdateGUI();
 		VisualEffect.UpdateVfxs();
 	}
 
-	// Token: 0x06001956 RID: 6486 RVA: 0x000B6DA8 File Offset: 0x000B51A8
 	private void StatePlayFixedUpdate()
 	{
 		BWSceneManager.ModifyPlayAndScriptBlocks();
-		if (Blocksworld.isFirstFrame)
+		if (isFirstFrame)
 		{
 			BWSceneManager.RunFirstFrameActions();
-			Blocksworld.isFirstFrame = false;
+			isFirstFrame = false;
 		}
 		BWSceneManager.RunConditions();
-		this.ResetState();
+		ResetState();
 		BWSceneManager.RunActions();
 		BWSceneManager.RunFixedUpdate();
 		VisualEffect.FixedUpdateVfxs();
@@ -4183,21 +4418,20 @@ public class Blocksworld : MonoBehaviour
 		CollisionManager.FixedUpdate();
 		Block.UpdateOverridenMasses();
 		BlockAnimatedCharacter.PlayQueuedHitReacts();
-		Blocksworld.blocksworldCamera.FinalUpdateFirstPersonFollow();
+		blocksworldCamera.FinalUpdateFirstPersonFollow();
 		Block.goTouchStarted = false;
-		for (int i = 0; i < Blocksworld.chunks.Count; i++)
+		for (int i = 0; i < chunks.Count; i++)
 		{
-			Blocksworld.chunks[i].ApplyCenterOfMassChanges();
+			chunks[i].ApplyCenterOfMassChanges();
 		}
-		Blocksworld.playFixedUpdateCounter++;
+		playFixedUpdateCounter++;
 	}
 
-	// Token: 0x06001957 RID: 6487 RVA: 0x000B6E44 File Offset: 0x000B5244
 	private void ResetState()
 	{
-		Blocksworld.gameStart = false;
-		Blocksworld.blocksworldCamera.Reset();
-		CollisionManager.ResetState(false);
+		gameStart = false;
+		blocksworldCamera.Reset();
+		CollisionManager.ResetState();
 		if (!Input.GetMouseButton(0))
 		{
 			Block.goTouchStarted = false;
@@ -4205,23 +4439,22 @@ public class Blocksworld : MonoBehaviour
 		}
 		for (int i = 0; i < 26; i++)
 		{
-			Blocksworld.sending[i] = false;
-			Blocksworld.sendingValues[i] = 0f;
+			sending[i] = false;
+			sendingValues[i] = 0f;
 		}
-		Blocksworld.sendingCustom.Clear();
+		sendingCustom.Clear();
 		BWSceneManager.ResetFrame();
 		BlockAbstractBow.ClearHits();
 		BlockAbstractLaser.ClearHits();
 		BlockGravityGun.ClearHits();
 		BlockAnimatedCharacter.ClearAttackFlags();
-		TagManager.ClearRegisteredBlocks(false);
+		TagManager.ClearRegisteredBlocks();
 		BlockAccelerations.ResetFrame();
 		TreasureHandler.ResetState();
 		Sound.ResetState();
-		Command.ExecuteCommands(Blocksworld.resetStateCommands);
+		Command.ExecuteCommands(resetStateCommands);
 	}
 
-	// Token: 0x06001958 RID: 6488 RVA: 0x000B6EE8 File Offset: 0x000B52E8
 	public void CycleSelectedScriptBlock(bool back)
 	{
 		List<Block> list = new List<Block>();
@@ -4240,13 +4473,13 @@ public class Blocksworld : MonoBehaviour
 		{
 			return;
 		}
-		if (Blocksworld.selectedBlock == null || !list.Contains(Blocksworld.selectedBlock))
+		if (selectedBlock == null || !list.Contains(selectedBlock))
 		{
-			Blocksworld.SelectBlock(list[0], false, true);
-			Blocksworld.blocksworldCamera.Focus();
+			SelectBlock(list[0]);
+			blocksworldCamera.Focus();
 			return;
 		}
-		int num = list.IndexOf(Blocksworld.selectedBlock);
+		int num = list.IndexOf(selectedBlock);
 		if (back)
 		{
 			num--;
@@ -4263,186 +4496,147 @@ public class Blocksworld : MonoBehaviour
 				num -= list.Count;
 			}
 		}
-		Blocksworld.SelectBlock(list[num], false, true);
-		Blocksworld.blocksworldCamera.Focus();
+		SelectBlock(list[num]);
+		blocksworldCamera.Focus();
 	}
 
-	// Token: 0x06001959 RID: 6489 RVA: 0x000B6FE4 File Offset: 0x000B53E4
 	public Block AddNewBlock(Tile type, bool addToBlocks = true, List<Tile> initTiles = null, bool defaultColors = true)
 	{
 		List<List<Tile>> list = new List<List<Tile>>();
 		list.Add(new List<Tile>());
-		list[0].Add(new Tile(new GAF("Meta.Stop", new object[0])));
+		list[0].Add(new Tile(new GAF("Meta.Stop")));
 		list[0].Add(type);
-		list[0].Add(new Tile(new GAF("Block.MoveTo", new object[]
-		{
-			Util.nullVector3
-		})));
-		list[0].Add(new Tile(new GAF("Block.RotateTo", new object[]
-		{
-			Vector3.zero
-		})));
-		list[0].Add(new Tile(new GAF("Block.PaintTo", new object[]
-		{
-			"Grey"
-		})));
+		list[0].Add(new Tile(new GAF("Block.MoveTo", Util.nullVector3)));
+		list[0].Add(new Tile(new GAF("Block.RotateTo", Vector3.zero)));
+		list[0].Add(new Tile(new GAF("Block.PaintTo", "Grey")));
 		if (((string)type.gaf.Args[0]).StartsWith("Decal "))
 		{
-			list[0].Add(new Tile(new GAF("Block.TextureTo", new object[]
-			{
-				((string)type.gaf.Args[0]).Substring("Decal ".Length),
-				Vector3.zero
-			})));
+			list[0].Add(new Tile(new GAF("Block.TextureTo", ((string)type.gaf.Args[0]).Substring("Decal ".Length), Vector3.zero)));
 		}
 		else
 		{
-			list[0].Add(new Tile(new GAF("Block.TextureTo", new object[]
-			{
-				"Plain",
-				Vector3.zero
-			})));
+			list[0].Add(new Tile(new GAF("Block.TextureTo", "Plain", Vector3.zero)));
 		}
-		list[0].Add(new Tile(new GAF("Block.ScaleTo", new object[]
-		{
-			Vector3.one
-		})));
+		list[0].Add(new Tile(new GAF("Block.ScaleTo", Vector3.one)));
 		if (initTiles != null)
 		{
 			list[0].AddRange(initTiles);
 		}
 		list.Add(new List<Tile>());
-		list[1].Add(new Tile(new GAF("Meta.Then", new object[0])));
+		list[1].Add(new Tile(new GAF("Meta.Then")));
 		bool defaultTiles = Tutorial.state == TutorialState.None || Tutorial.includeDefaultBlockTiles;
 		Block block = Block.NewBlock(list, defaultColors, defaultTiles);
-		block.RotateTo(Quaternion.Euler(0f, 180f + 90f * Mathf.Floor(Blocksworld.cameraTransform.eulerAngles.y / 90f), 0f) * block.goT.rotation);
+		block.RotateTo(Quaternion.Euler(0f, 180f + 90f * Mathf.Floor(cameraTransform.eulerAngles.y / 90f), 0f) * block.goT.rotation);
 		if (addToBlocks)
 		{
 			BWSceneManager.AddBlock(block);
 		}
-		Blocksworld.scriptPanel.Show(false);
+		scriptPanel.Show(show: false);
 		return block;
 	}
 
-	// Token: 0x0600195A RID: 6490 RVA: 0x000B7254 File Offset: 0x000B5654
 	private Vector3 WorldPlanePos(Vector3 normal, Vector3 point, Vector3 screenPos)
 	{
 		Plane plane = new Plane(normal, point);
-		Ray ray = Blocksworld.mainCamera.ScreenPointToRay(screenPos);
-		float distance;
-		plane.Raycast(ray, out distance);
-		return ray.GetPoint(distance);
+		Ray ray = mainCamera.ScreenPointToRay(screenPos);
+		plane.Raycast(ray, out var enter);
+		return ray.GetPoint(enter);
 	}
 
-	// Token: 0x0600195B RID: 6491 RVA: 0x000B728C File Offset: 0x000B568C
 	public static void DisableRenderer(GameObject parent)
 	{
 		if (parent.GetComponent<Renderer>() != null)
 		{
 			parent.GetComponent<Renderer>().enabled = false;
 		}
-		IEnumerator enumerator = parent.transform.GetEnumerator();
-		try
+		foreach (object item in parent.transform)
 		{
-			while (enumerator.MoveNext())
-			{
-				object obj = enumerator.Current;
-				Transform transform = (Transform)obj;
-				transform.GetComponent<Renderer>().enabled = false;
-			}
-		}
-		finally
-		{
-			IDisposable disposable;
-			if ((disposable = (enumerator as IDisposable)) != null)
-			{
-				disposable.Dispose();
-			}
+			Transform transform = (Transform)item;
+			transform.GetComponent<Renderer>().enabled = false;
 		}
 	}
 
-	// Token: 0x0600195C RID: 6492 RVA: 0x000B7314 File Offset: 0x000B5714
 	public static void DestroyBunch(Bunch bunch)
 	{
-		if (bunch != null)
+		if (bunch == null)
 		{
-			foreach (Block block in new List<Block>(bunch.blocks))
-			{
-				Blocksworld.DestroyBlock(block);
-			}
+			return;
+		}
+		foreach (Block item in new List<Block>(bunch.blocks))
+		{
+			DestroyBlock(item);
 		}
 	}
 
-	// Token: 0x0600195D RID: 6493 RVA: 0x000B737C File Offset: 0x000B577C
 	public static void DestroyBlock(Block block)
 	{
-		if (Blocksworld.selectedBunch != null)
+		if (selectedBunch != null)
 		{
-			Blocksworld.selectedBunch.Remove(block);
-			if (Blocksworld.selectedBunch.blocks.Count == 0)
+			selectedBunch.Remove(block);
+			if (selectedBunch.blocks.Count == 0)
 			{
-				Blocksworld.Deselect(false, true);
+				Deselect();
 			}
 		}
 		BWSceneManager.RemoveBlock(block);
 		block.Destroy();
-		BlockGrouped blockGrouped = block as BlockGrouped;
-		if (blockGrouped != null && blockGrouped.group != null)
+		if (block is BlockGrouped { group: not null } blockGrouped)
 		{
 			Block[] blocks = blockGrouped.group.GetBlocks();
-			foreach (Block block2 in blocks)
+			Block[] array = blocks;
+			foreach (Block block2 in array)
 			{
 				if (block2.go != null && block2 != block)
 				{
-					Blocksworld.DestroyBlock(block2);
+					DestroyBlock(block2);
 				}
 			}
 		}
 		Block.ClearConnectedCache();
 	}
 
-	// Token: 0x0600195E RID: 6494 RVA: 0x000B742C File Offset: 0x000B582C
 	public static Block BlockAtMouse(Vector3 mouse, out int meshIndex)
 	{
 		meshIndex = -1;
-		if (!Blocksworld.UI.SidePanel.Hit(mouse) && !Blocksworld.scriptPanel.Hit(mouse))
+		if (!UI.SidePanel.Hit(mouse) && !scriptPanel.Hit(mouse))
 		{
-			Ray ray = Blocksworld.mainCamera.ScreenPointToRay(mouse * NormalizedScreen.scale);
+			Ray ray = mainCamera.ScreenPointToRay(mouse * NormalizedScreen.scale);
 			RaycastHit[] array = Physics.RaycastAll(ray);
-			if (array.Length > 0)
+			if (array.Length != 0)
 			{
 				float num = float.MaxValue;
 				Block result = null;
 				for (int i = 0; i < 2; i++)
 				{
-					foreach (RaycastHit raycastHit in array)
+					RaycastHit[] array2 = array;
+					for (int j = 0; j < array2.Length; j++)
 					{
+						RaycastHit raycastHit = array2[j];
 						float num2 = raycastHit.distance;
-						if (num2 + (float)i <= num)
+						if (!(num2 + (float)i <= num))
 						{
-							Block block = BWSceneManager.FindBlock(raycastHit.collider.gameObject, i == 1);
-							if (block != null)
+							continue;
+						}
+						Block block = BWSceneManager.FindBlock(raycastHit.collider.gameObject, i == 1);
+						if (block == null)
+						{
+							continue;
+						}
+						if (block is BlockVolumeBlock)
+						{
+							num2 += 0.01f;
+							if (num2 + (float)i > num)
 							{
-								if (block is BlockVolumeBlock)
-								{
-									num2 += 0.01f;
-									if (num2 + (float)i > num)
-									{
-										goto IL_16B;
-									}
-								}
-								if (!CharacterEditor.Instance.InEditMode() || CharacterEditor.Instance.IsCharacterBlock(block) || CharacterEditor.Instance.IsCharacterAttachment(block))
-								{
-									if (block != null && (!Tutorial.FilterOutMouseBlock() || Tutorial.BlockCanBeMouseBlock(block)))
-									{
-										num = num2;
-										Blocksworld.mouseBlockNormal = Quaternion.Inverse(raycastHit.collider.gameObject.transform.rotation) * raycastHit.normal;
-										Blocksworld.mouseBlockHitPosition = raycastHit.point;
-										result = block;
-									}
-								}
+								continue;
 							}
 						}
-						IL_16B:;
+						if ((!CharacterEditor.Instance.InEditMode() || CharacterEditor.Instance.IsCharacterBlock(block) || CharacterEditor.Instance.IsCharacterAttachment(block)) && block != null && (!Tutorial.FilterOutMouseBlock() || Tutorial.BlockCanBeMouseBlock(block)))
+						{
+							num = num2;
+							mouseBlockNormal = Quaternion.Inverse(raycastHit.collider.gameObject.transform.rotation) * raycastHit.normal;
+							mouseBlockHitPosition = raycastHit.point;
+							result = block;
+						}
 					}
 				}
 				return result;
@@ -4451,15 +4645,14 @@ public class Blocksworld : MonoBehaviour
 		return null;
 	}
 
-	// Token: 0x0600195F RID: 6495 RVA: 0x000B75C8 File Offset: 0x000B59C8
 	private static Block LonelyBlock(Bunch bunch)
 	{
-		if (Blocksworld.selectedBunch.blocks.Count == 1)
+		if (selectedBunch.blocks.Count == 1)
 		{
-			return Blocksworld.selectedBunch.blocks[0];
+			return selectedBunch.blocks[0];
 		}
 		Block block = null;
-		foreach (Block block2 in Blocksworld.selectedBunch.blocks)
+		foreach (Block block2 in selectedBunch.blocks)
 		{
 			if (block != null)
 			{
@@ -4470,49 +4663,47 @@ public class Blocksworld : MonoBehaviour
 		return block;
 	}
 
-	// Token: 0x06001960 RID: 6496 RVA: 0x000B7660 File Offset: 0x000B5A60
 	public static void Select(Block block, bool silent = false, bool updateTiles = true)
 	{
 		if (CharacterEditor.Instance.InEditMode())
 		{
 			return;
 		}
-		bool flag = Blocksworld.editorSelectionLocked.Contains(block);
+		bool flag = editorSelectionLocked.Contains(block);
 		if (BW.isUnityEditor)
 		{
 			if (flag)
 			{
-				bool flag2 = MappedInput.InputPressed(MappableInput.SELECTION_LOCK);
-				if (flag2)
+				if (MappedInput.InputPressed(MappableInput.SELECTION_LOCK))
 				{
-					Blocksworld.editorSelectionLocked.Remove(block);
-					Blocksworld.recentSelectionUnlockedBlock = block;
-					OnScreenLog.AddLogItem("Selection-unlocked a block of type '" + block.BlockType() + "'", 5f, false);
+					editorSelectionLocked.Remove(block);
+					recentSelectionUnlockedBlock = block;
+					OnScreenLog.AddLogItem("Selection-unlocked a block of type '" + block.BlockType() + "'");
 					if (!silent)
 					{
-						Sound.PlayOneShotSound("Move", 1f);
+						Sound.PlayOneShotSound("Move");
 					}
 				}
 				else
 				{
-					OnScreenLog.AddLogItem("Trying to select a selection-locked block. Hold the 'L' key and click on the block to unlock it.", 5f, false);
+					OnScreenLog.AddLogItem("Trying to select a selection-locked block. Hold the 'L' key and click on the block to unlock it.");
 				}
 				return;
 			}
-			if (!Blocksworld.keyLReleased && Blocksworld.recentSelectionUnlockedBlock != null && Blocksworld.recentSelectionUnlockedBlock == block)
+			if (!keyLReleased && recentSelectionUnlockedBlock != null && recentSelectionUnlockedBlock == block)
 			{
-				OnScreenLog.AddLogItem("Selection-unlocked the entire model", 5f, false);
-				List<Block> list = ConnectednessGraph.ConnectedComponent(block, 3, null, true);
+				OnScreenLog.AddLogItem("Selection-unlocked the entire model");
+				List<Block> list = ConnectednessGraph.ConnectedComponent(block, 3);
 				foreach (Block item in list)
 				{
-					Blocksworld.editorSelectionLocked.Remove(item);
+					editorSelectionLocked.Remove(item);
 				}
 				if (!silent)
 				{
-					Sound.PlayOneShotSound("Move", 1f);
+					Sound.PlayOneShotSound("Move");
 				}
-				Blocksworld.recentSelectionUnlockedBlock = null;
-				Blocksworld.keyLReleased = true;
+				recentSelectionUnlockedBlock = null;
+				keyLReleased = true;
 				return;
 			}
 		}
@@ -4526,9 +4717,9 @@ public class Blocksworld : MonoBehaviour
 			return;
 		}
 		List<Block> list2 = null;
-		bool flag3 = block != null && block.HasGroup("locked-model");
+		bool flag2 = block?.HasGroup("locked-model") ?? false;
 		BlockGrouped blockGrouped = block as BlockGrouped;
-		if (flag3)
+		if (flag2)
 		{
 			list2 = block.GetGroupOfType("locked-model").GetBlockList();
 		}
@@ -4538,123 +4729,109 @@ public class Blocksworld : MonoBehaviour
 		}
 		else if (block is BlockCharacter && !block.IsProfileCharacter())
 		{
-			list2 = Blocksworld.GetBlocksterPlusGearList((BlockCharacter)block);
+			list2 = GetBlocksterPlusGearList((BlockCharacter)block);
 		}
-		else if (block != null)
+		else if (block != null && block.connections.Find((Block block2) => block2 is BlockCharacter && !block2.IsProfileCharacter()) is BlockCharacter b && IsBlocksterGear(block))
 		{
-			BlockCharacter blockCharacter = block.connections.Find((Block b) => b is BlockCharacter && !b.IsProfileCharacter()) as BlockCharacter;
-			if (blockCharacter != null && Blocksworld.IsBlocksterGear(block))
-			{
-				list2 = Blocksworld.GetBlocksterPlusGearList(blockCharacter);
-			}
+			list2 = GetBlocksterPlusGearList(b);
 		}
 		if (block != null)
 		{
 			if (list2 != null && list2.Count > 1)
 			{
-				if (Blocksworld.selectedBunch != null)
+				if (selectedBunch != null)
 				{
-					bool flag4 = Blocksworld.selectedBunch.blocks.Contains(block);
-					HashSet<Block> bunchSet = Blocksworld.GetBunchSet(list2);
-					if (flag4 && bunchSet.Count > Blocksworld.selectedBunch.blocks.Count)
+					bool flag3 = selectedBunch.blocks.Contains(block);
+					HashSet<Block> bunchSet = GetBunchSet(list2);
+					if (flag3 && bunchSet.Count > selectedBunch.blocks.Count)
 					{
-						Blocksworld.DeselectBunch();
-						Blocksworld.SelectBunch(new List<Block>(bunchSet), silent, updateTiles);
+						DeselectBunch();
+						SelectBunch(new List<Block>(bunchSet), silent, updateTiles);
+						return;
+					}
+					DeselectBunch();
+					if (flag2)
+					{
+						SelectBunch(list2, silent, updateTiles);
 					}
 					else
 					{
-						Blocksworld.DeselectBunch();
-						if (flag3)
-						{
-							Blocksworld.SelectBunch(list2, silent, updateTiles);
-						}
-						else
-						{
-							Blocksworld.SelectBlock(block, silent, updateTiles);
-						}
+						SelectBlock(block, silent, updateTiles);
 					}
 				}
-				else if (Blocksworld.selectedBlock != null)
+				else if (selectedBlock != null)
 				{
-					if (block == Blocksworld.selectedBlock && (Tutorial.state == TutorialState.None || Tutorial.state == TutorialState.SelectBunch))
+					if (block == selectedBlock && (Tutorial.state == TutorialState.None || Tutorial.state == TutorialState.SelectBunch))
 					{
-						Blocksworld.DeselectBlock(silent, false);
-						Blocksworld.SelectBunch(list2, silent, updateTiles);
+						DeselectBlock(silent, updateTiles: false);
+						SelectBunch(list2, silent, updateTiles);
+						return;
+					}
+					DeselectBlock(silent, updateTiles: false);
+					if (flag2)
+					{
+						SelectBunch(list2, silent, updateTiles);
 					}
 					else
 					{
-						Blocksworld.DeselectBlock(silent, false);
-						if (flag3)
-						{
-							Blocksworld.SelectBunch(list2, silent, updateTiles);
-						}
-						else
-						{
-							Blocksworld.SelectBlock(block, silent, updateTiles);
-						}
+						SelectBlock(block, silent, updateTiles);
 					}
 				}
-				else if (flag3)
+				else if (flag2)
 				{
-					Blocksworld.SelectBunch(list2, silent, updateTiles);
+					SelectBunch(list2, silent, updateTiles);
 				}
 				else
 				{
-					Blocksworld.SelectBlock(block, silent, updateTiles);
+					SelectBlock(block, silent, updateTiles);
 				}
 			}
-			else if (block != Blocksworld.selectedBlock)
+			else if (block != selectedBlock)
 			{
-				if (Blocksworld.selectedBunch != null)
+				if (selectedBunch != null)
 				{
-					Blocksworld.DeselectBunch();
+					DeselectBunch();
 				}
-				if (Blocksworld.selectedBlock != null)
+				if (selectedBlock != null)
 				{
-					Blocksworld.DeselectBlock(silent, false);
+					DeselectBlock(silent, updateTiles: false);
 				}
-				Blocksworld.SelectBlock(block, silent, updateTiles);
+				SelectBlock(block, silent, updateTiles);
 			}
-			else if (block == Blocksworld.selectedBlock && Blocksworld.selectedBunch == null && (Tutorial.state == TutorialState.None || Tutorial.state == TutorialState.SelectBunch))
+			else if (block == selectedBlock && selectedBunch == null && (Tutorial.state == TutorialState.None || Tutorial.state == TutorialState.SelectBunch))
 			{
-				Blocksworld.DeselectBlock(silent, false);
-				Blocksworld.SelectBunch(block, silent, updateTiles);
+				DeselectBlock(silent, updateTiles: false);
+				SelectBunch(block, silent, updateTiles);
 			}
-			else if (block == Blocksworld.selectedBlock && Blocksworld.selectedBunch != null)
+			else if (block == selectedBlock && selectedBunch != null)
 			{
-				Blocksworld.DeselectBunch();
-				Blocksworld.SelectBlock(block, silent, updateTiles);
+				DeselectBunch();
+				SelectBlock(block, silent, updateTiles);
 			}
 		}
 		else
 		{
-			Blocksworld.DeselectBunch();
-			Blocksworld.DeselectBlock(silent, updateTiles);
+			DeselectBunch();
+			DeselectBlock(silent, updateTiles);
 		}
 	}
 
-	// Token: 0x06001961 RID: 6497 RVA: 0x000B7A80 File Offset: 0x000B5E80
 	private static HashSet<Block> GetBunchSet(List<Block> list)
 	{
 		HashSet<Block> hashSet = new HashSet<Block>();
-		foreach (Block block in list)
+		foreach (Block item in list)
 		{
-			hashSet.UnionWith(Blocksworld.GetBunchBlocks(block));
+			hashSet.UnionWith(GetBunchBlocks(item));
 		}
 		return hashSet;
 	}
 
-	// Token: 0x06001962 RID: 6498 RVA: 0x000B7AE4 File Offset: 0x000B5EE4
 	public static bool IsBlocksterGear(Block cb)
 	{
-		int tabIndexForGaf = PanelSlots.GetTabIndexForGaf(new GAF(Block.predicateCreate, new object[]
-		{
-			cb.BlockType()
-		}));
+		int tabIndexForGaf = PanelSlots.GetTabIndexForGaf(new GAF(Block.predicateCreate, cb.BlockType()));
 		return tabIndexForGaf == 6;
 	}
 
-	// Token: 0x06001963 RID: 6499 RVA: 0x000B7B14 File Offset: 0x000B5F14
 	public static bool IsBlocksterOverlappingHeadGear(Block cb)
 	{
 		bool result = false;
@@ -4681,32 +4858,29 @@ public class Blocksworld : MonoBehaviour
 		return result;
 	}
 
-	// Token: 0x06001964 RID: 6500 RVA: 0x000B7C18 File Offset: 0x000B6018
 	public static List<Block> GetBlocksterPlusGearList(BlockCharacter b)
 	{
 		List<Block> list = new List<Block>();
 		list.Add(b);
-		foreach (Block block in b.connections)
+		foreach (Block connection in b.connections)
 		{
-			if (Blocksworld.IsBlocksterGear(block))
+			if (IsBlocksterGear(connection))
 			{
-				list.Add(block);
+				list.Add(connection);
 			}
 		}
 		return list;
 	}
 
-	// Token: 0x06001965 RID: 6501 RVA: 0x000B7C90 File Offset: 0x000B6090
 	public static bool SelectedBunchIsGroup()
 	{
-		if (Blocksworld.selectedBunch != null)
+		if (selectedBunch != null)
 		{
 			List<Block> list = new List<Block>();
 			int num = -1;
-			foreach (Block block in Blocksworld.selectedBunch.blocks)
+			foreach (Block block in selectedBunch.blocks)
 			{
-				BlockGrouped blockGrouped = block as BlockGrouped;
-				if (blockGrouped == null)
+				if (!(block is BlockGrouped blockGrouped))
 				{
 					return false;
 				}
@@ -4721,40 +4895,40 @@ public class Blocksworld : MonoBehaviour
 				}
 				list.Add(block);
 			}
-			return list.Count == Blocksworld.selectedBunch.blocks.Count;
+			return list.Count == selectedBunch.blocks.Count;
 		}
 		return false;
 	}
 
-	// Token: 0x06001966 RID: 6502 RVA: 0x000B7D68 File Offset: 0x000B6168
 	public static List<Block> GetBunchBlocks(Block block)
 	{
-		List<Block> list = ConnectednessGraph.ConnectedComponent(block, 3, null, true);
+		List<Block> list = ConnectednessGraph.ConnectedComponent(block, 3);
 		List<Block> list2 = new List<Block>();
-		foreach (Block block2 in list)
+		foreach (Block item in list)
 		{
-			if (!Blocksworld.IsSelectionLocked(block2))
+			if (!IsSelectionLocked(item))
 			{
-				list2.Add(block2);
+				list2.Add(item);
 			}
 		}
 		HashSet<Block> hashSet = new HashSet<Block>(list2);
-		foreach (Block block3 in new List<Block>(list2))
+		foreach (Block item2 in new List<Block>(list2))
 		{
-			BlockGrouped blockGrouped = block3 as BlockGrouped;
-			if (blockGrouped != null)
+			if (!(item2 is BlockGrouped blockGrouped))
 			{
-				Block[] blocks = blockGrouped.group.GetBlocks();
-				foreach (Block block4 in blocks)
+				continue;
+			}
+			Block[] blocks = blockGrouped.group.GetBlocks();
+			Block[] array = blocks;
+			foreach (Block block2 in array)
+			{
+				List<Block> list3 = ConnectednessGraph.ConnectedComponent(block2, 3);
+				foreach (Block item3 in list3)
 				{
-					List<Block> list3 = ConnectednessGraph.ConnectedComponent(block4, 3, null, true);
-					foreach (Block item in list3)
+					if (!hashSet.Contains(item3))
 					{
-						if (!hashSet.Contains(item))
-						{
-							hashSet.Add(item);
-							list2.Add(item);
-						}
+						hashSet.Add(item3);
+						list2.Add(item3);
 					}
 				}
 			}
@@ -4762,86 +4936,83 @@ public class Blocksworld : MonoBehaviour
 		return list2;
 	}
 
-	// Token: 0x06001967 RID: 6503 RVA: 0x000B7EDC File Offset: 0x000B62DC
 	public static void SelectBunch(Block block, bool silent = false, bool updateTiles = true)
 	{
-		List<Block> bunchBlocks = Blocksworld.GetBunchBlocks(block);
+		List<Block> bunchBlocks = GetBunchBlocks(block);
 		if (bunchBlocks.Count <= 1)
 		{
-			if (!Blocksworld.IsSelectionLocked(block))
+			if (!IsSelectionLocked(block))
 			{
-				Blocksworld.SelectBlock(block, silent, true);
+				SelectBlock(block, silent);
 			}
 			return;
 		}
-		Blocksworld.selectedBunch = new Bunch();
+		selectedBunch = new Bunch();
 		for (int i = 0; i < bunchBlocks.Count; i++)
 		{
 			Block b = bunchBlocks[i];
-			if (!Blocksworld.IsSelectionLocked(b))
+			if (!IsSelectionLocked(b))
 			{
-				Blocksworld.selectedBunch.Add(b);
+				selectedBunch.Add(b);
 			}
 		}
-		Blocksworld.SortBlocksAsInWorld(Blocksworld.selectedBunch.blocks);
-		TBox.Attach(Blocksworld.selectedBunch, silent);
-		TBox.Show(true);
-		Blocksworld.blocksworldCamera.Follow(Blocksworld.selectedBunch);
+		SortBlocksAsInWorld(selectedBunch.blocks);
+		TBox.Attach(selectedBunch, silent);
+		TBox.Show(show: true);
+		blocksworldCamera.Follow(selectedBunch);
 		if (updateTiles)
 		{
-			Blocksworld.UpdateTiles();
-			Scarcity.UpdateInventory(true, null);
+			UpdateTiles();
+			Scarcity.UpdateInventory();
 		}
 	}
 
-	// Token: 0x06001968 RID: 6504 RVA: 0x000B7F90 File Offset: 0x000B6390
 	private static void UpdateMouseBlock(Block block)
 	{
-		Blocksworld.mouseBlockLast = Blocksworld.mouseBlock;
-		Blocksworld.mouseBlockNormalLast = Blocksworld.mouseBlockNormal;
-		Blocksworld.mouseBlock = block;
+		mouseBlockLast = mouseBlock;
+		mouseBlockNormalLast = mouseBlockNormal;
+		mouseBlock = block;
 	}
 
-	// Token: 0x06001969 RID: 6505 RVA: 0x000B7FAC File Offset: 0x000B63AC
 	public static void SelectBunch(List<Block> blocks, bool silent = false, bool updateTiles = true)
 	{
-		if (blocks.Count > 0)
+		if (blocks.Count <= 0)
 		{
-			if (blocks.Count == 1)
+			return;
+		}
+		if (blocks.Count == 1)
+		{
+			if (!IsSelectionLocked(blocks[0]))
 			{
-				if (!Blocksworld.IsSelectionLocked(blocks[0]))
-				{
-					Blocksworld.SelectBlock(blocks[0], silent, true);
-					Blocksworld.UpdateMouseBlock(blocks[0]);
-				}
-				return;
+				SelectBlock(blocks[0], silent);
+				UpdateMouseBlock(blocks[0]);
 			}
-			Blocksworld.selectedBunch = new Bunch();
-			for (int i = 0; i < blocks.Count; i++)
+			return;
+		}
+		selectedBunch = new Bunch();
+		for (int i = 0; i < blocks.Count; i++)
+		{
+			Block b = blocks[i];
+			if (!IsSelectionLocked(b))
 			{
-				Block b = blocks[i];
-				if (!Blocksworld.IsSelectionLocked(b))
-				{
-					Blocksworld.selectedBunch.Add(b);
-				}
+				selectedBunch.Add(b);
 			}
-			Blocksworld.SortBlocksAsInWorld(Blocksworld.selectedBunch.blocks);
-			TBox.Attach(Blocksworld.selectedBunch, silent);
-			TBox.Show(true);
-			Blocksworld.blocksworldCamera.Follow(Blocksworld.selectedBunch);
-			if (Blocksworld.SelectedBunchIsGroup())
-			{
-				Blocksworld.ShowSelectedBlockPanel();
-			}
-			if (updateTiles)
-			{
-				Blocksworld.UpdateTiles();
-				Scarcity.UpdateInventory(true, null);
-			}
+		}
+		SortBlocksAsInWorld(selectedBunch.blocks);
+		TBox.Attach(selectedBunch, silent);
+		TBox.Show(show: true);
+		blocksworldCamera.Follow(selectedBunch);
+		if (SelectedBunchIsGroup())
+		{
+			ShowSelectedBlockPanel();
+		}
+		if (updateTiles)
+		{
+			UpdateTiles();
+			Scarcity.UpdateInventory();
 		}
 	}
 
-	// Token: 0x0600196A RID: 6506 RVA: 0x000B808C File Offset: 0x000B648C
 	public static void SortBlocksAsInWorld(List<Block> toSort)
 	{
 		Dictionary<Block, int> blockIndices = new Dictionary<Block, int>();
@@ -4858,18 +5029,16 @@ public class Blocksworld : MonoBehaviour
 		});
 	}
 
-	// Token: 0x0600196B RID: 6507 RVA: 0x000B80EC File Offset: 0x000B64EC
 	public static void DeselectBunch()
 	{
-		Blocksworld.blocksworldCamera.Unfollow();
-		if (Blocksworld.selectedBunch != null && Blocksworld.scriptPanel.IsShowing())
+		blocksworldCamera.Unfollow();
+		if (selectedBunch != null && scriptPanel.IsShowing())
 		{
-			Blocksworld.scriptPanel.Show(false);
+			scriptPanel.Show(show: false);
 		}
-		Blocksworld.selectedBunch = null;
+		selectedBunch = null;
 	}
 
-	// Token: 0x0600196C RID: 6508 RVA: 0x000B8124 File Offset: 0x000B6524
 	public static void SelectBlock(Block block, bool silent = false, bool updateTiles = true)
 	{
 		if (block != null && block.go == null)
@@ -4877,270 +5046,224 @@ public class Blocksworld : MonoBehaviour
 			BWLog.Info("Tried to select an already destroyed block");
 			return;
 		}
-		Blocksworld.selectedBlock = block;
-		TBox.Attach(Blocksworld.selectedBlock, silent);
-		TBox.Show(true);
-		Blocksworld.blocksworldCamera.Follow(block);
+		selectedBlock = block;
+		TBox.Attach(selectedBlock, silent);
+		TBox.Show(show: true);
+		blocksworldCamera.Follow(block);
 		if (updateTiles)
 		{
-			Blocksworld.UpdateTiles();
-			Scarcity.UpdateInventory(true, null);
+			UpdateTiles();
+			Scarcity.UpdateInventory();
 		}
-		if (Blocksworld.locked.Contains(block))
+		if (locked.Contains(block))
 		{
-			Blocksworld.scriptPanel.Show(false);
+			scriptPanel.Show(show: false);
 		}
 		else
 		{
-			Blocksworld.ShowSelectedBlockPanel();
+			ShowSelectedBlockPanel();
 		}
 	}
 
-	// Token: 0x0600196D RID: 6509 RVA: 0x000B81AC File Offset: 0x000B65AC
 	public static void ScrollToFirstBlockSpecificTile(Block block)
 	{
 		bool flag = Tutorial.state == TutorialState.None || Tutorial.mode == TutorialMode.Puzzle;
 		flag &= !Options.DisableAutoScrollToScriptTile;
-		bool flag2 = Blocksworld.buildPanel.GetTabBar().SelectedTab == TabBarTabId.Actions;
-		flag = (flag && flag2);
-		if (flag)
+		bool flag2 = buildPanel.GetTabBar().SelectedTab == TabBarTabId.Actions;
+		if (!(flag && flag2))
 		{
-			BlockMetaData blockMetaData = block.GetBlockMetaData();
-			if (blockMetaData != null && blockMetaData.scrollToScriptTileOnSelect)
+			return;
+		}
+		BlockMetaData blockMetaData = block.GetBlockMetaData();
+		if (!(blockMetaData != null) || !blockMetaData.scrollToScriptTileOnSelect)
+		{
+			return;
+		}
+		HashSet<Predicate> hashSet = new HashSet<Predicate>(PredicateRegistry.ForBlock(block, includeBaseTypes: false));
+		if (hashSet.Count > 0)
+		{
+			Tile tile = buildPanel.FindFirstTileWithPredicate(hashSet);
+			if (tile != null)
 			{
-				HashSet<Predicate> hashSet = new HashSet<Predicate>(PredicateRegistry.ForBlock(block, false));
-				if (hashSet.Count > 0)
-				{
-					Tile tile = Blocksworld.buildPanel.FindFirstTileWithPredicate(hashSet);
-					if (tile != null)
-					{
-						Blocksworld.buildPanel.ScrollToVisible(tile, true, false, false);
-					}
-				}
+				buildPanel.ScrollToVisible(tile, immediately: true);
 			}
 		}
 	}
 
-	// Token: 0x0600196E RID: 6510 RVA: 0x000B8254 File Offset: 0x000B6654
 	public static void ShowSelectedBlockPanel()
 	{
-		Blocksworld.scriptPanel.ClearTiles();
-		Block selectedScriptBlock = Blocksworld.GetSelectedScriptBlock();
-		if (Blocksworld.selectedBlock != null && Blocksworld.selectedBlock.HasGroup("locked-model"))
+		scriptPanel.ClearTiles();
+		Block selectedScriptBlock = GetSelectedScriptBlock();
+		if (selectedBlock != null && selectedBlock.HasGroup("locked-model"))
 		{
-			Blocksworld.scriptPanel.Show(false);
+			scriptPanel.Show(show: false);
 			return;
 		}
-		Blocksworld.scriptPanel.SetTilesFromBlock(selectedScriptBlock);
-		Blocksworld.scriptPanel.Show(true);
-		Blocksworld.scriptPanel.UpdateGestureRecognizer(Blocksworld.recognizer);
-		Blocksworld.scriptPanel.Position();
-		Blocksworld.scriptPanel.Layout();
+		scriptPanel.SetTilesFromBlock(selectedScriptBlock);
+		scriptPanel.Show(show: true);
+		scriptPanel.UpdateGestureRecognizer(recognizer);
+		scriptPanel.Position();
+		scriptPanel.Layout();
 	}
 
-	// Token: 0x0600196F RID: 6511 RVA: 0x000B82D4 File Offset: 0x000B66D4
 	public static void DeselectBlock(bool silent = false, bool updateTiles = true)
 	{
 		TBox.Detach(silent);
-		TBox.Show(false);
-		Blocksworld.blocksworldCamera.Unfollow();
-		if (Blocksworld.selectedBlock != null)
+		TBox.Show(show: false);
+		blocksworldCamera.Unfollow();
+		if (selectedBlock != null)
 		{
-			Blocksworld.scriptPanel.Show(false);
-			Blocksworld.selectedBlock = null;
+			scriptPanel.Show(show: false);
+			selectedBlock = null;
 			if (updateTiles)
 			{
-				Blocksworld.UpdateTiles();
+				UpdateTiles();
 			}
 		}
 	}
 
-	// Token: 0x06001970 RID: 6512 RVA: 0x000B8312 File Offset: 0x000B6712
 	public static void Deselect(bool silent = false, bool updateTiles = true)
 	{
-		Blocksworld.Select(null, silent, updateTiles);
-		Blocksworld.Select(null, silent, updateTiles);
+		Select(null, silent, updateTiles);
+		Select(null, silent, updateTiles);
 	}
 
-	// Token: 0x06001971 RID: 6513 RVA: 0x000B8324 File Offset: 0x000B6724
 	public static HashSet<Predicate> GetTaggedPredicates()
 	{
-		if (Blocksworld.taggedPredicates == null)
+		if (taggedPredicates == null)
 		{
-			Blocksworld.taggedPredicates = new HashSet<Predicate>(new Predicate[]
+			taggedPredicates = new HashSet<Predicate>(new Predicate[69]
 			{
-				PredicateRegistry.ByName("Block.TagVisibilityCheck", true),
-				PredicateRegistry.ByName("Position.IsWithin", true),
-				PredicateRegistry.ByName("Sphere.MoveToTag", true),
-				PredicateRegistry.ByName("Sphere.MoveThroughTag", true),
-				PredicateRegistry.ByName("Sphere.AvoidTag", true),
-				PredicateRegistry.ByName("Legs.GotoTag", true),
-				PredicateRegistry.ByName("Quadped.GotoTag", true),
-				PredicateRegistry.ByName("MLPLegs.GotoTag", true),
-				PredicateRegistry.ByName("Character.GotoTag", true),
-				PredicateRegistry.ByName("AnimCharacter.GotoTag", true),
-				PredicateRegistry.ByName("Legs.ChaseTag", true),
-				PredicateRegistry.ByName("Quadped.ChaseTag", true),
-				PredicateRegistry.ByName("MLPLegs.ChaseTag", true),
-				PredicateRegistry.ByName("Character.ChaseTag", true),
-				PredicateRegistry.ByName("AnimCharacter.ChaseTag", true),
-				PredicateRegistry.ByName("Legs.TurnTowardsTag", true),
-				PredicateRegistry.ByName("Quadped.TurnTowardsTag", true),
-				PredicateRegistry.ByName("MLPLegs.TurnTowardsTag", true),
-				PredicateRegistry.ByName("Character.TurnTowardsTag", true),
-				PredicateRegistry.ByName("AnimCharacter.TurnTowardsTag", true),
-				PredicateRegistry.ByName("Legs.AvoidTag", true),
-				PredicateRegistry.ByName("Quadped.AvoidTag", true),
-				PredicateRegistry.ByName("MLPLegs.AvoidTag", true),
-				PredicateRegistry.ByName("Character.AvoidTag", true),
-				PredicateRegistry.ByName("AnimCharacter.AvoidTag", true),
-				PredicateRegistry.ByName("Block.TaggedBump", true),
-				PredicateRegistry.ByName("Block.TaggedBumpModel", true),
-				PredicateRegistry.ByName("Block.TaggedBumpChunk", true),
-				PredicateRegistry.ByName("Block.TeleportToTag", true),
-				PredicateRegistry.ByName("Wheel.TurnTowardsTag", true),
-				PredicateRegistry.ByName("Wheel.DriveTowardsTag", true),
-				PredicateRegistry.ByName("Wheel.DriveTowardsTagRaw", true),
-				PredicateRegistry.ByName("Wheel.IsWheelTowardsTag", true),
-				PredicateRegistry.ByName("BulkyWheel.TurnTowardsTag", true),
-				PredicateRegistry.ByName("BulkyWheel.DriveTowardsTag", true),
-				PredicateRegistry.ByName("BulkyWheel.DriveTowardsTagRaw", true),
-				PredicateRegistry.ByName("BulkyWheel.IsWheelTowardsTag", true),
-				PredicateRegistry.ByName("GoldenWheel.TurnTowardsTag", true),
-				PredicateRegistry.ByName("GoldenWheel.DriveTowardsTag", true),
-				PredicateRegistry.ByName("GoldenWheel.DriveTowardsTagRaw", true),
-				PredicateRegistry.ByName("GoldenWheel.IsWheelTowardsTag", true),
-				PredicateRegistry.ByName("SpokedWheel.TurnTowardsTag", true),
-				PredicateRegistry.ByName("SpokedWheel.DriveTowardsTag", true),
-				PredicateRegistry.ByName("SpokedWheel.DriveTowardsTagRaw", true),
-				PredicateRegistry.ByName("SpokedWheel.IsWheelTowardsTag", true),
-				PredicateRegistry.ByName("RadarUI.TrackTag", true),
-				PredicateRegistry.ByName("AntiGravity.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("AntiGravityColumn.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("WiserWing.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("BirdWing.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("BatWing.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("BatWingBackpack.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("FairyWings.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("MLPWings.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("Cape.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("Jetpack.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("FlightYoke.TurnTowardsTagChunk", true),
-				PredicateRegistry.ByName("Block.IsTreasureForTag", true),
-				PredicateRegistry.ByName("Block.IsPickupForTag", true),
-				PredicateRegistry.ByName("Block.OnCollectByTag", true),
-				PredicateRegistry.ByName("Missile.TargetTag", true),
-				PredicateRegistry.ByName("MissileControl.TargetTag", true),
-				PredicateRegistry.ByName("Block.TagProximityCheck", true),
-				PredicateRegistry.ByName("SteeringWheel.DriveThroughTag", true),
-				PredicateRegistry.ByName("SteeringWheel.AvoidTag", true),
-				PredicateRegistry.ByName("Block.CameraFollowLookTowardTag", true),
-				PredicateRegistry.ByName("Magnet.InfluenceTag", true),
-				PredicateRegistry.ByName("Block.ExplodeTag", true),
-				PredicateRegistry.ByName("TeleportVolume.TeleportTag", true)
+				PredicateRegistry.ByName("Block.TagVisibilityCheck"),
+				PredicateRegistry.ByName("Position.IsWithin"),
+				PredicateRegistry.ByName("Sphere.MoveToTag"),
+				PredicateRegistry.ByName("Sphere.MoveThroughTag"),
+				PredicateRegistry.ByName("Sphere.AvoidTag"),
+				PredicateRegistry.ByName("Legs.GotoTag"),
+				PredicateRegistry.ByName("Quadped.GotoTag"),
+				PredicateRegistry.ByName("MLPLegs.GotoTag"),
+				PredicateRegistry.ByName("Character.GotoTag"),
+				PredicateRegistry.ByName("AnimCharacter.GotoTag"),
+				PredicateRegistry.ByName("Legs.ChaseTag"),
+				PredicateRegistry.ByName("Quadped.ChaseTag"),
+				PredicateRegistry.ByName("MLPLegs.ChaseTag"),
+				PredicateRegistry.ByName("Character.ChaseTag"),
+				PredicateRegistry.ByName("AnimCharacter.ChaseTag"),
+				PredicateRegistry.ByName("Legs.TurnTowardsTag"),
+				PredicateRegistry.ByName("Quadped.TurnTowardsTag"),
+				PredicateRegistry.ByName("MLPLegs.TurnTowardsTag"),
+				PredicateRegistry.ByName("Character.TurnTowardsTag"),
+				PredicateRegistry.ByName("AnimCharacter.TurnTowardsTag"),
+				PredicateRegistry.ByName("Legs.AvoidTag"),
+				PredicateRegistry.ByName("Quadped.AvoidTag"),
+				PredicateRegistry.ByName("MLPLegs.AvoidTag"),
+				PredicateRegistry.ByName("Character.AvoidTag"),
+				PredicateRegistry.ByName("AnimCharacter.AvoidTag"),
+				PredicateRegistry.ByName("Block.TaggedBump"),
+				PredicateRegistry.ByName("Block.TaggedBumpModel"),
+				PredicateRegistry.ByName("Block.TaggedBumpChunk"),
+				PredicateRegistry.ByName("Block.TeleportToTag"),
+				PredicateRegistry.ByName("Wheel.TurnTowardsTag"),
+				PredicateRegistry.ByName("Wheel.DriveTowardsTag"),
+				PredicateRegistry.ByName("Wheel.DriveTowardsTagRaw"),
+				PredicateRegistry.ByName("Wheel.IsWheelTowardsTag"),
+				PredicateRegistry.ByName("BulkyWheel.TurnTowardsTag"),
+				PredicateRegistry.ByName("BulkyWheel.DriveTowardsTag"),
+				PredicateRegistry.ByName("BulkyWheel.DriveTowardsTagRaw"),
+				PredicateRegistry.ByName("BulkyWheel.IsWheelTowardsTag"),
+				PredicateRegistry.ByName("GoldenWheel.TurnTowardsTag"),
+				PredicateRegistry.ByName("GoldenWheel.DriveTowardsTag"),
+				PredicateRegistry.ByName("GoldenWheel.DriveTowardsTagRaw"),
+				PredicateRegistry.ByName("GoldenWheel.IsWheelTowardsTag"),
+				PredicateRegistry.ByName("SpokedWheel.TurnTowardsTag"),
+				PredicateRegistry.ByName("SpokedWheel.DriveTowardsTag"),
+				PredicateRegistry.ByName("SpokedWheel.DriveTowardsTagRaw"),
+				PredicateRegistry.ByName("SpokedWheel.IsWheelTowardsTag"),
+				PredicateRegistry.ByName("RadarUI.TrackTag"),
+				PredicateRegistry.ByName("AntiGravity.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("AntiGravityColumn.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("WiserWing.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("BirdWing.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("BatWing.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("BatWingBackpack.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("FairyWings.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("MLPWings.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("Cape.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("Jetpack.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("FlightYoke.TurnTowardsTagChunk"),
+				PredicateRegistry.ByName("Block.IsTreasureForTag"),
+				PredicateRegistry.ByName("Block.IsPickupForTag"),
+				PredicateRegistry.ByName("Block.OnCollectByTag"),
+				PredicateRegistry.ByName("Missile.TargetTag"),
+				PredicateRegistry.ByName("MissileControl.TargetTag"),
+				PredicateRegistry.ByName("Block.TagProximityCheck"),
+				PredicateRegistry.ByName("SteeringWheel.DriveThroughTag"),
+				PredicateRegistry.ByName("SteeringWheel.AvoidTag"),
+				PredicateRegistry.ByName("Block.CameraFollowLookTowardTag"),
+				PredicateRegistry.ByName("Magnet.InfluenceTag"),
+				PredicateRegistry.ByName("Block.ExplodeTag"),
+				PredicateRegistry.ByName("TeleportVolume.TeleportTag")
 			});
 		}
-		return Blocksworld.taggedPredicates;
+		return taggedPredicates;
 	}
 
-	// Token: 0x06001972 RID: 6514 RVA: 0x000B8754 File Offset: 0x000B6B54
 	private static void AddUniqueBlocks(string s1, string s2)
 	{
-		HashSet<string> hashSet;
-		if (!Blocksworld.uniqueBlockMap.TryGetValue(s1, out hashSet))
+		if (!uniqueBlockMap.TryGetValue(s1, out var value))
 		{
-			hashSet = new HashSet<string>();
-			Blocksworld.uniqueBlockMap.Add(s1, hashSet);
+			value = new HashSet<string>();
+			uniqueBlockMap.Add(s1, value);
 		}
-		hashSet.Add(s2);
+		value.Add(s2);
 	}
 
-	// Token: 0x06001973 RID: 6515 RVA: 0x000B8790 File Offset: 0x000B6B90
 	private static void AddUniqueBlockNames(params string[] blockNames)
 	{
 		for (int i = 0; i < blockNames.Length; i++)
 		{
 			string text = blockNames[i];
-			Blocksworld.AddUniqueBlocks(text, text);
+			AddUniqueBlocks(text, text);
 			for (int j = i + 1; j < blockNames.Length; j++)
 			{
 				string text2 = blockNames[j];
-				Blocksworld.AddUniqueBlocks(text, text2);
-				Blocksworld.AddUniqueBlocks(text2, text);
+				AddUniqueBlocks(text, text2);
+				AddUniqueBlocks(text2, text);
 			}
 		}
 	}
 
-	// Token: 0x06001974 RID: 6516 RVA: 0x000B87E4 File Offset: 0x000B6BE4
 	public static Dictionary<string, HashSet<string>> GetUniqueBlockMap()
 	{
-		if (Blocksworld.uniqueBlockMap == null)
+		if (uniqueBlockMap == null)
 		{
-			Blocksworld.uniqueBlockMap = new Dictionary<string, HashSet<string>>();
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Counter I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Counter II"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Timer I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Timer II"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Gauge I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Gauge II"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Object Counter I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"UI Radar I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"Master"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"Highscore I"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"Jukebox"
-			});
-			Blocksworld.AddUniqueBlockNames(new string[]
-			{
-				"Missile Control"
-			});
+			uniqueBlockMap = new Dictionary<string, HashSet<string>>();
+			AddUniqueBlockNames("UI Counter I");
+			AddUniqueBlockNames("UI Counter II");
+			AddUniqueBlockNames("UI Timer I");
+			AddUniqueBlockNames("UI Timer II");
+			AddUniqueBlockNames("UI Gauge I");
+			AddUniqueBlockNames("UI Gauge II");
+			AddUniqueBlockNames("UI Object Counter I");
+			AddUniqueBlockNames("UI Radar I");
+			AddUniqueBlockNames("Master");
+			AddUniqueBlockNames("Highscore I");
+			AddUniqueBlockNames("Jukebox");
+			AddUniqueBlockNames("Missile Control");
 		}
-		return Blocksworld.uniqueBlockMap;
+		return uniqueBlockMap;
 	}
 
-	// Token: 0x06001975 RID: 6517 RVA: 0x000B88F0 File Offset: 0x000B6CF0
 	private static bool UpdateDisabledBlockTypes(string blockType, HashSet<string> disabledTypes)
 	{
 		if (disabledTypes.Contains(blockType))
 		{
 			return false;
 		}
-		Dictionary<string, HashSet<string>> dictionary = Blocksworld.GetUniqueBlockMap();
-		HashSet<string> hashSet;
-		if (dictionary.TryGetValue(blockType, out hashSet))
+		Dictionary<string, HashSet<string>> dictionary = GetUniqueBlockMap();
+		if (dictionary.TryGetValue(blockType, out var value))
 		{
-			foreach (string item in hashSet)
+			foreach (string item in value)
 			{
 				disabledTypes.Add(item);
 			}
@@ -5149,45 +5272,39 @@ public class Blocksworld : MonoBehaviour
 		return true;
 	}
 
-	// Token: 0x06001976 RID: 6518 RVA: 0x000B8970 File Offset: 0x000B6D70
 	private static HashSet<GAF> GetUniqueGafs()
 	{
-		if (Blocksworld.uniqueGafs == null)
+		if (uniqueGafs == null)
 		{
-			Blocksworld.uniqueGafs = new HashSet<GAF>();
+			uniqueGafs = new HashSet<GAF>();
 			for (int i = 0; i < 8; i++)
 			{
-				Blocksworld.uniqueGafs.Add(new GAF("Block.SetSpawnpoint", new object[]
-				{
-					i
-				}));
+				uniqueGafs.Add(new GAF("Block.SetSpawnpoint", i));
 			}
 		}
-		return Blocksworld.uniqueGafs;
+		return uniqueGafs;
 	}
 
-	// Token: 0x06001977 RID: 6519 RVA: 0x000B89CC File Offset: 0x000B6DCC
 	private static void UpdateUsedUniqueGafs(List<List<Tile>> tiles, HashSet<GAF> usedUniqueGafs)
 	{
-		HashSet<GAF> hashSet = Blocksworld.GetUniqueGafs();
-		foreach (List<Tile> list in tiles)
+		HashSet<GAF> hashSet = GetUniqueGafs();
+		foreach (List<Tile> tile in tiles)
 		{
-			foreach (Tile tile in list)
+			foreach (Tile item in tile)
 			{
-				if (hashSet.Contains(tile.gaf))
+				if (hashSet.Contains(item.gaf))
 				{
-					usedUniqueGafs.Add(tile.gaf);
+					usedUniqueGafs.Add(item.gaf);
 				}
 			}
 		}
 	}
 
-	// Token: 0x06001978 RID: 6520 RVA: 0x000B8A80 File Offset: 0x000B6E80
 	private static PredicateSet GetMagnetPredicates()
 	{
-		if (Blocksworld.magnetPredicates == null)
+		if (magnetPredicates == null)
 		{
-			Blocksworld.magnetPredicates = new PredicateSet(new HashSet<Predicate>
+			magnetPredicates = new PredicateSet(new HashSet<Predicate>
 			{
 				Block.predicatePulledByMagnet,
 				Block.predicatePulledByMagnetModel,
@@ -5195,84 +5312,79 @@ public class Blocksworld : MonoBehaviour
 				Block.predicatePushedByMagnetModel
 			});
 		}
-		return Blocksworld.magnetPredicates;
+		return magnetPredicates;
 	}
 
-	// Token: 0x06001979 RID: 6521 RVA: 0x000B8AE0 File Offset: 0x000B6EE0
 	private static PredicateSet GetTaggedHandAttachmentPreds()
 	{
-		if (Blocksworld.taggedHandAttachmentPreds == null)
+		if (taggedHandAttachmentPreds == null)
 		{
-			Blocksworld.taggedHandAttachmentPreds = new PredicateSet();
-			Blocksworld.taggedHandAttachmentPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedBlocksterHandAttachment", true));
-			Blocksworld.taggedHandAttachmentPreds.Add(PredicateRegistry.ByName("Block.ModelHitByTaggedBlocksterHandAttachment", true));
+			taggedHandAttachmentPreds = new PredicateSet();
+			taggedHandAttachmentPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedBlocksterHandAttachment"));
+			taggedHandAttachmentPreds.Add(PredicateRegistry.ByName("Block.ModelHitByTaggedBlocksterHandAttachment"));
 		}
-		return Blocksworld.taggedHandAttachmentPreds;
+		return taggedHandAttachmentPreds;
 	}
 
-	// Token: 0x0600197A RID: 6522 RVA: 0x000B8B30 File Offset: 0x000B6F30
 	private static PredicateSet GetTaggedArrowPreds()
 	{
-		if (Blocksworld.taggedArrowPreds == null)
+		if (taggedArrowPreds == null)
 		{
-			Blocksworld.taggedArrowPreds = new PredicateSet();
-			Blocksworld.taggedArrowPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedArrow", true));
-			Blocksworld.taggedArrowPreds.Add(PredicateRegistry.ByName("Block.ModelHitByTaggedArrow", true));
+			taggedArrowPreds = new PredicateSet();
+			taggedArrowPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedArrow"));
+			taggedArrowPreds.Add(PredicateRegistry.ByName("Block.ModelHitByTaggedArrow"));
 		}
-		return Blocksworld.taggedArrowPreds;
+		return taggedArrowPreds;
 	}
 
-	// Token: 0x0600197B RID: 6523 RVA: 0x000B8B80 File Offset: 0x000B6F80
 	private static PredicateSet GetTaggedLaserPreds()
 	{
-		if (Blocksworld.taggedLaserPreds == null)
+		if (taggedLaserPreds == null)
 		{
-			Blocksworld.taggedLaserPreds = new PredicateSet();
-			Blocksworld.taggedLaserPreds.Add(PredicateRegistry.ByName("Laser.TaggedHitByBeam", true));
-			Blocksworld.taggedLaserPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedLaserModel", true));
-			Blocksworld.taggedLaserPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedLaserChunk", true));
+			taggedLaserPreds = new PredicateSet();
+			taggedLaserPreds.Add(PredicateRegistry.ByName("Laser.TaggedHitByBeam"));
+			taggedLaserPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedLaserModel"));
+			taggedLaserPreds.Add(PredicateRegistry.ByName("Block.HitByTaggedLaserChunk"));
 		}
-		return Blocksworld.taggedLaserPreds;
+		return taggedLaserPreds;
 	}
 
-	// Token: 0x0600197C RID: 6524 RVA: 0x000B8BE8 File Offset: 0x000B6FE8
 	private static PredicateSet GetTaggedProjectilePreds()
 	{
-		if (Blocksworld.taggedProjectilePreds == null)
+		if (taggedProjectilePreds == null)
 		{
-			Blocksworld.taggedProjectilePreds = new PredicateSet();
-			Blocksworld.taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.TaggedHitByProjectile", true));
-			Blocksworld.taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.HitByTaggedProjectileModel", true));
-			Blocksworld.taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.HitByTaggedProjectileChunk", true));
+			taggedProjectilePreds = new PredicateSet();
+			taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.TaggedHitByProjectile"));
+			taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.HitByTaggedProjectileModel"));
+			taggedProjectilePreds.Add(PredicateRegistry.ByName("Block.HitByTaggedProjectileChunk"));
 		}
-		return Blocksworld.taggedProjectilePreds;
+		return taggedProjectilePreds;
 	}
 
-	// Token: 0x0600197D RID: 6525 RVA: 0x000B8C50 File Offset: 0x000B7050
 	private static PredicateSet GetTaggedWaterPreds()
 	{
-		if (Blocksworld.taggedWaterPreds == null)
+		if (taggedWaterPreds == null)
 		{
-			Blocksworld.taggedWaterPreds = new PredicateSet();
-			Blocksworld.taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWater", true));
-			Blocksworld.taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWaterChunk", true));
-			Blocksworld.taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWaterModel", true));
+			taggedWaterPreds = new PredicateSet();
+			taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWater"));
+			taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWaterChunk"));
+			taggedWaterPreds.Add(PredicateRegistry.ByName("Block.WithinTaggedWaterModel"));
 		}
-		return Blocksworld.taggedWaterPreds;
+		return taggedWaterPreds;
 	}
 
-	// Token: 0x0600197E RID: 6526 RVA: 0x000B8CB5 File Offset: 0x000B70B5
 	public static void SetupBuildPanel()
 	{
-		if (Blocksworld.unlockedGAFs == null)
+		if (unlockedGAFs == null)
 		{
 			BWLog.Error("Inventory not loaded!");
-			return;
 		}
-		Blocksworld.buildPanel.CreateInventoryTiles(new HashSet<GAF>(Blocksworld.unlockedGAFs));
+		else
+		{
+			buildPanel.CreateInventoryTiles(new HashSet<GAF>(unlockedGAFs));
+		}
 	}
 
-	// Token: 0x0600197F RID: 6527 RVA: 0x000B8CE0 File Offset: 0x000B70E0
 	public static void UpdateTilesForTab(TabBarTabId tab, List<Tile> tilesInTab)
 	{
 		if (tilesInTab == null)
@@ -5283,45 +5395,37 @@ public class Blocksworld : MonoBehaviour
 		HashSet<GAF> neverHideGafs = Tutorial.GetNeverHideGafs();
 		switch (tab)
 		{
-		case TabBarTabId.ActionBlocks:
-			break;
 		case TabBarTabId.Actions:
-			Blocksworld.UpdateActionTiles(tilesInTab, hiddenGafs, neverHideGafs);
-			goto IL_FC;
+			UpdateActionTiles(tilesInTab, hiddenGafs, neverHideGafs);
+			break;
 		case TabBarTabId.Sounds:
-			Blocksworld.UpdateSFXTiles(tilesInTab, hiddenGafs, neverHideGafs);
-			goto IL_FC;
+			UpdateSFXTiles(tilesInTab, hiddenGafs, neverHideGafs);
+			break;
 		default:
-			if (tab != TabBarTabId.Blocks)
+			foreach (Tile item in tilesInTab)
 			{
-				foreach (Tile tile in tilesInTab)
+				if (item.gaf.Predicate != Block.predicateThen && (item.gaf.Predicate != BlockAnimatedCharacter.predicateReplaceLimb || (CharacterEditor.Instance.InEditMode() && CharacterEditor.Instance.CharacterBlock().characterType != CharacterType.Avatar)))
 				{
-					if (tile.gaf.Predicate != Block.predicateThen)
-					{
-						if (tile.gaf.Predicate != BlockAnimatedCharacter.predicateReplaceLimb || (CharacterEditor.Instance.InEditMode() && CharacterEditor.Instance.CharacterBlock().characterType != CharacterType.Avatar))
-						{
-							tile.Show(true);
-							tile.Enable(Blocksworld.TileEnabled(tile));
-						}
-					}
+					item.Show(show: true);
+					item.Enable(TileEnabled(item));
 				}
-				goto IL_FC;
 			}
 			break;
+		case TabBarTabId.Blocks:
+		case TabBarTabId.ActionBlocks:
+			UpdateCreateBlockTiles(tilesInTab, hiddenGafs, neverHideGafs);
+			break;
 		}
-		Blocksworld.UpdateCreateBlockTiles(tilesInTab, hiddenGafs, neverHideGafs);
-		IL_FC:
 		for (int i = 0; i < tilesInTab.Count; i++)
 		{
-			Tile tile2 = tilesInTab[i];
-			if (!tile2.visibleInPanel)
+			Tile tile = tilesInTab[i];
+			if (!tile.visibleInPanel)
 			{
-				tile2.Destroy();
+				tile.Destroy();
 			}
 		}
 	}
 
-	// Token: 0x06001980 RID: 6528 RVA: 0x000B8E34 File Offset: 0x000B7234
 	public static void UpdateCreateBlockTiles(List<Tile> tiles, HashSet<GAF> hiddenGafs, HashSet<GAF> neverHideGafs)
 	{
 		HashSet<string> hashSet = new HashSet<string>();
@@ -5330,102 +5434,96 @@ public class Blocksworld : MonoBehaviour
 		{
 			Block block = list[i];
 			string blockType = block.BlockType();
-			Blocksworld.UpdateDisabledBlockTypes(blockType, hashSet);
+			UpdateDisabledBlockTypes(blockType, hashSet);
 		}
 		foreach (Tile tile in tiles)
 		{
 			GAF gaf = tile.gaf;
-			if (!neverHideGafs.Contains(gaf))
+			if (neverHideGafs.Contains(gaf))
 			{
-				if (hiddenGafs.Contains(gaf))
-				{
-					tile.Show(false);
-				}
-				else if (gaf.Predicate == Block.predicateThen)
-				{
-					tile.Show(false);
-				}
-				else
-				{
-					tile.Show(true);
-					bool enabled = Blocksworld.TileEnabled(tile);
-					if (gaf.Predicate == Block.predicateCreate && gaf.Args.Length > 0 && hashSet.Contains((string)gaf.Args[0]))
-					{
-						enabled = false;
-					}
-					tile.Enable(enabled);
-				}
+				continue;
 			}
+			if (hiddenGafs.Contains(gaf))
+			{
+				tile.Show(show: false);
+				continue;
+			}
+			if (gaf.Predicate == Block.predicateThen)
+			{
+				tile.Show(show: false);
+				continue;
+			}
+			tile.Show(show: true);
+			bool flag = TileEnabled(tile);
+			if (gaf.Predicate == Block.predicateCreate && gaf.Args.Length != 0 && hashSet.Contains((string)gaf.Args[0]))
+			{
+				flag = false;
+			}
+			tile.Enable(flag);
 		}
 	}
 
-	// Token: 0x06001981 RID: 6529 RVA: 0x000B8F68 File Offset: 0x000B7368
 	public static void UpdateSFXTiles(List<Tile> sfxTiles, HashSet<GAF> hiddenGafs, HashSet<GAF> neverHideGafs)
 	{
-		Block selectedScriptBlock = Blocksworld.GetSelectedScriptBlock();
+		Block selectedScriptBlock = GetSelectedScriptBlock();
 		bool flag = selectedScriptBlock != null;
-		foreach (Tile tile in sfxTiles)
+		foreach (Tile sfxTile in sfxTiles)
 		{
 			if (flag)
 			{
-				bool show = neverHideGafs.Contains(tile.gaf) || !hiddenGafs.Contains(tile.gaf);
-				tile.Show(show);
-				tile.Enable(true);
+				bool show = neverHideGafs.Contains(sfxTile.gaf) || !hiddenGafs.Contains(sfxTile.gaf);
+				sfxTile.Show(show);
+				sfxTile.Enable(enabled: true);
 			}
 			else
 			{
-				tile.Show(false);
+				sfxTile.Show(show: false);
 			}
 		}
 	}
 
-	// Token: 0x06001982 RID: 6530 RVA: 0x000B900C File Offset: 0x000B740C
 	public static void UpdateActionTiles(List<Tile> actionTiles, HashSet<GAF> hiddenGafs, HashSet<GAF> neverHideGafs)
 	{
 		if (actionTiles == null)
 		{
 			return;
 		}
-		Block selectedScriptBlock = Blocksworld.GetSelectedScriptBlock();
-		Blocksworld.ComputeNumSendAndTagTilesInUse();
+		Block selectedScriptBlock = GetSelectedScriptBlock();
+		ComputeNumSendAndTagTilesInUse();
 		PredicateSet predicateSet = new PredicateSet();
-		PredicateSet predicateSet2 = Blocksworld.GetMagnetPredicates();
+		PredicateSet predicateSet2 = GetMagnetPredicates();
 		HashSet<GAF> usedUniqueGafs = new HashSet<GAF>();
 		bool flag = false;
 		HashSet<int> hashSet = new HashSet<int>();
 		HashSet<int> hashSet2 = new HashSet<int>();
 		HashSet<int> hashSet3 = new HashSet<int>();
 		HashSet<int> hashSet4 = new HashSet<int>();
-		HashSet<Predicate> hashSet5 = Blocksworld.GetTaggedPredicates();
+		HashSet<Predicate> hashSet5 = GetTaggedPredicates();
 		Predicate predicateTag = Block.predicateTag;
-		PredicateSet predicateSet3 = Blocksworld.GetTaggedArrowPreds();
-		PredicateSet predicateSet4 = Blocksworld.GetTaggedHandAttachmentPreds();
-		PredicateSet predicateSet5 = Blocksworld.GetTaggedLaserPreds();
-		PredicateSet predicateSet6 = Blocksworld.GetTaggedProjectilePreds();
-		PredicateSet predicateSet7 = Blocksworld.GetTaggedWaterPreds();
+		PredicateSet predicateSet3 = GetTaggedArrowPreds();
+		PredicateSet predicateSet4 = GetTaggedHandAttachmentPreds();
+		PredicateSet predicateSet5 = GetTaggedLaserPreds();
+		PredicateSet predicateSet6 = GetTaggedProjectilePreds();
+		PredicateSet predicateSet7 = GetTaggedWaterPreds();
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
 			string text = block.BlockType();
-			Blocksworld.UpdateUsedUniqueGafs(block.tiles, usedUniqueGafs);
-			BlockObjectCounterUI blockObjectCounterUI = block as BlockObjectCounterUI;
-			if (blockObjectCounterUI != null)
+			UpdateUsedUniqueGafs(block.tiles, usedUniqueGafs);
+			if (block is BlockObjectCounterUI blockObjectCounterUI)
 			{
 				hashSet.Add(blockObjectCounterUI.index);
 			}
-			BlockCounterUI blockCounterUI = block as BlockCounterUI;
-			if (blockCounterUI != null)
+			if (block is BlockCounterUI blockCounterUI)
 			{
 				hashSet2.Add(blockCounterUI.index);
 			}
-			BlockTimerUI blockTimerUI = block as BlockTimerUI;
-			if (blockTimerUI != null)
+			if (block is BlockTimerUI blockTimerUI)
 			{
 				hashSet3.Add(blockTimerUI.index);
 			}
-			BlockGaugeUI blockGaugeUI = block as BlockGaugeUI;
-			if (blockGaugeUI != null)
+			if (block is BlockGaugeUI blockGaugeUI)
 			{
 				hashSet4.Add(blockGaugeUI.index);
 			}
@@ -5436,67 +5534,25 @@ public class Blocksworld : MonoBehaviour
 		}
 		for (int j = 0; j < 2; j++)
 		{
-			if (!hashSet.Contains(j))
+			if (hashSet.Contains(j))
 			{
-				hiddenGafs.Add(new GAF("Block.SetAsTreasureBlockIcon", new object[]
+				continue;
+			}
+			hiddenGafs.Add(new GAF("Block.SetAsTreasureBlockIcon", j));
+			hiddenGafs.Add(new GAF("Block.SetAsTreasureTextureIcon", j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.Increment", 1, j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.Decrement", 1, j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.Equals", 0, j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.EqualsMax", j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", 5, 0, j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", 5, 1, j));
+			hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", 5, 2, j));
+			if (j > 0)
+			{
+				hiddenGafs.Add(new GAF("Block.IsTreasure", j));
+				for (int k = 0; k < 9; k++)
 				{
-					j
-				}));
-				hiddenGafs.Add(new GAF("Block.SetAsTreasureTextureIcon", new object[]
-				{
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.Increment", new object[]
-				{
-					1,
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.Decrement", new object[]
-				{
-					1,
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.Equals", new object[]
-				{
-					0,
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.EqualsMax", new object[]
-				{
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", new object[]
-				{
-					5,
-					0,
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", new object[]
-				{
-					5,
-					1,
-					j
-				}));
-				hiddenGafs.Add(new GAF("ObjectCounterUI.ValueCondition", new object[]
-				{
-					5,
-					2,
-					j
-				}));
-				if (j > 0)
-				{
-					hiddenGafs.Add(new GAF("Block.IsTreasure", new object[]
-					{
-						j
-					}));
-					for (int k = 0; k < 9; k++)
-					{
-						hiddenGafs.Add(new GAF("Block.IsTreasureForTag", new object[]
-						{
-							k.ToString(),
-							j
-						}));
-					}
+					hiddenGafs.Add(new GAF("Block.IsTreasureForTag", k.ToString(), j));
 				}
 			}
 		}
@@ -5504,89 +5560,24 @@ public class Blocksworld : MonoBehaviour
 		{
 			if (!hashSet2.Contains(l))
 			{
-				hiddenGafs.Add(new GAF("Block.SetAsCounterUIBlockIcon", new object[]
-				{
-					l
-				}));
-				hiddenGafs.Add(new GAF("Block.SetAsCounterUITextureIcon", new object[]
-				{
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.Increment", new object[]
-				{
-					1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.Increment", new object[]
-				{
-					-1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.Equals", new object[]
-				{
-					0,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.EqualsMin", new object[]
-				{
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.EqualsMax", new object[]
-				{
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.AnimateScore", new object[]
-				{
-					0,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.AnimateScore", new object[]
-				{
-					1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.ScoreMultiplier", new object[]
-				{
-					2,
-					1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.GlobalScoreMultiplier", new object[]
-				{
-					2,
-					1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", new object[]
-				{
-					5,
-					0,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", new object[]
-				{
-					5,
-					1,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", new object[]
-				{
-					5,
-					2,
-					l
-				}));
-				hiddenGafs.Add(new GAF("CounterUI.Randomize", new object[]
-				{
-					0,
-					10,
-					l
-				}));
+				hiddenGafs.Add(new GAF("Block.SetAsCounterUIBlockIcon", l));
+				hiddenGafs.Add(new GAF("Block.SetAsCounterUITextureIcon", l));
+				hiddenGafs.Add(new GAF("CounterUI.Increment", 1, l));
+				hiddenGafs.Add(new GAF("CounterUI.Increment", -1, l));
+				hiddenGafs.Add(new GAF("CounterUI.Equals", 0, l));
+				hiddenGafs.Add(new GAF("CounterUI.EqualsMin", l));
+				hiddenGafs.Add(new GAF("CounterUI.EqualsMax", l));
+				hiddenGafs.Add(new GAF("CounterUI.AnimateScore", 0, l));
+				hiddenGafs.Add(new GAF("CounterUI.AnimateScore", 1, l));
+				hiddenGafs.Add(new GAF("CounterUI.ScoreMultiplier", 2, 1, l));
+				hiddenGafs.Add(new GAF("CounterUI.GlobalScoreMultiplier", 2, 1, l));
+				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", 5, 0, l));
+				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", 5, 1, l));
+				hiddenGafs.Add(new GAF("CounterUI.ValueCondition", 5, 2, l));
+				hiddenGafs.Add(new GAF("CounterUI.Randomize", 0, 10, l));
 				if (l == 0)
 				{
-					hiddenGafs.Add(new GAF("CounterUI.Equals", new object[]
-					{
-						0
-					}));
+					hiddenGafs.Add(new GAF("CounterUI.Equals", 0));
 				}
 			}
 		}
@@ -5594,139 +5585,40 @@ public class Blocksworld : MonoBehaviour
 		{
 			if (!hashSet4.Contains(m))
 			{
-				hiddenGafs.Add(new GAF("Block.SetAsGaugeUIBlockIcon", new object[]
-				{
-					m
-				}));
-				hiddenGafs.Add(new GAF("Block.SetAsGaugeUITextureIcon", new object[]
-				{
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.Increment", new object[]
-				{
-					1,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.Increment", new object[]
-				{
-					-1,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.Equals", new object[]
-				{
-					0,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.EqualsMax", new object[]
-				{
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.Fraction", new object[]
-				{
-					1f,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", new object[]
-				{
-					5,
-					0,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", new object[]
-				{
-					5,
-					1,
-					m
-				}));
-				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", new object[]
-				{
-					5,
-					2,
-					m
-				}));
+				hiddenGafs.Add(new GAF("Block.SetAsGaugeUIBlockIcon", m));
+				hiddenGafs.Add(new GAF("Block.SetAsGaugeUITextureIcon", m));
+				hiddenGafs.Add(new GAF("GaugeUI.Increment", 1, m));
+				hiddenGafs.Add(new GAF("GaugeUI.Increment", -1, m));
+				hiddenGafs.Add(new GAF("GaugeUI.Equals", 0, m));
+				hiddenGafs.Add(new GAF("GaugeUI.EqualsMax", m));
+				hiddenGafs.Add(new GAF("GaugeUI.Fraction", 1f, m));
+				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", 5, 0, m));
+				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", 5, 1, m));
+				hiddenGafs.Add(new GAF("GaugeUI.ValueCondition", 5, 2, m));
 			}
 		}
 		for (int n = 0; n < 2; n++)
 		{
 			if (!hashSet3.Contains(n))
 			{
-				hiddenGafs.Add(new GAF("Block.SetAsTimerUIBlockIcon", new object[]
-				{
-					n
-				}));
-				hiddenGafs.Add(new GAF("Block.SetAsTimerUITextureIcon", new object[]
-				{
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Equals", new object[]
-				{
-					0f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Equals", new object[]
-				{
-					0f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.EqualsMax", new object[]
-				{
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Increment", new object[]
-				{
-					1f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Increment", new object[]
-				{
-					-1f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Start", new object[]
-				{
-					1,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Start", new object[]
-				{
-					-1,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Pause", new object[]
-				{
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.Wait", new object[]
-				{
-					1f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.PauseUI", new object[]
-				{
-					1f,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", new object[]
-				{
-					5f,
-					0,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", new object[]
-				{
-					5f,
-					1,
-					n
-				}));
-				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", new object[]
-				{
-					5f,
-					2,
-					n
-				}));
+				hiddenGafs.Add(new GAF("Block.SetAsTimerUIBlockIcon", n));
+				hiddenGafs.Add(new GAF("Block.SetAsTimerUITextureIcon", n));
+				hiddenGafs.Add(new GAF("TimerUI.Equals", 0f, n));
+				hiddenGafs.Add(new GAF("TimerUI.Equals", 0f, n));
+				hiddenGafs.Add(new GAF("TimerUI.EqualsMax", n));
+				hiddenGafs.Add(new GAF("TimerUI.Increment", 1f, n));
+				hiddenGafs.Add(new GAF("TimerUI.Increment", -1f, n));
+				hiddenGafs.Add(new GAF("TimerUI.Start", 1, n));
+				hiddenGafs.Add(new GAF("TimerUI.Start", -1, n));
+				hiddenGafs.Add(new GAF("TimerUI.Pause", n));
+				hiddenGafs.Add(new GAF("TimerUI.Wait", 1f, n));
+				hiddenGafs.Add(new GAF("TimerUI.PauseUI", 1f, n));
+				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", 5f, 0, n));
+				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", 5f, 1, n));
+				hiddenGafs.Add(new GAF("TimerUI.ValueCondition", 5f, 2, n));
 			}
 		}
-		if (Blocksworld.worldOcean == null)
+		if (worldOcean == null)
 		{
 			predicateSet.Add(BlockMaster.predicateSetLiquidProperties);
 			predicateSet.Add(BlockMaster.predicateIncreaseWaterLevel);
@@ -5739,9 +5631,9 @@ public class Blocksworld : MonoBehaviour
 		predicateSet.UnionWith(Block.blockVariableOperationsOnGlobals);
 		predicateSet.UnionWith(Block.blockVariableOperationsOnOtherBlockVars);
 		HashSet<GAF> hashSet6 = new HashSet<GAF>();
-		foreach (int id in TileToggleChain.GetAllNonPrimitiveBlockIds())
+		foreach (int allNonPrimitiveBlockId in TileToggleChain.GetAllNonPrimitiveBlockIds())
 		{
-			BlockItem blockItem = BlockItem.FindByID(id);
+			BlockItem blockItem = BlockItem.FindByID(allNonPrimitiveBlockId);
 			GAF item = new GAF(blockItem);
 			if (hiddenGafs.Contains(item))
 			{
@@ -5749,146 +5641,142 @@ public class Blocksworld : MonoBehaviour
 			}
 			hiddenGafs.Add(item);
 		}
-		foreach (Tile tile in actionTiles)
+		foreach (Tile actionTile in actionTiles)
 		{
-			GAF gaf = tile.gaf;
+			GAF gaf = actionTile.gaf;
 			if (!neverHideGafs.Contains(gaf))
 			{
 				if (predicateSet.Contains(gaf.Predicate))
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
 				if (hiddenGafs.Contains(gaf))
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
-				if (!Blocksworld.publicProvidedGafs.Contains(gaf) && (selectedScriptBlock == null || !gaf.Predicate.CompatibleWith(selectedScriptBlock)))
+				if (!publicProvidedGafs.Contains(gaf) && (selectedScriptBlock == null || !gaf.Predicate.CompatibleWith(selectedScriptBlock)))
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
 				if (selectedScriptBlock != null)
 				{
-					if ((gaf.Predicate == Block.predicateSendSignal || gaf.Predicate == Block.predicateSendSignalModel) && (int)gaf.Args[0] > Blocksworld.numSendTilesInUse)
+					if ((gaf.Predicate == Block.predicateSendSignal || gaf.Predicate == Block.predicateSendSignalModel) && (int)gaf.Args[0] > numSendTilesInUse)
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
 					if (gaf.Predicate == Block.predicateSendCustomSignal || gaf.Predicate == Block.predicateSendCustomSignalModel || gaf.Predicate == Block.predicateVariableCustomInt || gaf.Predicate == Block.predicateBlockVariableInt)
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
 					bool flag2 = gaf.Predicate == predicateTag;
 					if (flag2 || hashSet5.Contains(gaf.Predicate))
 					{
-						int num = (!flag2) ? (Blocksworld.numTagTilesInUse - 1) : Blocksworld.numTagTilesInUse;
+						int num = ((!flag2) ? (numTagTilesInUse - 1) : numTagTilesInUse);
 						string text2 = (string)gaf.Args[0];
-						int num2;
-						if (int.TryParse(text2, out num2))
+						if (int.TryParse(text2, out var result))
 						{
-							if (num2 > num)
+							if (result > num)
 							{
-								tile.Show(false);
+								actionTile.Show(show: false);
 								continue;
 							}
 						}
-						else if (!flag2 && !Blocksworld.everPresentTagsInUse.Contains(text2))
+						else if (!flag2 && !everPresentTagsInUse.Contains(text2))
 						{
-							tile.Show(false);
+							actionTile.Show(show: false);
 							continue;
 						}
 					}
-					if (predicateSet3.Contains(gaf.Predicate) && gaf.Args.Length > 0 && !Blocksworld.arrowTags.Contains((string)gaf.Args[0]))
+					if (predicateSet3.Contains(gaf.Predicate) && gaf.Args.Length != 0 && !arrowTags.Contains((string)gaf.Args[0]))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
-					if (predicateSet4.Contains(gaf.Predicate) && gaf.Args.Length > 0 && !Blocksworld.handAttachmentTags.Contains((string)gaf.Args[0]))
+					if (predicateSet4.Contains(gaf.Predicate) && gaf.Args.Length != 0 && !handAttachmentTags.Contains((string)gaf.Args[0]))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
-					if (predicateSet5.Contains(gaf.Predicate) && gaf.Args.Length > 0 && !Blocksworld.laserTags.Contains((string)gaf.Args[0]))
+					if (predicateSet5.Contains(gaf.Predicate) && gaf.Args.Length != 0 && !laserTags.Contains((string)gaf.Args[0]))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
-					if (predicateSet6.Contains(gaf.Predicate) && gaf.Args.Length > 0 && !Blocksworld.projectileTags.Contains((string)gaf.Args[0]))
+					if (predicateSet6.Contains(gaf.Predicate) && gaf.Args.Length != 0 && !projectileTags.Contains((string)gaf.Args[0]))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
-					if (predicateSet7.Contains(gaf.Predicate) && gaf.Args.Length > 0 && !Blocksworld.waterTags.Contains((string)gaf.Args[0]))
+					if (predicateSet7.Contains(gaf.Predicate) && gaf.Args.Length != 0 && !waterTags.Contains((string)gaf.Args[0]))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
 					if (!flag && predicateSet2.Contains(gaf.Predicate))
 					{
-						tile.Show(false);
+						actionTile.Show(show: false);
 						continue;
 					}
 				}
 				if (gaf.Predicate == Block.predicateThen)
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
 				if (selectedScriptBlock != null && !selectedScriptBlock.SupportsGaf(gaf))
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
-				if (gaf.Predicate == BlockMaster.predicatePaintSkyTo && !Blocksworld.unlockedPaints.Contains((string)gaf.Args[0]))
+				if (gaf.Predicate == BlockMaster.predicatePaintSkyTo && !unlockedPaints.Contains((string)gaf.Args[0]))
 				{
-					tile.Show(false);
+					actionTile.Show(show: false);
 					continue;
 				}
 			}
-			tile.Show(true);
-			tile.Enable(Blocksworld.TileEnabled(tile));
+			actionTile.Show(show: true);
+			actionTile.Enable(TileEnabled(actionTile));
 		}
 	}
 
-	// Token: 0x06001983 RID: 6531 RVA: 0x000BA004 File Offset: 0x000B8404
 	public static void UpdateTiles()
 	{
-		Blocksworld.buildPanel.Layout();
-		Blocksworld.SetupClipboard();
+		buildPanel.Layout();
+		SetupClipboard();
 	}
 
-	// Token: 0x06001984 RID: 6532 RVA: 0x000BA018 File Offset: 0x000B8418
 	public static string NextAvailableBlockVariableName(Block b)
 	{
 		int num = 0;
-		if (Blocksworld.blockIntVariables.ContainsKey(b))
+		if (blockIntVariables.ContainsKey(b))
 		{
-			num = Blocksworld.blockIntVariables[b].Count;
+			num = blockIntVariables[b].Count;
 		}
 		return "b" + num;
 	}
 
-	// Token: 0x06001985 RID: 6533 RVA: 0x000BA058 File Offset: 0x000B8458
 	private static void ComputeNumSendAndTagTilesInUse()
 	{
-		Blocksworld.numSendTilesInUse = 0;
-		Blocksworld.numTagTilesInUse = 0;
-		Blocksworld.everPresentTagsInUse.Clear();
-		Blocksworld.arrowTags.Clear();
-		Blocksworld.handAttachmentTags.Clear();
-		Blocksworld.laserTags.Clear();
-		Blocksworld.projectileTags.Clear();
-		Blocksworld.waterTags.Clear();
-		Blocksworld.customSignals.Clear();
-		Blocksworld.customSignals.Add("*");
-		Blocksworld.customIntVariables.Clear();
-		Blocksworld.blockIntVariables.Clear();
+		numSendTilesInUse = 0;
+		numTagTilesInUse = 0;
+		everPresentTagsInUse.Clear();
+		arrowTags.Clear();
+		handAttachmentTags.Clear();
+		laserTags.Clear();
+		projectileTags.Clear();
+		waterTags.Clear();
+		customSignals.Clear();
+		customSignals.Add("*");
+		customIntVariables.Clear();
+		blockIntVariables.Clear();
 		Predicate predicateTag = Block.predicateTag;
-		Predicate predicate = PredicateRegistry.ByName("Block.HitByArrow", true);
-		Predicate predicate2 = PredicateRegistry.ByName("Laser.HitByBeam", true);
+		Predicate predicate = PredicateRegistry.ByName("Block.HitByArrow");
+		Predicate predicate2 = PredicateRegistry.ByName("Laser.HitByBeam");
 		List<Block> list = BWSceneManager.AllBlocks();
 		for (int i = 0; i < list.Count; i++)
 		{
@@ -5903,82 +5791,84 @@ public class Blocksworld : MonoBehaviour
 					if (predicate3 == Block.predicateSendSignal || predicate3 == Block.predicateSendSignalModel)
 					{
 						int a = (int)tile.gaf.Args[0] + 1;
-						Blocksworld.numSendTilesInUse = Mathf.Max(a, Blocksworld.numSendTilesInUse);
+						numSendTilesInUse = Mathf.Max(a, numSendTilesInUse);
 					}
 					else if (predicate3 == predicateTag)
 					{
 						string text = (string)tile.gaf.Args[0];
-						int num;
-						if (int.TryParse(text, out num))
+						if (int.TryParse(text, out var result))
 						{
-							Blocksworld.numTagTilesInUse = Mathf.Max(num + 1, Blocksworld.numTagTilesInUse);
+							numTagTilesInUse = Mathf.Max(result + 1, numTagTilesInUse);
 						}
 						else
 						{
-							Blocksworld.everPresentTagsInUse.Add(text);
+							everPresentTagsInUse.Add(text);
 						}
-						BlockAbstractLaser blockAbstractLaser = block as BlockAbstractLaser;
-						if (blockAbstractLaser != null)
+						if (block is BlockAbstractLaser blockAbstractLaser)
 						{
 							if (blockAbstractLaser.CanFireLaser())
 							{
-								Blocksworld.laserTags.Add((string)tile.gaf.Args[0]);
+								laserTags.Add((string)tile.gaf.Args[0]);
 							}
 							if (blockAbstractLaser.CanFireProjectiles())
 							{
-								Blocksworld.projectileTags.Add((string)tile.gaf.Args[0]);
+								projectileTags.Add((string)tile.gaf.Args[0]);
 							}
 						}
 						else if (block is BlockAbstractBow)
 						{
-							Blocksworld.arrowTags.Add((string)tile.gaf.Args[0]);
+							arrowTags.Add((string)tile.gaf.Args[0]);
 						}
 						else if (block is BlockWaterCube)
 						{
-							Blocksworld.waterTags.Add((string)tile.gaf.Args[0]);
+							waterTags.Add((string)tile.gaf.Args[0]);
 						}
 						else if (BlockAnimatedCharacter.FindPropHolder(block) != null)
 						{
-							Blocksworld.handAttachmentTags.Add((string)tile.gaf.Args[0]);
+							handAttachmentTags.Add((string)tile.gaf.Args[0]);
 						}
 					}
-					else if (predicate3 == predicate2 && tile.gaf.Args.Length > 0)
+					else if (predicate3 == predicate2 && tile.gaf.Args.Length != 0)
 					{
-						Blocksworld.laserTags.Add((string)tile.gaf.Args[0]);
+						laserTags.Add((string)tile.gaf.Args[0]);
 					}
-					else if (predicate3 == predicate && tile.gaf.Args.Length > 0)
+					else if (predicate3 == predicate && tile.gaf.Args.Length != 0)
 					{
-						Blocksworld.arrowTags.Add((string)tile.gaf.Args[0]);
+						arrowTags.Add((string)tile.gaf.Args[0]);
 					}
 					else if (predicate3 == Block.predicateSendCustomSignal || predicate3 == Block.predicateSendCustomSignalModel)
 					{
 						string text2 = (string)tile.gaf.Args[0];
 						if (text2 != "*")
 						{
-							Blocksworld.customSignals.Add(text2);
+							customSignals.Add(text2);
 						}
 					}
 					else if (predicate3 == Block.predicateVariableCustomInt)
 					{
 						string text3 = (string)tile.gaf.Args[0];
-						if (text3 != "*" && !Blocksworld.customIntVariables.ContainsKey(text3))
+						if (text3 != "*" && !customIntVariables.ContainsKey(text3))
 						{
-							Blocksworld.customIntVariables.Add(text3, (int)tile.gaf.Args[1]);
+							customIntVariables.Add(text3, (int)tile.gaf.Args[1]);
 						}
 					}
-					else if (predicate3 == Block.predicateBlockVariableInt)
+					else
 					{
+						if (predicate3 != Block.predicateBlockVariableInt)
+						{
+							continue;
+						}
 						string text4 = (string)tile.gaf.Args[0];
 						if (text4 != "*")
 						{
-							if (!Blocksworld.blockIntVariables.ContainsKey(block))
+							if (!blockIntVariables.ContainsKey(block))
 							{
-								Blocksworld.blockIntVariables[block] = new Dictionary<string, int>();
-								Blocksworld.blockIntVariables[block].Add(text4, (int)tile.gaf.Args[1]);
+								blockIntVariables[block] = new Dictionary<string, int>();
+								blockIntVariables[block].Add(text4, (int)tile.gaf.Args[1]);
 							}
-							else if (!Blocksworld.blockIntVariables[block].ContainsKey(text4))
+							else if (!blockIntVariables[block].ContainsKey(text4))
 							{
-								Blocksworld.blockIntVariables[block].Add(text4, (int)tile.gaf.Args[1]);
+								blockIntVariables[block].Add(text4, (int)tile.gaf.Args[1]);
 							}
 						}
 					}
@@ -5987,52 +5877,51 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x06001986 RID: 6534 RVA: 0x000BA508 File Offset: 0x000B8908
 	private void WhiteBackground()
 	{
-		if (this.whiteBackground == 0)
+		if (whiteBackground == 0)
 		{
 			if (WorldSession.current != null && WorldSession.current.worldTitle == "Logo")
 			{
-				Blocksworld.blocksworldCamera.SetCameraPosition(new Vector3(-21.5f, 26f, 34f));
-				Blocksworld.cameraTransform.eulerAngles = new Vector3(45f, 180f, 0f);
+				blocksworldCamera.SetCameraPosition(new Vector3(-21.5f, 26f, 34f));
+				cameraTransform.eulerAngles = new Vector3(45f, 180f, 0f);
 				GameObject gameObject = GameObject.Find("Chunk 9");
 				gameObject.transform.position = new Vector3(-26f, 2f, -1.25f);
 				gameObject.transform.rotation = Quaternion.Euler(0f, 40f, 0f);
 				GameObject gameObject2 = GameObject.Find("Chunk 10");
 				gameObject2.transform.Translate(0.5f, 0f, 1f);
 				gameObject2.transform.Rotate(0f, 12.5f, 0f);
-				BlockLegs blockLegs = BWSceneManager.FindBlock(GameObject.Find("CreateLegs1x1x1 91"), false) as BlockLegs;
+				BlockLegs blockLegs = BWSceneManager.FindBlock(GameObject.Find("CreateLegs1x1x1 91")) as BlockLegs;
 				blockLegs.feet[0].go.transform.Translate(0.5f, 0f, 1f);
 				blockLegs.feet[0].go.transform.Rotate(0f, 22.5f, 0f);
 				blockLegs.feet[1].go.transform.Translate(0.5f, 0f, 1.1f);
 				blockLegs.feet[1].go.transform.Rotate(0f, 12.5f, 0f);
-				Blocksworld.directionalLight.transform.rotation = Quaternion.Euler(65f, 180f, 0f);
-				this.StatePlayUpdate();
+				directionalLight.transform.rotation = Quaternion.Euler(65f, 180f, 0f);
+				StatePlayUpdate();
 			}
 			if (WorldSession.current != null && WorldSession.current.worldTitle == "Logo Compact")
 			{
-				Blocksworld.blocksworldCamera.SetCameraPosition(new Vector3(-32f, 17f, 14f));
-				Blocksworld.cameraTransform.eulerAngles = new Vector3(45f, 180f, 0f);
+				blocksworldCamera.SetCameraPosition(new Vector3(-32f, 17f, 14f));
+				cameraTransform.eulerAngles = new Vector3(45f, 180f, 0f);
 				GameObject gameObject3 = GameObject.Find("Chunk 6");
 				gameObject3.transform.position = new Vector3(-24f, 2f, -1.25f);
 				gameObject3.transform.rotation = Quaternion.Euler(0f, 30f, 0f);
 				GameObject gameObject4 = GameObject.Find("Chunk 3");
 				gameObject4.transform.Translate(-1.25f, 0f, 2.5f);
 				gameObject4.transform.Rotate(0f, -12.5f, 0f);
-				BlockLegs blockLegs2 = BWSceneManager.FindBlock(GameObject.Find("CreateLegs1x1x1 38"), false) as BlockLegs;
+				BlockLegs blockLegs2 = BWSceneManager.FindBlock(GameObject.Find("CreateLegs1x1x1 38")) as BlockLegs;
 				blockLegs2.feet[0].go.transform.Translate(-1.25f, 0f, 2.6f);
 				blockLegs2.feet[0].go.transform.Rotate(0f, -12.5f, 0f);
 				blockLegs2.feet[1].go.transform.Translate(-1.25f, 0f, 2.5f);
 				blockLegs2.feet[1].go.transform.Rotate(0f, -22.5f, 0f);
-				Blocksworld.directionalLight.transform.rotation = Quaternion.Euler(65f, 180f, 0f);
-				this.StatePlayUpdate();
+				directionalLight.transform.rotation = Quaternion.Euler(65f, 180f, 0f);
+				StatePlayUpdate();
 			}
-			Blocksworld.mainCamera.backgroundColor = new Color(0.23046875f, 0.55859375f, 0.83203125f, 0f);
-			foreach (KeyValuePair<string, Material> keyValuePair in Materials.materialCache)
+			mainCamera.backgroundColor = new Color(0.23046875f, 0.55859375f, 0.83203125f, 0f);
+			foreach (KeyValuePair<string, Material> item in Materials.materialCache)
 			{
-				keyValuePair.Value.SetFloat("_FogStart", 2000f);
-				keyValuePair.Value.SetFloat("_FogEnd", 2000f);
+				item.Value.SetFloat("_FogStart", 2000f);
+				item.Value.SetFloat("_FogEnd", 2000f);
 			}
 			List<Block> list = BWSceneManager.AllBlocks();
 			for (int i = 0; i < list.Count; i++)
@@ -6047,69 +5936,65 @@ public class Blocksworld : MonoBehaviour
 					block.go.GetComponent<Renderer>().enabled = false;
 				}
 			}
-			this.whiteBackground = 1;
+			whiteBackground = 1;
+			return;
 		}
-		else
+		Color backgroundColor = new Color(0.38039216f, 63f / 85f, 1f);
+		mainCamera.backgroundColor = backgroundColor;
+		foreach (KeyValuePair<string, Material> item2 in Materials.materialCache)
 		{
-			Color backgroundColor = new Color(0.380392164f, 0.7411765f, 1f);
-			Blocksworld.mainCamera.backgroundColor = backgroundColor;
-			foreach (KeyValuePair<string, Material> keyValuePair2 in Materials.materialCache)
-			{
-				keyValuePair2.Value.SetFloat("_FogStart", Blocksworld.fogStart * Blocksworld.fogMultiplier);
-				keyValuePair2.Value.SetFloat("_FogEnd", Blocksworld.fogEnd * Blocksworld.fogMultiplier);
-			}
-			List<Block> list2 = BWSceneManager.AllBlocks();
-			for (int j = 0; j < list2.Count; j++)
-			{
-				Block block2 = list2[j];
-				bool enabled = true;
-				if (block2 is BlockPosition && Blocksworld.CurrentState == State.Play)
-				{
-					enabled = false;
-				}
-				block2.go.GetComponent<Renderer>().enabled = enabled;
-				if (block2.goShadow != null)
-				{
-					block2.goShadow.GetComponent<Renderer>().material.SetFloat("_FogStart", Blocksworld.fogStart * Blocksworld.fogMultiplier);
-					block2.goShadow.GetComponent<Renderer>().material.SetFloat("_FogEnd", Blocksworld.fogEnd * Blocksworld.fogMultiplier);
-				}
-			}
-			if (!Blocksworld.renderingShadows)
-			{
-				GameObject gameObject5 = Resources.Load("Blocks/Shadow") as GameObject;
-				gameObject5.GetComponent<Renderer>().sharedMaterial.SetFloat("_FogStart", Blocksworld.fogStart * Blocksworld.fogMultiplier);
-				gameObject5.GetComponent<Renderer>().sharedMaterial.SetFloat("_FogEnd", Blocksworld.fogEnd * Blocksworld.fogMultiplier);
-			}
-			this.whiteBackground = 0;
+			item2.Value.SetFloat("_FogStart", fogStart * fogMultiplier);
+			item2.Value.SetFloat("_FogEnd", fogEnd * fogMultiplier);
 		}
+		List<Block> list2 = BWSceneManager.AllBlocks();
+		for (int j = 0; j < list2.Count; j++)
+		{
+			Block block2 = list2[j];
+			bool flag = true;
+			if (block2 is BlockPosition && CurrentState == State.Play)
+			{
+				flag = false;
+			}
+			block2.go.GetComponent<Renderer>().enabled = flag;
+			if (block2.goShadow != null)
+			{
+				block2.goShadow.GetComponent<Renderer>().material.SetFloat("_FogStart", fogStart * fogMultiplier);
+				block2.goShadow.GetComponent<Renderer>().material.SetFloat("_FogEnd", fogEnd * fogMultiplier);
+			}
+		}
+		if (!renderingShadows)
+		{
+			GameObject gameObject5 = Resources.Load("Blocks/Shadow") as GameObject;
+			gameObject5.GetComponent<Renderer>().sharedMaterial.SetFloat("_FogStart", fogStart * fogMultiplier);
+			gameObject5.GetComponent<Renderer>().sharedMaterial.SetFloat("_FogEnd", fogEnd * fogMultiplier);
+		}
+		whiteBackground = 0;
 	}
 
-	// Token: 0x06001987 RID: 6535 RVA: 0x000BAB78 File Offset: 0x000B8F78
 	public void SetFogMultiplier(float m)
 	{
-		Blocksworld.fogMultiplier = m;
-		this.SetFog(Blocksworld.fogStart, Blocksworld.fogEnd);
+		fogMultiplier = m;
+		SetFog(fogStart, fogEnd);
 	}
 
-	// Token: 0x06001988 RID: 6536 RVA: 0x000BAB90 File Offset: 0x000B8F90
 	public void SetFog(float start, float end)
 	{
-		Blocksworld.fogStart = start;
-		Blocksworld.fogEnd = end;
-		if (!Blocksworld.renderingShadows)
+		fogStart = start;
+		fogEnd = end;
+		if (!renderingShadows)
 		{
-			start *= Blocksworld.fogMultiplier;
-			end *= Blocksworld.fogMultiplier;
-			foreach (KeyValuePair<string, Material> keyValuePair in Materials.materialCache)
+			start *= fogMultiplier;
+			end *= fogMultiplier;
+			foreach (KeyValuePair<string, Material> item in Materials.materialCache)
 			{
-				if (keyValuePair.Value != null)
+				if (item.Value != null)
 				{
-					keyValuePair.Value.SetFloat("_FogStart", start);
-					keyValuePair.Value.SetFloat("_FogEnd", end);
+					item.Value.SetFloat("_FogStart", start);
+					item.Value.SetFloat("_FogEnd", end);
 				}
 				else
 				{
-					BWLog.Info(keyValuePair.Key + " material was destroyed");
+					BWLog.Info(item.Key + " material was destroyed");
 				}
 			}
 			List<Block> list = BWSceneManager.AllBlocks();
@@ -6137,86 +6022,80 @@ public class Blocksworld : MonoBehaviour
 			material.SetFloat("_FogStart", start);
 			material.SetFloat("_FogEnd", end);
 		}
-		Blocksworld.weather.FogChanged();
+		weather.FogChanged();
 	}
 
-	// Token: 0x06001989 RID: 6537 RVA: 0x000BAD40 File Offset: 0x000B9140
 	public static void UpdateFogColor(Color newFogColor)
 	{
-		Blocksworld.fogColor = newFogColor;
-		if (!Blocksworld.renderingShadows)
+		fogColor = newFogColor;
+		if (!renderingShadows)
 		{
-			foreach (KeyValuePair<string, Material> keyValuePair in Materials.materialCache)
+			foreach (KeyValuePair<string, Material> item in Materials.materialCache)
 			{
-				if (keyValuePair.Value != null)
+				if (item.Value != null)
 				{
-					keyValuePair.Value.SetColor("_FogColor", Blocksworld.fogColor);
+					item.Value.SetColor("_FogColor", fogColor);
 				}
 			}
 			List<BlockTerrain> list = BWSceneManager.AllTerrainBlocks();
 			for (int i = 0; i < list.Count; i++)
 			{
-				list[i].UpdateFogColor(Blocksworld.fogColor);
+				list[i].UpdateFogColor(fogColor);
 			}
-			Material sharedMaterial = Blocksworld.worldSky.renderer.sharedMaterial;
-			sharedMaterial.SetColor("_FogColor", Blocksworld.fogColor);
-			Block.prefabShadow.GetComponent<Renderer>().sharedMaterial.SetColor("_FogColor", Blocksworld.fogColor);
+			Material sharedMaterial = worldSky.renderer.sharedMaterial;
+			sharedMaterial.SetColor("_FogColor", fogColor);
+			Block.prefabShadow.GetComponent<Renderer>().sharedMaterial.SetColor("_FogColor", fogColor);
 		}
-		Blocksworld.weather.FogChanged();
+		weather.FogChanged();
 	}
 
-	// Token: 0x0600198A RID: 6538 RVA: 0x000BAE44 File Offset: 0x000B9244
 	public static void UpdateSunLight(Color tint, Color emissiveColor, float lightIntensity, float sunIntensity)
 	{
-		if (Blocksworld.renderingSkybox && Blocksworld.overheadLight != null)
+		if (renderingSkybox && overheadLight != null)
 		{
-			Blocksworld.overheadLight.color = 0.5f * (Color.white + tint) + emissiveColor;
-			Blocksworld._lightIntensityBasic = lightIntensity;
-			Blocksworld.UpdateSunIntensity(sunIntensity);
+			overheadLight.color = 0.5f * (Color.white + tint) + emissiveColor;
+			_lightIntensityBasic = lightIntensity;
+			UpdateSunIntensity(sunIntensity);
 		}
 	}
 
-	// Token: 0x0600198B RID: 6539 RVA: 0x000BAE9C File Offset: 0x000B929C
 	public static void UpdateSunIntensity(float sunIntensity)
 	{
-		if (Blocksworld.renderingSkybox && Blocksworld.overheadLight != null)
+		if (renderingSkybox && overheadLight != null)
 		{
-			Blocksworld._lightIntensityMultiplier = sunIntensity;
-			float num = Blocksworld._lightIntensityBasic * Blocksworld._lightIntensityMultiplier;
-			Blocksworld.overheadLight.intensity = num;
-			Blocksworld.overheadLight.bounceIntensity = num * 0.35f / 0.9f;
-			Blocksworld.overheadLight.shadowStrength = Mathf.Clamp(num * num, 0.3f, 1f);
+			_lightIntensityMultiplier = sunIntensity;
+			float num = _lightIntensityBasic * _lightIntensityMultiplier;
+			overheadLight.intensity = num;
+			overheadLight.bounceIntensity = num * 0.35f / 0.9f;
+			overheadLight.shadowStrength = Mathf.Clamp(num * num, 0.3f, 1f);
 			DynamicGI.UpdateEnvironment();
 		}
 	}
 
-	// Token: 0x0600198C RID: 6540 RVA: 0x000BAF18 File Offset: 0x000B9318
 	public static void ResetSkyAndFogSettings()
 	{
-		if (Blocksworld.worldSky != null)
+		if (worldSky != null)
 		{
-			Blocksworld.worldSky.SetSkyBoxRotation(0f, true);
+			worldSky.SetSkyBoxRotation(0f, immediate: true);
 		}
-		Blocksworld.UpdateSunIntensity(1f);
-		Blocksworld.UpdateFogColor(Blocksworld._buildModeFogColor);
-		Blocksworld.bw.SetFog(Blocksworld._buildModeFogStart, Blocksworld._buildModeFogEnd);
+		UpdateSunIntensity(1f);
+		UpdateFogColor(_buildModeFogColor);
+		bw.SetFog(_buildModeFogStart, _buildModeFogEnd);
 	}
 
-	// Token: 0x0600198D RID: 6541 RVA: 0x000BAF67 File Offset: 0x000B9367
 	public static void RenderScreenshot(Texture2D imageTexture, bool includeGuiCamera = false, FilterMode filterMode = FilterMode.Bilinear)
 	{
-		Blocksworld.RenderScreenshot(imageTexture, Blocksworld.mainCamera, (!includeGuiCamera) ? null : Blocksworld.guiCamera, filterMode);
+		RenderScreenshot(imageTexture, mainCamera, (!includeGuiCamera) ? null : guiCamera, filterMode);
 	}
 
-	// Token: 0x0600198E RID: 6542 RVA: 0x000BAF88 File Offset: 0x000B9388
 	public static void RenderScreenshot(Texture2D imageTexture, Camera camera, Camera overlayCamera, FilterMode filterMode = FilterMode.Bilinear)
 	{
 		int width = imageTexture.width;
 		int height = imageTexture.height;
-		bool flag = Blocksworld.blocksworldCamera.currentReticle && Blocksworld.blocksworldCamera.currentReticle.enabled;
+		bool flag = (bool)blocksworldCamera.currentReticle && blocksworldCamera.currentReticle.enabled;
 		if (flag)
 		{
-			Blocksworld.blocksworldCamera.currentReticle.enabled = false;
+			blocksworldCamera.currentReticle.enabled = false;
 		}
 		RenderTexture renderTexture = new RenderTexture(width, height, 24);
 		renderTexture.filterMode = filterMode;
@@ -6230,16 +6109,15 @@ public class Blocksworld : MonoBehaviour
 			overlayCamera.targetTexture = null;
 		}
 		RenderTexture.active = renderTexture;
-		imageTexture.ReadPixels(new Rect(0f, 0f, (float)width, (float)height), 0, 0);
+		imageTexture.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
 		RenderTexture.active = null;
 		UnityEngine.Object.Destroy(renderTexture);
 		if (flag)
 		{
-			Blocksworld.blocksworldCamera.currentReticle.enabled = true;
+			blocksworldCamera.currentReticle.enabled = true;
 		}
 	}
 
-	// Token: 0x0600198F RID: 6543 RVA: 0x000BB06C File Offset: 0x000B946C
 	public static string SaveScreenshot(bool includeGuiCamera = false, string path = null, int w = 4096, int h = 3072, FilterMode filterMode = FilterMode.Bilinear)
 	{
 		BWLog.Info("Generating screenshot...");
@@ -6252,8 +6130,8 @@ public class Blocksworld : MonoBehaviour
 		{
 			Directory.CreateDirectory(text);
 		}
-		Texture2D texture2D = new Texture2D(w, h, TextureFormat.RGB24, false);
-		Blocksworld.RenderScreenshot(texture2D, includeGuiCamera, filterMode);
+		Texture2D texture2D = new Texture2D(w, h, TextureFormat.RGB24, mipmap: false);
+		RenderScreenshot(texture2D, includeGuiCamera, filterMode);
 		texture2D.Apply();
 		byte[] bytes = texture2D.EncodeToPNG();
 		string text2 = string.Empty;
@@ -6262,8 +6140,8 @@ public class Blocksworld : MonoBehaviour
 			int num = 100;
 			for (int i = 1; i <= num; i++)
 			{
-				string str = i.ToString("D3");
-				text2 = "Blocksworld " + str + ".png";
+				string text3 = i.ToString("D3");
+				text2 = "Blocksworld " + text3 + ".png";
 				path = Path.Combine(text, text2);
 				if (!File.Exists(path))
 				{
@@ -6271,297 +6149,239 @@ public class Blocksworld : MonoBehaviour
 				}
 				if (i == num)
 				{
-					OnScreenLog.AddLogItem("Too many screenshots in folder", 5f, false);
+					OnScreenLog.AddLogItem("Too many screenshots in folder");
 				}
 			}
 		}
 		File.WriteAllBytes(path, bytes);
 		BWLog.Info("Wrote: " + path);
-		Blocksworld.UI.Overlay.ShowTimedOnScreenMessage("Wrote: " + text2, 3f);
+		UI.Overlay.ShowTimedOnScreenMessage("Wrote: " + text2, 3f);
 		UnityEngine.Object.Destroy(texture2D);
 		return path;
 	}
 
-	// Token: 0x06001990 RID: 6544 RVA: 0x000BB18C File Offset: 0x000B958C
 	public static void SaveMeshToFile(Bunch bunch)
 	{
 		BWLog.Info("Saving mesh...");
 		string text = Application.dataPath + "/..";
 		if (Options.ScreenshotDirectory != string.Empty)
 		{
-			if (Options.ScreenshotDirectory.StartsWith("/"))
-			{
-				text = Options.ScreenshotDirectory;
-			}
-			else
-			{
-				text = text + "/" + Options.ScreenshotDirectory;
-			}
+			text = ((!Options.ScreenshotDirectory.StartsWith("/")) ? (text + "/" + Options.ScreenshotDirectory) : Options.ScreenshotDirectory);
 		}
 		if (!Directory.Exists(text))
 		{
 			Directory.CreateDirectory(text);
 		}
-		bool flag = true;
-		string text2 = (!flag) ? ".stl" : ".obj";
+		string text2 = ((1 == 0) ? ".stl" : ".obj");
 		string text3 = "BWMesh" + text2;
 		int num = 100;
 		for (int i = 1; i <= num; i++)
 		{
-			string str = i.ToString("D3");
-			text3 = text + "/BWMesh " + str + text2;
+			string text4 = i.ToString("D3");
+			text3 = text + "/BWMesh " + text4 + text2;
 			if (!File.Exists(text3))
 			{
 				break;
 			}
 			if (i == num)
 			{
-				OnScreenLog.AddLogItem("Too many mesh files in folder", 5f, false);
+				OnScreenLog.AddLogItem("Too many mesh files in folder");
 			}
 		}
 		MeshUtils.Export(text3, bunch);
 		BWLog.Info("Wrote: " + text3);
-		Blocksworld.UI.Overlay.ShowTimedOnScreenMessage("Wrote: " + text3, 3f);
+		UI.Overlay.ShowTimedOnScreenMessage("Wrote: " + text3, 3f);
 	}
 
-	// Token: 0x06001991 RID: 6545 RVA: 0x000BB2C4 File Offset: 0x000B96C4
 	public void ButtonPlayTapped()
 	{
-		if (Blocksworld.resettingPlay)
+		if (resettingPlay)
 		{
 			return;
 		}
-		if (Blocksworld.CurrentState == State.Paused)
+		if (CurrentState == State.Paused)
 		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			Sound.PlayOneShotSound("Button Generic");
 			WorldSession.current.Unpause();
-			Blocksworld.SetBlocksworldState(State.Play);
+			SetBlocksworldState(State.Play);
 			WorldSession.current.OnPlay();
 			VisualEffect.ResumeVfxs();
-			Blocksworld.weather.Resume();
+			weather.Resume();
 		}
-		else if (Blocksworld.CurrentState == State.FrameCapture)
+		else if (CurrentState == State.FrameCapture)
 		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			Sound.PlayOneShotSound("Button Generic");
 			WorldSession.current.ExitScreenCaptureSetup();
 			WorldSession.current.OnPlay();
 			VisualEffect.ResumeVfxs();
-			Blocksworld.weather.Resume();
+			weather.Resume();
+		}
+		else if (rewardVisualizationGafs != null)
+		{
+			BWLog.Info("Not calling fast save since the reward vis gafs was not null");
 		}
 		else
 		{
-			if (Blocksworld.rewardVisualizationGafs != null)
-			{
-				BWLog.Info("Not calling fast save since the reward vis gafs was not null");
-				return;
-			}
 			if (Tutorial.state != TutorialState.None)
 			{
-				this.FastSave();
+				FastSave();
 			}
 			else
 			{
 				BWLog.Info("Not calling fast save since tutorial state was " + Tutorial.state);
 			}
-			Sound.PlayOneShotSound("Button Play", 1f);
+			Sound.PlayOneShotSound("Button Play");
 			BW.Analytics.SendAnalyticsEvent("world-play");
-			this.Play();
+			Play();
 		}
 	}
 
-	// Token: 0x06001992 RID: 6546 RVA: 0x000BB3D0 File Offset: 0x000B97D0
 	public void ButtonExitWorldTapped()
 	{
-		if (Blocksworld.rewardVisualizationGafs != null)
+		if (rewardVisualizationGafs == null && !resettingPlay && (!BW.isIPad || !IOSInterface.IsStartingRecording()))
 		{
-			return;
+			if (CurrentState == State.Play)
+			{
+				Stop(force: true);
+			}
+			if (BW.Options.saveOnWorldExit() && CurrentState == State.Build && !f3PressedInCurrentWorld)
+			{
+				Deselect(silent: true);
+				Save();
+			}
+			OnScreenLog.Clear();
+			Sound.PlayOneShotSound("Button Generic");
+			Tutorial.ResetState();
+			leaderboardData.Reset();
+			WorldSession.Quit();
 		}
-		if (Blocksworld.resettingPlay)
-		{
-			return;
-		}
-		if (BW.isIPad && IOSInterface.IsStartingRecording())
-		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.Play)
-		{
-			this.Stop(true, true);
-		}
-		if (BW.Options.saveOnWorldExit() && Blocksworld.CurrentState == State.Build && !Blocksworld.f3PressedInCurrentWorld)
-		{
-			Blocksworld.Deselect(true, true);
-			this.Save();
-		}
-		OnScreenLog.Clear();
-		Sound.PlayOneShotSound("Button Generic", 1f);
-		Tutorial.ResetState();
-		Blocksworld.leaderboardData.Reset();
-		WorldSession.Quit();
 	}
 
-	// Token: 0x06001993 RID: 6547 RVA: 0x000BB474 File Offset: 0x000B9874
 	public void ButtonMenuTapped()
 	{
-		if (Blocksworld.CurrentState == State.Play)
+		if (CurrentState == State.Play)
 		{
 			if (WorldSession.isCommunitySession())
 			{
-				Blocksworld.UI.Dialog.ShowEscapeMenuForCommunityWorld();
+				UI.Dialog.ShowEscapeMenuForCommunityWorld();
 			}
 			else
 			{
-				Blocksworld.UI.Dialog.ShowEscapeMenuForLocalWorldPlayMode();
+				UI.Dialog.ShowEscapeMenuForLocalWorldPlayMode();
 			}
 		}
-		else if (Blocksworld.CurrentState == State.Build)
+		else if (CurrentState == State.Build)
 		{
-			Blocksworld.UI.Dialog.ShowEscapeMenuForLocalWorldBuildMode();
+			UI.Dialog.ShowEscapeMenuForLocalWorldBuildMode();
 		}
 	}
 
-	// Token: 0x06001994 RID: 6548 RVA: 0x000BB4D7 File Offset: 0x000B98D7
 	public void ButtonPauseTapped()
 	{
-		if (Blocksworld.rewardVisualizationGafs != null)
+		if (rewardVisualizationGafs == null && !resettingPlay)
 		{
-			return;
+			Sound.PlayOneShotSound("Button Generic");
+			WorldSession.current.PauseButtonPressed();
 		}
-		if (Blocksworld.resettingPlay)
-		{
-			return;
-		}
-		Sound.PlayOneShotSound("Button Generic", 1f);
-		WorldSession.current.PauseButtonPressed();
 	}
 
-	// Token: 0x06001995 RID: 6549 RVA: 0x000BB508 File Offset: 0x000B9908
 	public void ButtonStopTapped()
 	{
-		if (Blocksworld.rewardVisualizationGafs != null)
+		if (rewardVisualizationGafs != null || resettingPlay)
 		{
 			return;
 		}
-		if (Blocksworld.resettingPlay)
+		if (CurrentState == State.FrameCapture)
 		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.FrameCapture)
-		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			Sound.PlayOneShotSound("Button Generic");
 			BWSceneManager.ResumeScene();
-			Blocksworld.SetBlocksworldState(State.Play);
+			SetBlocksworldState(State.Play);
 			WorldSession.current.OnPlay();
+			return;
 		}
-		else
+		Sound.PlayOneShotSound("Button Stop");
+		BW.Analytics.SendAnalyticsEvent("world-stop");
+		if (WorldSession.jumpRestoreConfig != null)
 		{
-			Sound.PlayOneShotSound("Button Stop", 1f);
-			BW.Analytics.SendAnalyticsEvent("world-stop");
-			if (WorldSession.jumpRestoreConfig != null)
-			{
-				WorldSession.RestoreJumpConfig();
-			}
-			else
-			{
-				this.Stop(false, true);
-				Blocksworld.SetBlocksworldState(State.Build);
-			}
+			WorldSession.RestoreJumpConfig();
+			return;
 		}
+		Stop();
+		SetBlocksworldState(State.Build);
 	}
 
-	// Token: 0x06001996 RID: 6550 RVA: 0x000BB59F File Offset: 0x000B999F
 	public void ButtonOptionsTapped()
 	{
-		Sound.PlayOneShotSound("Button Generic", 1f);
-		if (Blocksworld.resettingPlay)
+		Sound.PlayOneShotSound("Button Generic");
+		if (!resettingPlay)
 		{
-			return;
+			ShowOptionsScreen();
 		}
-		this.ShowOptionsScreen();
 	}
 
-	// Token: 0x06001997 RID: 6551 RVA: 0x000BB5C4 File Offset: 0x000B99C4
 	public void ShowOptionsScreen()
 	{
-		if (Blocksworld.CurrentState != State.Paused)
+		if (CurrentState != State.Paused)
 		{
 			WorldSession.current.Pause();
-			this._showingOptionsWhenPaused = false;
+			_showingOptionsWhenPaused = false;
 		}
 		else
 		{
-			this._showingOptionsWhenPaused = true;
+			_showingOptionsWhenPaused = true;
 		}
-		Blocksworld.lockInput = true;
-		Blocksworld.blocksworldCamera.SetCameraStill(true);
+		lockInput = true;
+		blocksworldCamera.SetCameraStill(still: true);
 		string sessionTitle = WorldSession.current.sessionTitle;
 		string sessionUserName = WorldSession.current.sessionUserName;
 		string sessionDescription = WorldSession.current.sessionDescription;
-		Blocksworld.UI.ShowOptionsScreen(sessionTitle, sessionUserName, sessionDescription);
-		Blocksworld.leaderboardData.PauseLeaderboard(true);
+		UI.ShowOptionsScreen(sessionTitle, sessionUserName, sessionDescription);
+		leaderboardData.PauseLeaderboard(isPaused: true);
 	}
 
-	// Token: 0x06001998 RID: 6552 RVA: 0x000BB644 File Offset: 0x000B9A44
 	public void HideOptionsScreen()
 	{
-		Blocksworld.leaderboardData.PauseLeaderboard(false);
-		Blocksworld.UI.HideOptionsScreen();
-		if (!this._showingOptionsWhenPaused)
+		leaderboardData.PauseLeaderboard(isPaused: false);
+		UI.HideOptionsScreen();
+		if (!_showingOptionsWhenPaused)
 		{
 			WorldSession.current.Unpause();
 		}
-		this._showingOptionsWhenPaused = false;
-		Blocksworld.lockInput = false;
-		Blocksworld.blocksworldCamera.SetCameraStill(false);
+		_showingOptionsWhenPaused = false;
+		lockInput = false;
+		blocksworldCamera.SetCameraStill(still: false);
 	}
 
-	// Token: 0x06001999 RID: 6553 RVA: 0x000BB694 File Offset: 0x000B9A94
 	public void ButtonRestartTapped()
 	{
-		if (Blocksworld.resettingPlay)
+		if (!resettingPlay && rewardVisualizationGafs == null)
 		{
-			return;
+			if (CurrentState == State.Paused)
+			{
+				WorldSession.current.Unpause();
+			}
+			else if (CurrentState == State.FrameCapture)
+			{
+				WorldSession.current.ExitScreenCaptureSetup();
+			}
+			Sound.PlayOneShotSound("Button Rewind");
+			BW.Analytics.SendAnalyticsEvent("world-rewind");
+			Restart();
 		}
-		if (Blocksworld.rewardVisualizationGafs != null)
-		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.Paused)
-		{
-			WorldSession.current.Unpause();
-		}
-		else if (Blocksworld.CurrentState == State.FrameCapture)
-		{
-			WorldSession.current.ExitScreenCaptureSetup();
-		}
-		Sound.PlayOneShotSound("Button Rewind", 1f);
-		BW.Analytics.SendAnalyticsEvent("world-rewind");
-		this.Restart();
 	}
 
-	// Token: 0x0600199A RID: 6554 RVA: 0x000BB70B File Offset: 0x000B9B0B
 	public void ButtonCaptureSetupTapped()
 	{
-		if (Blocksworld.rewardVisualizationGafs != null)
+		if (rewardVisualizationGafs == null)
 		{
-			return;
+			Sound.PlayOneShotSound("Button Generic");
+			WorldSession.current.EnterScreenCaptureSetup();
 		}
-		Sound.PlayOneShotSound("Button Generic", 1f);
-		WorldSession.current.EnterScreenCaptureSetup();
 	}
 
-	// Token: 0x0600199B RID: 6555 RVA: 0x000BB734 File Offset: 0x000B9B34
 	public void ButtonCaptureTapped()
 	{
-		if (Blocksworld.resettingPlay)
-		{
-			return;
-		}
-		if (Blocksworld.rewardVisualizationGafs != null)
-		{
-			return;
-		}
-		if (Blocksworld.capturingScreenshot)
+		if (resettingPlay || rewardVisualizationGafs != null || capturingScreenshot)
 		{
 			return;
 		}
@@ -6571,84 +6391,68 @@ public class Blocksworld : MonoBehaviour
 			{
 				CharacterEditor.Instance.Exit();
 			}
-			Sound.PlayOneShotSound("Step", 1f);
+			Sound.PlayOneShotSound("Step");
 			WorldSession.Save();
-			this.Play();
+			Play();
 			WorldSession.current.OnCapture();
-			Blocksworld.fixedUpdateCommands.Add(new DelayedProfilePictureCaptureCommand());
-			return;
+			fixedUpdateCommands.Add(new DelayedProfilePictureCaptureCommand());
 		}
-		if (WorldSession.current.TakeScreenshot())
+		else if (WorldSession.current.TakeScreenshot())
 		{
-			Sound.PlayOneShotSound("Step", 1f);
+			Sound.PlayOneShotSound("Step");
 			if (WorldSession.isWorldScreenshotSession())
 			{
 				WorldSession.current.ExitScreenCaptureSetup();
 				WorldSession.Quit();
+				return;
 			}
-			else
+			capturingScreenshot = true;
+			UI.Overlay.ShowTimedOnScreenMessage("Added to Photos!", 1.5f);
+			CameraFlashEffect cameraFlashEffect = guiCamera.gameObject.GetComponent<CameraFlashEffect>();
+			if (cameraFlashEffect == null)
 			{
-				Blocksworld.capturingScreenshot = true;
-				Blocksworld.UI.Overlay.ShowTimedOnScreenMessage("Added to Photos!", 1.5f);
-				CameraFlashEffect cameraFlashEffect = Blocksworld.guiCamera.gameObject.GetComponent<CameraFlashEffect>();
-				if (cameraFlashEffect == null)
-				{
-					cameraFlashEffect = Blocksworld.guiCamera.gameObject.AddComponent<CameraFlashEffect>();
-				}
-				cameraFlashEffect.time = 0f;
-				cameraFlashEffect.autoDestroy = true;
+				cameraFlashEffect = guiCamera.gameObject.AddComponent<CameraFlashEffect>();
 			}
+			cameraFlashEffect.time = 0f;
+			cameraFlashEffect.autoDestroy = true;
 		}
 		else
 		{
-			Sound.PlayOneShotSound("Player Error Retro", 1f);
-			Blocksworld.UI.Overlay.ShowTimedOnScreenMessage("Error saving Photo", 1.5f);
+			Sound.PlayOneShotSound("Player Error Retro");
+			UI.Overlay.ShowTimedOnScreenMessage("Error saving Photo", 1.5f);
 		}
 	}
 
-	// Token: 0x0600199C RID: 6556 RVA: 0x000BB87F File Offset: 0x000B9C7F
 	public void ButtonUndoTapped()
 	{
-		if (Blocksworld.resettingPlay)
+		if (!resettingPlay && CurrentState == State.Build && History.CanUndo())
 		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.Build && History.CanUndo())
-		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			Sound.PlayOneShotSound("Button Generic");
 			History.Undo();
 		}
 	}
 
-	// Token: 0x0600199D RID: 6557 RVA: 0x000BB8B4 File Offset: 0x000B9CB4
 	public void ButtonRedoTapped()
 	{
-		if (Blocksworld.resettingPlay)
+		if (!resettingPlay && CurrentState == State.Build && History.CanRedo())
 		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.Build && History.CanRedo())
-		{
-			Sound.PlayOneShotSound("Button Generic", 1f);
+			Sound.PlayOneShotSound("Button Generic");
 			History.Redo();
 		}
 	}
 
-	// Token: 0x0600199E RID: 6558 RVA: 0x000BB8E9 File Offset: 0x000B9CE9
 	public void ButtonLikeToggleTapped()
 	{
-		Sound.PlayOneShotSound("Button Generic", 1f);
+		Sound.PlayOneShotSound("Button Generic");
 		WorldSession.current.ToggleWorldUpvoted();
 	}
 
-	// Token: 0x0600199F RID: 6559 RVA: 0x000BB904 File Offset: 0x000B9D04
 	public void ButtonVRCameraTapped()
 	{
-		Sound.PlayOneShotSound("Button Generic", 1f);
-		Blocksworld.SetVRMode(true);
+		Sound.PlayOneShotSound("Button Generic");
+		SetVRMode(enabled: true);
 	}
 
-	// Token: 0x060019A0 RID: 6560 RVA: 0x000BB91C File Offset: 0x000B9D1C
 	public string ExtractProfileWorldAvatarString()
 	{
 		Block block = BWSceneManager.AllBlocks().Find((Block b) => b.IsProfileCharacter());
@@ -6656,35 +6460,34 @@ public class Blocksworld : MonoBehaviour
 		{
 			return string.Empty;
 		}
-		return this.ExtractProfileWorldAvatarString(block);
+		return ExtractProfileWorldAvatarString(block);
 	}
 
-	// Token: 0x060019A1 RID: 6561 RVA: 0x000BB964 File Offset: 0x000B9D64
 	public string ExtractProfileWorldAvatarString(Block profileCharacter)
 	{
 		StringBuilder stringBuilder = new StringBuilder(32768);
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder jsonstreamEncoder = new JSONStreamEncoder(writer, 20);
-		List<Block> list = ConnectednessGraph.ConnectedComponent(profileCharacter, 3, null, true);
-		for (int i = list.Count - 1; i >= 0; i--)
+		JSONStreamEncoder jSONStreamEncoder = new JSONStreamEncoder(writer);
+		List<Block> list = ConnectednessGraph.ConnectedComponent(profileCharacter, 3);
+		for (int num = list.Count - 1; num >= 0; num--)
 		{
-			if (list[i] != profileCharacter && Blocksworld.IsSelectionLocked(list[i]))
+			if (list[num] != profileCharacter && IsSelectionLocked(list[num]))
 			{
-				list.RemoveAt(i);
+				list.RemoveAt(num);
 			}
 		}
 		Util.AddGroupedTilesToBlockList(list);
-		jsonstreamEncoder.BeginObject();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("avatar");
-		jsonstreamEncoder.BeginArray();
-		foreach (Block block in list)
+		jSONStreamEncoder.BeginObject();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("avatar");
+		jSONStreamEncoder.BeginArray();
+		foreach (Block item in list)
 		{
-			List<List<Tile>> list2 = block.tiles;
-			if (block == profileCharacter)
+			List<List<Tile>> tileRows = item.tiles;
+			if (item == profileCharacter)
 			{
-				list2 = Blocksworld.CloneBlockTiles(block, false, false);
-				Tile tile = list2[0].Find((Tile t) => t.gaf.Predicate == Block.predicateCreate);
+				tileRows = CloneBlockTiles(item);
+				Tile tile = tileRows[0].Find((Tile t) => t.gaf.Predicate == Block.predicateCreate);
 				string stringArg = Util.GetStringArg(tile.gaf.Args, 0, string.Empty);
 				string text = ProfileBlocksterUtils.GetNonProfileBlockType(stringArg);
 				if (string.IsNullOrEmpty(text))
@@ -6692,158 +6495,155 @@ public class Blocksworld : MonoBehaviour
 					text = ((!(profileCharacter is BlockAnimatedCharacter)) ? "Character Male" : "Anim Character Male");
 				}
 				tile.gaf.Args[0] = text;
-				list2 = new List<List<Tile>>
+				List<List<Tile>> list2 = new List<List<Tile>>();
+				list2.Add(tileRows[0]);
+				list2.Add(new List<Tile>
 				{
-					list2[0],
-					new List<Tile>
-					{
-						new Tile(new GAF(Block.predicateThen, new object[0]))
-					}
-				};
+					new Tile(new GAF(Block.predicateThen))
+				});
+				tileRows = list2;
 			}
-			jsonstreamEncoder.InsertNewline();
-			jsonstreamEncoder.BeginObject();
-			jsonstreamEncoder.WriteKey((!Blocksworld.useCompactGafWriteRenamings) ? "tile-rows" : "r");
-			this.WriteTilesAsJSON(jsonstreamEncoder, list2, false, Blocksworld.useCompactGafWriteRenamings);
-			jsonstreamEncoder.EndObject();
+			jSONStreamEncoder.InsertNewline();
+			jSONStreamEncoder.BeginObject();
+			jSONStreamEncoder.WriteKey((!useCompactGafWriteRenamings) ? "tile-rows" : "r");
+			WriteTilesAsJSON(jSONStreamEncoder, tileRows, lockBlocks: false, useCompactGafWriteRenamings);
+			jSONStreamEncoder.EndObject();
 		}
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("connections");
-		jsonstreamEncoder.BeginArray();
-		foreach (Block block2 in list)
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("connections");
+		jSONStreamEncoder.BeginArray();
+		foreach (Block item2 in list)
 		{
-			jsonstreamEncoder.InsertNewline();
-			jsonstreamEncoder.BeginArray();
-			foreach (Block item in block2.connections)
+			jSONStreamEncoder.InsertNewline();
+			jSONStreamEncoder.BeginArray();
+			foreach (Block connection in item2.connections)
 			{
-				int num = list.IndexOf(item);
-				if (num >= 0)
+				int num2 = list.IndexOf(connection);
+				if (num2 >= 0)
 				{
-					jsonstreamEncoder.WriteNumber((long)list.IndexOf(item));
+					jSONStreamEncoder.WriteNumber(list.IndexOf(connection));
 				}
 			}
-			jsonstreamEncoder.EndArray();
+			jSONStreamEncoder.EndArray();
 		}
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("connectionTypes");
-		jsonstreamEncoder.BeginArray();
-		foreach (Block block3 in list)
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("connectionTypes");
+		jSONStreamEncoder.BeginArray();
+		foreach (Block item3 in list)
 		{
-			jsonstreamEncoder.InsertNewline();
-			jsonstreamEncoder.BeginArray();
-			foreach (int num2 in block3.connectionTypes)
+			jSONStreamEncoder.InsertNewline();
+			jSONStreamEncoder.BeginArray();
+			foreach (int connectionType in item3.connectionTypes)
 			{
-				jsonstreamEncoder.WriteNumber((long)num2);
+				jSONStreamEncoder.WriteNumber(connectionType);
 			}
-			jsonstreamEncoder.EndArray();
+			jSONStreamEncoder.EndArray();
 		}
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndObject();
-		jsonstreamEncoder.InsertNewline();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndObject();
+		jSONStreamEncoder.InsertNewline();
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x060019A2 RID: 6562 RVA: 0x000BBD70 File Offset: 0x000BA170
 	public void ButtonCopyTapped()
 	{
-		if (!this.copyModelAnimationCommand.Animating())
+		if (!copyModelAnimationCommand.Animating())
 		{
 			List<Block> list = new List<Block>();
-			if (Blocksworld.selectedBlock != null)
+			if (selectedBlock != null)
 			{
-				list.Add(Blocksworld.selectedBlock);
+				list.Add(selectedBlock);
 			}
-			else if (Blocksworld.selectedBunch != null)
+			else if (selectedBunch != null)
 			{
-				list.AddRange(Blocksworld.selectedBunch.blocks);
+				list.AddRange(selectedBunch.blocks);
 			}
-			this.copyModelAnimationCommand.SetBlocks(list);
-			this.copyModelAnimationCommand.endCommand = this.GetScaleCommand(delegate(UIQuickSelect q, float s)
+			copyModelAnimationCommand.SetBlocks(list);
+			copyModelAnimationCommand.endCommand = GetScaleCommand(delegate(UIQuickSelect q, float s)
 			{
 				q.SetModelIconScale(s);
 			});
-			Blocksworld.AddFixedUpdateUniqueCommand(this.copyModelAnimationCommand, true);
-			Blocksworld.clipboard.SetModelToSelection();
+			AddFixedUpdateUniqueCommand(copyModelAnimationCommand);
+			clipboard.SetModelToSelection();
 		}
 	}
 
-	// Token: 0x060019A3 RID: 6563 RVA: 0x000BBE18 File Offset: 0x000BA218
 	public void ButtonSaveModelTapped()
 	{
-		if (!Blocksworld.modelCollection.CanSaveModels)
+		if (!modelCollection.CanSaveModels)
 		{
-			Blocksworld.UI.Dialog.ShowMaximumModelsDialog();
+			UI.Dialog.ShowMaximumModelsDialog();
 			return;
 		}
 		List<List<List<Tile>>> buffer = new List<List<List<Tile>>>();
-		this.CopySelectionToBuffer(buffer);
-		bool useHD = Blocksworld.hd;
-		useHD |= (BWStandalone.Instance != null);
+		CopySelectionToBuffer(buffer);
+		bool useHD = hd;
+		useHD |= BWStandalone.Instance != null;
 		if (ModelCollection.ModelContainsDisallowedTile(buffer))
 		{
 			BWLog.Error("Attempting to create model with disallowed gaf");
 			return;
 		}
-		Dictionary<GAF, int> gafUsage = Scarcity.GetNormalizedInventoryUse(buffer, WorldType.User, false);
-		Action completion = delegate()
+		Dictionary<GAF, int> gafUsage = Scarcity.GetNormalizedInventoryUse(buffer, WorldType.User);
+		Action completion = delegate
 		{
-			if (!this.saveModelAnimationCommand.Animating())
+			if (!saveModelAnimationCommand.Animating())
 			{
 				List<Block> list = new List<Block>();
 				Bounds bounds = new Bounds(Vector3.zero, Vector3.one);
-				if (Blocksworld.selectedBlock != null)
+				if (selectedBlock != null)
 				{
-					list.Add(Blocksworld.selectedBlock);
-					bounds = Blocksworld.selectedBlock.GetBounds();
+					list.Add(selectedBlock);
+					bounds = selectedBlock.GetBounds();
 				}
-				else if (Blocksworld.selectedBunch != null)
+				else if (selectedBunch != null)
 				{
-					list.AddRange(Blocksworld.selectedBunch.blocks);
-					bounds = Blocksworld.selectedBunch.GetBounds();
+					list.AddRange(selectedBunch.blocks);
+					bounds = selectedBunch.GetBounds();
 				}
-				this.saveModelAnimationCommand.SetBlocks(list);
-				Blocksworld.AddFixedUpdateUniqueCommand(this.saveModelAnimationCommand, true);
-				Blocksworld.modelCollection.SaveToModelCollection(buffer, gafUsage);
+				saveModelAnimationCommand.SetBlocks(list);
+				AddFixedUpdateUniqueCommand(saveModelAnimationCommand);
+				modelCollection.SaveToModelCollection(buffer, gafUsage);
 				if (bounds.size.y >= 25f)
 				{
 					WorldSession.platformDelegate.TrackAchievementIncrease("skyscraper", 1);
 				}
 			}
 		};
-		Action completionWithUnsellableBlocksWarning = delegate()
+		Action completionWithUnsellableBlocksWarning = delegate
 		{
 			HashSet<GAF> hashSet = new HashSet<GAF>();
-			foreach (GAF gaf in gafUsage.Keys)
+			foreach (GAF key in gafUsage.Keys)
 			{
-				BlockItem blockItem = BlockItem.FindByGafPredicateNameAndArguments(gaf.Predicate.Name, gaf.Args);
+				BlockItem blockItem = BlockItem.FindByGafPredicateNameAndArguments(key.Predicate.Name, key.Args);
 				if (blockItem == null)
 				{
-					BWLog.Info("no blockItem for gaf: " + gaf);
+					BWLog.Info("no blockItem for gaf: " + key);
 				}
 				else if (blockItem.IsUnsellable())
 				{
-					hashSet.Add(gaf);
+					hashSet.Add(key);
 				}
 			}
 			if (hashSet.Count > 0)
 			{
-				Blocksworld.UI.Dialog.ShowUnsellableBlocksInModelWarning(hashSet, completion);
+				UI.Dialog.ShowUnsellableBlocksInModelWarning(hashSet, completion);
 			}
 			else
 			{
 				completion();
 			}
 		};
-		Action completionWithModelExistWarning = delegate()
+		Action completionWithModelExistWarning = delegate
 		{
-			if (Blocksworld.modelCollection.ContainsSimilarModel(buffer))
+			if (modelCollection.ContainsSimilarModel(buffer))
 			{
-				Blocksworld.UI.Dialog.ShowGenericDialog("\nYou have a model like this...\n\nSave anyway?", "No", "Yes", null, completionWithUnsellableBlocksWarning);
+				UI.Dialog.ShowGenericDialog("\nYou have a model like this...\n\nSave anyway?", "No", "Yes", null, completionWithUnsellableBlocksWarning);
 			}
 			else
 			{
@@ -6852,39 +6652,43 @@ public class Blocksworld : MonoBehaviour
 		};
 		Action<string> setNameAction = delegate(string name)
 		{
-			Blocksworld.modelCollection.SetTempName(name);
+			modelCollection.SetTempName(name);
 		};
 		Action<Texture2D> callback = delegate(Texture2D tex)
 		{
-			Blocksworld.modelCollection.SetTempSnapshot(tex, useHD);
-			Blocksworld.modelCollection.SetTempName(string.Empty);
-			Blocksworld.UI.Dialog.ShowModelSaveDialog(tex, completionWithModelExistWarning, setNameAction);
+			modelCollection.SetTempSnapshot(tex, useHD);
+			modelCollection.SetTempName(string.Empty);
+			UI.Dialog.ShowModelSaveDialog(tex, completionWithModelExistWarning, setNameAction);
 		};
 		ScreenshotUtils.GenerateModelSnapshotTexture(buffer, useHD, callback);
 	}
 
-	// Token: 0x060019A4 RID: 6564 RVA: 0x000BBF31 File Offset: 0x000BA331
 	public bool ModelAnimationInProgress()
 	{
-		return this.copyModelAnimationCommand.Animating() || this.saveModelAnimationCommand.Animating();
+		if (!copyModelAnimationCommand.Animating())
+		{
+			return saveModelAnimationCommand.Animating();
+		}
+		return true;
 	}
 
-	// Token: 0x060019A5 RID: 6565 RVA: 0x000BBF51 File Offset: 0x000BA351
 	public bool IsPullingObject()
 	{
-		return this.pullObject != null && this.pullObject.IsActive;
+		if (pullObject != null)
+		{
+			return pullObject.IsActive;
+		}
+		return false;
 	}
 
-	// Token: 0x060019A6 RID: 6566 RVA: 0x000BBF6C File Offset: 0x000BA36C
 	public bool HadObjectTapping()
 	{
-		return Blocksworld.worldSessionHadBlockTap;
+		return worldSessionHadBlockTap;
 	}
 
-	// Token: 0x060019A7 RID: 6567 RVA: 0x000BBF74 File Offset: 0x000BA374
 	private DelegateCommand GetScaleCommand(Action<UIQuickSelect, float> scaleFunc)
 	{
-		UIQuickSelect quickSelect = Blocksworld.UI.QuickSelect;
+		UIQuickSelect quickSelect = UI.QuickSelect;
 		if (quickSelect != null)
 		{
 			float scale = 2f;
@@ -6895,70 +6699,63 @@ public class Blocksworld : MonoBehaviour
 				if (scale < 1f)
 				{
 					scaleFunc(quickSelect, 1f);
-					a.SetDone(true);
+					a.SetDone(d: true);
 				}
 				else
 				{
-					a.SetDone(false);
+					a.SetDone(d: false);
 				}
 			});
 		}
 		return null;
 	}
 
-	// Token: 0x060019A8 RID: 6568 RVA: 0x000BBFDC File Offset: 0x000BA3DC
 	private void ButtonCopyScriptTapped(TileTapGesture gesture, Tile tile)
 	{
-		if (!this.copyScriptAnimationCommand.Animating())
+		if (!copyScriptAnimationCommand.Animating())
 		{
-			this.copyScriptAnimationCommand.SetTiles(Blocksworld.scriptPanel.tiles);
-			Blocksworld.AddFixedUpdateUniqueCommand(this.copyScriptAnimationCommand, true);
-			this.copyScriptAnimationCommand.endCommand = this.GetScaleCommand(delegate(UIQuickSelect q, float s)
+			copyScriptAnimationCommand.SetTiles(scriptPanel.tiles);
+			AddFixedUpdateUniqueCommand(copyScriptAnimationCommand);
+			copyScriptAnimationCommand.endCommand = GetScaleCommand(delegate(UIQuickSelect q, float s)
 			{
 				q.SetScriptIconScale(s);
 			});
-			Blocksworld.clipboard.SetScriptToSelection();
+			clipboard.SetScriptToSelection();
 		}
 	}
 
-	// Token: 0x060019A9 RID: 6569 RVA: 0x000BC052 File Offset: 0x000BA452
 	private void ButtonClearScriptTapped(TileTapGesture gesture, Tile tile)
 	{
-		Blocksworld.RemoveScriptsFromSelection();
+		RemoveScriptsFromSelection();
 		History.AddStateIfNecessary();
-		Blocksworld.UpdateTiles();
+		UpdateTiles();
 	}
 
-	// Token: 0x060019AA RID: 6570 RVA: 0x000BC064 File Offset: 0x000BA464
 	private void ButtonPasteScriptTapped(TileTapGesture gesture, Tile tile)
 	{
-		if (Blocksworld.selectedBlock != null)
+		if (selectedBlock != null)
 		{
-			this.PasteScriptFromClipboard(Blocksworld.selectedBlock);
+			PasteScriptFromClipboard(selectedBlock);
 			History.AddStateIfNecessary();
-			Blocksworld.UpdateTiles();
+			UpdateTiles();
 		}
 	}
 
-	// Token: 0x060019AB RID: 6571 RVA: 0x000BC088 File Offset: 0x000BA488
 	private void CharacterEditTapped(TileTapGesture gesture, Tile tile)
 	{
-		if (CharacterEditor.Instance.InEditMode())
+		if (!CharacterEditor.Instance.InEditMode())
 		{
-			return;
-		}
-		if (Blocksworld.selectedBlock != null && Blocksworld.selectedBlock is BlockAnimatedCharacter)
-		{
-			CharacterEditor.Instance.EditCharacter(Blocksworld.selectedBlock as BlockAnimatedCharacter);
-			return;
-		}
-		if (WorldSession.isProfileBuildSession() && WorldSession.current.profileWorldAnimatedBlockster != null)
-		{
-			CharacterEditor.Instance.EditCharacter(WorldSession.current.profileWorldAnimatedBlockster);
+			if (selectedBlock != null && selectedBlock is BlockAnimatedCharacter)
+			{
+				CharacterEditor.Instance.EditCharacter(selectedBlock as BlockAnimatedCharacter);
+			}
+			else if (WorldSession.isProfileBuildSession() && WorldSession.current.profileWorldAnimatedBlockster != null)
+			{
+				CharacterEditor.Instance.EditCharacter(WorldSession.current.profileWorldAnimatedBlockster);
+			}
 		}
 	}
 
-	// Token: 0x060019AC RID: 6572 RVA: 0x000BC100 File Offset: 0x000BA500
 	private void CharacterEditExitTapped(TileTapGesture gesture, Tile tile)
 	{
 		if (CharacterEditor.Instance.InEditMode())
@@ -6967,22 +6764,28 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x060019AD RID: 6573 RVA: 0x000BC11C File Offset: 0x000BA51C
 	public static bool CanSelectBlock(Block block)
 	{
 		bool enableTerrainSelection = Options.EnableTerrainSelection;
-		return (!block.isTerrain || enableTerrainSelection || (block.SelectableTerrain() && ((Blocksworld.selectedBlock == null && Blocksworld.selectedBunch == null) || !block.DoubleTapToSelect()))) && (Tutorial.state == TutorialState.None || (!block.IsLocked() && !Blocksworld.locked.Contains(block))) && (!enableTerrainSelection || !block.isTerrain || Blocksworld.selectedBlock == null || Blocksworld.selectedBlock.isTerrain);
+		if ((!block.isTerrain || enableTerrainSelection || (block.SelectableTerrain() && ((selectedBlock == null && selectedBunch == null) || !block.DoubleTapToSelect()))) && (Tutorial.state == TutorialState.None || (!block.IsLocked() && !locked.Contains(block))))
+		{
+			if (enableTerrainSelection && block.isTerrain && selectedBlock != null)
+			{
+				return selectedBlock.isTerrain;
+			}
+			return true;
+		}
+		return false;
 	}
 
-	// Token: 0x060019AE RID: 6574 RVA: 0x000BC1C4 File Offset: 0x000BA5C4
 	private bool RaycastMoveBlock(Block block)
 	{
 		int connectionType = 3;
-		bool flag = Options.RaycastMoveBlocksWithoutSelection || (Options.RaycastMoveSingletonBlocksWithoutSelection && block.ConnectionsOfType(connectionType, false).Count == 0);
+		bool flag = Options.RaycastMoveBlocksWithoutSelection || (Options.RaycastMoveSingletonBlocksWithoutSelection && block.ConnectionsOfType(connectionType).Count == 0);
 		if (flag)
 		{
 			Bounds bounds = block.go.GetComponent<Collider>().bounds;
-			float magnitude = (bounds.center - Blocksworld.cameraTransform.position).magnitude;
+			float magnitude = (bounds.center - cameraTransform.position).magnitude;
 			if (magnitude > 0.01f)
 			{
 				return Util.MeanAbs(bounds.size / magnitude) < 0.35f;
@@ -6991,54 +6794,51 @@ public class Blocksworld : MonoBehaviour
 		return flag;
 	}
 
-	// Token: 0x060019AF RID: 6575 RVA: 0x000BC25C File Offset: 0x000BA65C
 	private bool BlockDuplicateBegan(BlockDuplicateGesture gesture, Block block)
 	{
-		bool flag = block == Blocksworld.selectedBlock;
-		if (Blocksworld.selectedBunch != null)
+		bool flag = block == selectedBlock;
+		if (selectedBunch != null)
 		{
 			flag = false;
-			for (int i = 0; i < Blocksworld.selectedBunch.blocks.Count; i++)
+			for (int i = 0; i < selectedBunch.blocks.Count; i++)
 			{
-				Block block2 = Blocksworld.selectedBunch.blocks[i];
-				flag |= (block2 == block);
+				Block block2 = selectedBunch.blocks[i];
+				flag = flag || block2 == block;
 			}
 		}
 		return flag;
 	}
 
-	// Token: 0x060019B0 RID: 6576 RVA: 0x000BC2B8 File Offset: 0x000BA6B8
 	private static string GetUniquesJSON(List<GAF> uniquesInModel)
 	{
 		StringBuilder stringBuilder = new StringBuilder();
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder jsonstreamEncoder = new JSONStreamEncoder(writer, 20);
-		jsonstreamEncoder.BeginObject();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.WriteKey("uniques");
-		jsonstreamEncoder.BeginArray();
-		jsonstreamEncoder.InsertNewline();
-		foreach (GAF gaf in uniquesInModel)
+		JSONStreamEncoder jSONStreamEncoder = new JSONStreamEncoder(writer);
+		jSONStreamEncoder.BeginObject();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.WriteKey("uniques");
+		jSONStreamEncoder.BeginArray();
+		jSONStreamEncoder.InsertNewline();
+		foreach (GAF item in uniquesInModel)
 		{
-			gaf.ToJSON(jsonstreamEncoder);
-			jsonstreamEncoder.InsertNewline();
+			item.ToJSON(jSONStreamEncoder);
+			jSONStreamEncoder.InsertNewline();
 		}
-		jsonstreamEncoder.EndArray();
-		jsonstreamEncoder.InsertNewline();
-		jsonstreamEncoder.EndObject();
-		jsonstreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndArray();
+		jSONStreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndObject();
+		jSONStreamEncoder.InsertNewline();
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x060019B1 RID: 6577 RVA: 0x000BC374 File Offset: 0x000BA774
 	private void BlockDuplicated(BlockDuplicateGesture gesture, Block block, Gestures.Touch touch)
 	{
-		this.CopySelectionToBuffer(Blocksworld.clipboard.modelDuplicateBuffer);
-		TBox.Show(false);
+		CopySelectionToBuffer(clipboard.modelDuplicateBuffer);
+		TBox.Show(show: false);
 		TBoxGesture.skipOneTap = true;
-		Blocksworld.blockTapGesture.Reset();
-		Blocksworld.mouseBlock = null;
-		if (ModelCollection.ModelContainsDisallowedTile(Blocksworld.clipboard.modelDuplicateBuffer))
+		blockTapGesture.Reset();
+		mouseBlock = null;
+		if (ModelCollection.ModelContainsDisallowedTile(clipboard.modelDuplicateBuffer))
 		{
 			BWLog.Error("Attempting to create model with disallowed gaf");
 			return;
@@ -7047,26 +6847,25 @@ public class Blocksworld : MonoBehaviour
 		{
 			Dictionary<GAF, int> missing = new Dictionary<GAF, int>();
 			List<GAF> list = new List<GAF>();
-			if (Blocksworld.clipboard.AvailablityCountForBlockList(Blocksworld.clipboard.modelDuplicateBuffer, missing, list) == 0)
+			if (clipboard.AvailablityCountForBlockList(clipboard.modelDuplicateBuffer, missing, list) == 0)
 			{
-				Sound.PlayOneShotSound("Destroy", 1f);
-				string str = (list.Count != 0) ? "A world can only have one of these:" : "Missing items:";
-				Blocksworld.UI.Dialog.ShowPasteFailInfo(missing, list, "\nCould not duplicate selection.\n\n" + str);
-				Blocksworld.Deselect(false, true);
+				Sound.PlayOneShotSound("Destroy");
+				string text = ((list.Count != 0) ? "A world can only have one of these:" : "Missing items:");
+				UI.Dialog.ShowPasteFailInfo(missing, list, "\nCould not duplicate selection.\n\n" + text);
+				Deselect();
 				return;
 			}
 		}
-		Sound.PlayOneShotSound("Paste Model", 1f);
-		Scarcity.UpdateInventory(true, null);
-		List<Block> blocks = this.PasteModelToFinger(Blocksworld.clipboard.modelDuplicateBuffer, touch, true, null);
-		if (!this.pasteModelAnimationCommand.Animating())
+		Sound.PlayOneShotSound("Paste Model");
+		Scarcity.UpdateInventory();
+		List<Block> blocks = PasteModelToFinger(clipboard.modelDuplicateBuffer, touch);
+		if (!pasteModelAnimationCommand.Animating())
 		{
-			this.pasteModelAnimationCommand.SetBlocks(blocks);
-			Blocksworld.AddFixedUpdateUniqueCommand(this.pasteModelAnimationCommand, true);
+			pasteModelAnimationCommand.SetBlocks(blocks);
+			AddFixedUpdateUniqueCommand(pasteModelAnimationCommand);
 		}
 	}
 
-	// Token: 0x060019B2 RID: 6578 RVA: 0x000BC4A8 File Offset: 0x000BA8A8
 	private bool HasEnoughScarcityForSelection()
 	{
 		if (Scarcity.inventory == null)
@@ -7074,16 +6873,16 @@ public class Blocksworld : MonoBehaviour
 			return true;
 		}
 		List<Block> list = new List<Block>();
-		if (Blocksworld.selectedBunch != null)
+		if (selectedBunch != null)
 		{
-			for (int i = 0; i < Blocksworld.selectedBunch.blocks.Count; i++)
+			for (int i = 0; i < selectedBunch.blocks.Count; i++)
 			{
-				list.Add(Blocksworld.selectedBunch.blocks[i]);
+				list.Add(selectedBunch.blocks[i]);
 			}
 		}
-		else if (Blocksworld.selectedBlock != null)
+		else if (selectedBlock != null)
 		{
-			list.Add(Blocksworld.selectedBlock);
+			list.Add(selectedBlock);
 		}
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
 		for (int j = 0; j < list.Count; j++)
@@ -7092,14 +6891,12 @@ public class Blocksworld : MonoBehaviour
 			for (int k = 0; k < block.tiles[0].Count; k++)
 			{
 				Tile tile = block.tiles[0][k];
-				GAF normalizedGaf = Scarcity.GetNormalizedGaf(tile.gaf, false);
-				if (Scarcity.IsRelevantGAF(block.BlockType(), normalizedGaf, true))
+				GAF normalizedGaf = Scarcity.GetNormalizedGaf(tile.gaf);
+				if (Scarcity.IsRelevantGAF(block.BlockType(), normalizedGaf, firstRow: true))
 				{
 					if (dictionary.ContainsKey(normalizedGaf))
 					{
-						Dictionary<GAF, int> dictionary2;
-						GAF key;
-						(dictionary2 = dictionary)[key = normalizedGaf] = dictionary2[key] + 1;
+						dictionary[normalizedGaf]++;
 					}
 					else
 					{
@@ -7107,18 +6904,16 @@ public class Blocksworld : MonoBehaviour
 					}
 				}
 			}
-			foreach (List<Tile> list2 in block.tiles)
+			foreach (List<Tile> tile2 in block.tiles)
 			{
-				foreach (Tile tile2 in list2)
+				foreach (Tile item in tile2)
 				{
-					GAF gaf = tile2.gaf;
+					GAF gaf = item.gaf;
 					if (gaf.Predicate == Block.predicatePlaySoundDurational)
 					{
 						if (dictionary.ContainsKey(gaf))
 						{
-							Dictionary<GAF, int> dictionary2;
-							GAF key2;
-							(dictionary2 = dictionary)[key2 = gaf] = dictionary2[key2] + 1;
+							dictionary[gaf]++;
 						}
 						else
 						{
@@ -7129,14 +6924,13 @@ public class Blocksworld : MonoBehaviour
 			}
 		}
 		bool flag = true;
-		foreach (GAF gaf2 in dictionary.Keys)
+		foreach (GAF key in dictionary.Keys)
 		{
-			flag &= (Scarcity.GetInventoryCount(gaf2, false) >= dictionary[gaf2]);
+			flag &= Scarcity.GetInventoryCount(key) >= dictionary[key];
 		}
 		return flag;
 	}
 
-	// Token: 0x060019B3 RID: 6579 RVA: 0x000BC71C File Offset: 0x000BAB1C
 	public void CopyBlocksToBuffer(List<Block> list, List<List<List<Tile>>> modelBuffer)
 	{
 		HashSet<Block> hashSet = new HashSet<Block>();
@@ -7144,282 +6938,263 @@ public class Blocksworld : MonoBehaviour
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
-			if (!hashSet.Contains(block))
+			if (hashSet.Contains(block))
 			{
-				BlockGrouped blockGrouped = block as BlockGrouped;
-				if (blockGrouped != null && blockGrouped.group != null)
+				continue;
+			}
+			if (block is BlockGrouped { group: not null } blockGrouped)
+			{
+				Block[] blocks = blockGrouped.group.GetBlocks();
+				foreach (Block block2 in blocks)
 				{
-					foreach (Block block2 in blockGrouped.group.GetBlocks())
+					if (!hashSet.Contains(block2))
 					{
-						if (!hashSet.Contains(block2))
-						{
-							hashSet.Add(block2);
-							modelBuffer.Add(Blocksworld.CloneBlockTiles(block2, false, false));
-						}
+						hashSet.Add(block2);
+						modelBuffer.Add(CloneBlockTiles(block2));
 					}
 				}
-				else
-				{
-					modelBuffer.Add(Blocksworld.CloneBlockTiles(block, false, false));
-					hashSet.Add(block);
-				}
-			}
-		}
-	}
-
-	// Token: 0x060019B4 RID: 6580 RVA: 0x000BC7EC File Offset: 0x000BABEC
-	public void CopySelectionToBuffer(List<List<List<Tile>>> modelBuffer)
-	{
-		if (Blocksworld.selectedBunch != null)
-		{
-			this.CopyBlocksToBuffer(Blocksworld.selectedBunch.blocks, modelBuffer);
-		}
-		else if (Blocksworld.selectedBlock != null)
-		{
-			BlockGrouped blockGrouped = Blocksworld.selectedBlock as BlockGrouped;
-			if (blockGrouped != null && blockGrouped.group != null)
-			{
-				this.CopyBlocksToBuffer(blockGrouped.group.GetBlockList(), modelBuffer);
 			}
 			else
 			{
-				this.CopyBlocksToBuffer(new List<Block>
-				{
-					Blocksworld.selectedBlock
-				}, modelBuffer);
+				modelBuffer.Add(CloneBlockTiles(block));
+				hashSet.Add(block);
 			}
 		}
 	}
 
-	// Token: 0x060019B5 RID: 6581 RVA: 0x000BC870 File Offset: 0x000BAC70
-	public void CopySelectedScriptToBuffer(List<List<List<Tile>>> scriptBuffer)
+	public void CopySelectionToBuffer(List<List<List<Tile>>> modelBuffer)
 	{
-		Block selectedScriptBlock = Blocksworld.GetSelectedScriptBlock();
-		if (selectedScriptBlock != null)
+		if (selectedBunch != null)
 		{
-			scriptBuffer.Clear();
-			scriptBuffer.Add(Blocksworld.CloneBlockTiles(selectedScriptBlock, true, false));
+			CopyBlocksToBuffer(selectedBunch.blocks, modelBuffer);
+		}
+		else if (selectedBlock != null)
+		{
+			if (selectedBlock is BlockGrouped { group: not null } blockGrouped)
+			{
+				CopyBlocksToBuffer(blockGrouped.group.GetBlockList(), modelBuffer);
+				return;
+			}
+			CopyBlocksToBuffer(new List<Block> { selectedBlock }, modelBuffer);
 		}
 	}
 
-	// Token: 0x060019B6 RID: 6582 RVA: 0x000BC8A0 File Offset: 0x000BACA0
+	public void CopySelectedScriptToBuffer(List<List<List<Tile>>> scriptBuffer)
+	{
+		Block selectedScriptBlock = GetSelectedScriptBlock();
+		if (selectedScriptBlock != null)
+		{
+			scriptBuffer.Clear();
+			scriptBuffer.Add(CloneBlockTiles(selectedScriptBlock, excludeFirstRow: true));
+		}
+	}
+
 	public void PasteScriptFromClipboard(Block block)
 	{
 		if (block.tiles.Count > 2 || (block.tiles.Count > 1 && block.tiles[1].Count > 1))
 		{
-			Blocksworld.UI.Dialog.ShowScriptExistsDialog(block);
+			UI.Dialog.ShowScriptExistsDialog(block);
 		}
 		else
 		{
-			Blocksworld.DoPasteScriptFromClipboard(block, true);
+			DoPasteScriptFromClipboard(block, replace: true);
 		}
 	}
 
-	// Token: 0x060019B7 RID: 6583 RVA: 0x000BC902 File Offset: 0x000BAD02
 	public static void DoPasteScriptFromClipboard(Block block, bool replace = false)
 	{
-		if (Blocksworld.clipboard.scriptCopyPasteBuffer.Count > 0)
+		if (clipboard.scriptCopyPasteBuffer.Count > 0)
 		{
-			Blocksworld.PasteScript(block, Blocksworld.clipboard.scriptCopyPasteBuffer[0], replace, false);
+			PasteScript(block, clipboard.scriptCopyPasteBuffer[0], replace);
 		}
 	}
 
-	// Token: 0x060019B8 RID: 6584 RVA: 0x000BC934 File Offset: 0x000BAD34
 	public void PasteBlocksFromSavedModel(int modelIndex)
 	{
-		if (modelIndex >= Blocksworld.modelCollection.models.Count)
+		if (modelIndex < modelCollection.models.Count)
 		{
-			return;
+			List<List<List<Tile>>> list = modelCollection.models[modelIndex].CreateModel();
+			if (ModelCollection.ModelContainsDisallowedTile(list))
+			{
+				BWLog.Error("Attempting to create model with disallowed gaf");
+				return;
+			}
+			List<Block> blocksToUpdateConnection = PasteBlocks(list, Util.Round(blocksworldCamera.GetTargetPosition()));
+			DetermineBlockOffset(blocksToUpdateConnection);
 		}
-		List<List<List<Tile>>> list = Blocksworld.modelCollection.models[modelIndex].CreateModel();
-		if (ModelCollection.ModelContainsDisallowedTile(list))
-		{
-			BWLog.Error("Attempting to create model with disallowed gaf");
-			return;
-		}
-		List<Block> blocksToUpdateConnection = this.PasteBlocks(list, Util.Round(Blocksworld.blocksworldCamera.GetTargetPosition()));
-		this.DetermineBlockOffset(blocksToUpdateConnection);
 	}
 
-	// Token: 0x060019B9 RID: 6585 RVA: 0x000BC9A4 File Offset: 0x000BADA4
 	private static List<List<Tile>> FilterCompatible(List<List<Tile>> script, Block block, HashSet<GAF> incompatible)
 	{
 		List<List<Tile>> list = new List<List<Tile>>();
-		foreach (List<Tile> list2 in script)
+		foreach (List<Tile> item2 in script)
 		{
-			List<Tile> list3 = new List<Tile>();
-			foreach (Tile tile in list2)
+			List<Tile> list2 = new List<Tile>();
+			foreach (Tile item3 in item2)
 			{
-				Predicate predicate = tile.gaf.Predicate;
+				Predicate predicate = item3.gaf.Predicate;
 				if (predicate.CompatibleWith(block))
 				{
-					list3.Add(tile);
+					list2.Add(item3);
+					continue;
 				}
-				else
+				bool flag = true;
+				HashSet<Predicate> equivalentPredicates = PredicateRegistry.GetEquivalentPredicates(predicate);
+				if (equivalentPredicates != null)
 				{
-					bool flag = true;
-					HashSet<Predicate> equivalentPredicates = PredicateRegistry.GetEquivalentPredicates(predicate);
-					if (equivalentPredicates != null)
+					List<Predicate> list3 = PredicateRegistry.ForBlock(block, includeBaseTypes: false);
+					foreach (Predicate item4 in list3)
 					{
-						List<Predicate> list4 = PredicateRegistry.ForBlock(block, false);
-						foreach (Predicate predicate2 in list4)
+						if (equivalentPredicates.Contains(item4))
 						{
-							if (equivalentPredicates.Contains(predicate2))
-							{
-								object[] args = PredicateRegistry.ConvertEquivalentPredicateArguments(predicate, predicate2, tile.gaf.Args);
-								GAF gaf = new GAF(predicate2, args, true);
-								Tile item = new Tile(gaf);
-								list3.Add(item);
-								flag = false;
-								break;
-							}
+							object[] args = PredicateRegistry.ConvertEquivalentPredicateArguments(predicate, item4, item3.gaf.Args);
+							GAF gaf = new GAF(item4, args, dummy: true);
+							Tile item = new Tile(gaf);
+							list2.Add(item);
+							flag = false;
+							break;
 						}
 					}
-					if (flag)
-					{
-						incompatible.Add(tile.gaf);
-					}
+				}
+				if (flag)
+				{
+					incompatible.Add(item3.gaf);
 				}
 			}
-			list.Add(list3);
+			list.Add(list2);
 		}
 		return list;
 	}
 
-	// Token: 0x060019BA RID: 6586 RVA: 0x000BCB54 File Offset: 0x000BAF54
 	public static void RemoveScriptsFromSelection()
 	{
-		if (Blocksworld.scriptPanel.IsShowing())
+		if (scriptPanel.IsShowing())
 		{
-			Blocksworld.scriptPanel.SavePositionForNextLayout();
+			scriptPanel.SavePositionForNextLayout();
 		}
-		BlockGrouped blockGrouped = Blocksworld.selectedBlock as BlockGrouped;
-		if (blockGrouped != null)
+		if (selectedBlock is BlockGrouped blockGrouped)
 		{
-			foreach (Block block in blockGrouped.group.GetBlocks())
+			Block[] blocks = blockGrouped.group.GetBlocks();
+			foreach (Block block in blocks)
 			{
-				Blocksworld.RemoveScriptFrom(block);
+				RemoveScriptFrom(block);
 				block.AddOrRemoveEmptyScriptLine();
 			}
 		}
-		else if (Blocksworld.selectedBunch != null)
+		else if (selectedBunch != null)
 		{
-			for (int j = 0; j < Blocksworld.selectedBunch.blocks.Count; j++)
+			for (int j = 0; j < selectedBunch.blocks.Count; j++)
 			{
-				Blocksworld.RemoveScriptFrom(Blocksworld.selectedBunch.blocks[j]);
-				Blocksworld.selectedBunch.blocks[j].AddOrRemoveEmptyScriptLine();
+				RemoveScriptFrom(selectedBunch.blocks[j]);
+				selectedBunch.blocks[j].AddOrRemoveEmptyScriptLine();
 			}
 		}
-		else if (Blocksworld.selectedBlock != null)
+		else if (selectedBlock != null)
 		{
-			Blocksworld.RemoveScriptFrom(Blocksworld.selectedBlock);
-			Blocksworld.selectedBlock.AddOrRemoveEmptyScriptLine();
+			RemoveScriptFrom(selectedBlock);
+			selectedBlock.AddOrRemoveEmptyScriptLine();
 		}
-		Blocksworld.scriptPanel.AssignUnparentedTiles();
-		if (Blocksworld.scriptPanel.IsShowing())
+		scriptPanel.AssignUnparentedTiles();
+		if (scriptPanel.IsShowing())
 		{
-			Blocksworld.scriptPanel.Layout();
+			scriptPanel.Layout();
 		}
 	}
 
-	// Token: 0x060019BB RID: 6587 RVA: 0x000BCC64 File Offset: 0x000BB064
 	public static void RemoveScriptFrom(Block block)
 	{
 		for (int i = 1; i < block.tiles.Count; i++)
 		{
 			List<Tile> list = block.tiles[i];
-			foreach (Tile tile in list)
+			foreach (Tile item in list)
 			{
-				tile.Show(false);
+				item.Show(show: false);
 			}
 		}
 		block.tiles.RemoveRange(1, block.tiles.Count - 1);
 	}
 
-	// Token: 0x060019BC RID: 6588 RVA: 0x000BCD00 File Offset: 0x000BB100
 	public static void PasteScript(Block block, List<List<Tile>> script, bool replace = false, bool force = false)
 	{
 		HashSet<GAF> hashSet = new HashSet<GAF>();
-		List<List<Tile>> collection = Blocksworld.FilterCompatible(Blocksworld.CloneBlockTiles(script, null, false, false), block, hashSet);
+		List<List<Tile>> collection = FilterCompatible(CloneBlockTiles(script), block, hashSet);
 		if (!force && hashSet.Count > 0)
 		{
-			Blocksworld.UI.Dialog.ShowPasteScriptIncompatibleDialog(block, script, new List<GAF>(hashSet), replace);
+			UI.Dialog.ShowPasteScriptIncompatibleDialog(block, script, new List<GAF>(hashSet), replace);
 			return;
 		}
 		if (replace)
 		{
-			Blocksworld.RemoveScriptFrom(block);
+			RemoveScriptFrom(block);
 		}
-		bool flag = Blocksworld.scriptPanel.IsShowing();
+		bool flag = scriptPanel.IsShowing();
 		if (flag)
 		{
-			Blocksworld.scriptPanel.SavePositionForNextLayout();
-			Blocksworld.Deselect(true, true);
+			scriptPanel.SavePositionForNextLayout();
+			Deselect(silent: true);
 		}
 		block.tiles.AddRange(collection);
-		for (int i = block.tiles.Count - 1; i >= 0; i--)
+		for (int num = block.tiles.Count - 1; num >= 0; num--)
 		{
-			if (i < block.tiles.Count - 1)
+			if (num < block.tiles.Count - 1)
 			{
-				List<Tile> list = block.tiles[i];
+				List<Tile> list = block.tiles[num];
 				if (list.Count <= 1)
 				{
-					block.tiles.RemoveAt(i);
+					block.tiles.RemoveAt(num);
 				}
 			}
 		}
 		if (flag)
 		{
-			Blocksworld.SelectBlock(block, true, true);
+			SelectBlock(block, silent: true);
 		}
-		Scarcity.UpdateInventory(false, null);
+		Scarcity.UpdateInventory(updateTiles: false);
 		Scarcity.PaintScarcityBadges();
-		Sound.PlayOneShotSound("Paste Script", 1f);
+		Sound.PlayOneShotSound("Paste Script");
 	}
 
-	// Token: 0x060019BD RID: 6589 RVA: 0x000BCE0C File Offset: 0x000BB20C
 	private List<Block> PasteBlocks(List<List<List<Tile>>> blocks, Vector3 targetPos)
 	{
 		List<Block> list = new List<Block>();
-		foreach (List<List<Tile>> tiles in blocks)
+		foreach (List<List<Tile>> block2 in blocks)
 		{
-			List<List<Tile>> tiles2 = Blocksworld.CloneBlockTiles(tiles, null, false, false);
-			Block block = Block.NewBlock(tiles2, false, false);
+			List<List<Tile>> tiles = CloneBlockTiles(block2);
+			Block block = Block.NewBlock(tiles);
 			BWSceneManager.AddBlock(block);
 			list.Add(block);
 		}
-		Vector3 b = Util.Round(Util.ComputeCenter(list, false));
-		foreach (Block block2 in list)
+		Vector3 vector = Util.Round(Util.ComputeCenter(list));
+		foreach (Block item in list)
 		{
-			Vector3 b2 = block2.GetPosition() - b;
-			block2.MoveTo(targetPos + b2);
+			Vector3 vector2 = item.GetPosition() - vector;
+			item.MoveTo(targetPos + vector2);
 		}
 		return list;
 	}
 
-	// Token: 0x060019BE RID: 6590 RVA: 0x000BCEF8 File Offset: 0x000BB2F8
 	private void DetermineBlockOffset(List<Block> blocksToUpdateConnection)
 	{
 		for (int i = 0; i < 10; i++)
 		{
-			Vector3 b = default(Vector3);
+			Vector3 vector = default(Vector3);
 			bool flag = true;
-			foreach (Block block in blocksToUpdateConnection)
+			foreach (Block item in blocksToUpdateConnection)
 			{
-				if (block.IsColliding(0f, null))
+				if (item.IsColliding())
 				{
-					b = Vector3.up * 2f;
+					vector = Vector3.up * 2f;
 					flag = false;
 					break;
 				}
 			}
 			if (flag)
 			{
-				b = Vector3.up;
+				vector = Vector3.up;
 			}
-			foreach (Block block2 in blocksToUpdateConnection)
+			foreach (Block item2 in blocksToUpdateConnection)
 			{
-				block2.MoveTo(block2.GetPosition() + b);
+				item2.MoveTo(item2.GetPosition() + vector);
 			}
 			if (flag)
 			{
@@ -7428,96 +7203,88 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x060019BF RID: 6591 RVA: 0x000BCFFC File Offset: 0x000BB3FC
 	public static List<Block> InsertModelTiles(List<List<List<Tile>>> modelBuffer, float x, float y, float z)
 	{
 		List<Block> list = new List<Block>();
-		foreach (List<List<Tile>> tiles in modelBuffer)
+		foreach (List<List<Tile>> item in modelBuffer)
 		{
-			Block block = Block.NewBlock(tiles, false, false);
+			Block block = Block.NewBlock(item);
 			if (block != null)
 			{
 				list.Add(block);
 				BWSceneManager.AddBlock(block);
 			}
 		}
-		Bounds bounds = Util.ComputeBoundsWithSize(list, true);
+		Bounds bounds = Util.ComputeBoundsWithSize(list);
 		float f = x - bounds.center.x;
 		float f2 = y - bounds.min.y;
 		float f3 = z - bounds.center.z;
-		Vector3 b = new Vector3(Mathf.Round(f), Mathf.Ceil(f2), Mathf.Round(f3));
-		foreach (Block block2 in list)
+		Vector3 vector = new Vector3(Mathf.Round(f), Mathf.Ceil(f2), Mathf.Round(f3));
+		foreach (Block item2 in list)
 		{
-			block2.MoveTo(block2.GetPosition() + b);
+			item2.MoveTo(item2.GetPosition() + vector);
 		}
 		BlockGroups.GatherBlockGroups(list);
-		foreach (Block block3 in list)
+		foreach (Block item3 in list)
 		{
-			BlockGrouped blockGrouped = block3 as BlockGrouped;
-			if (blockGrouped != null)
+			if (item3 is BlockGrouped blockGrouped)
 			{
 				blockGrouped.UpdateSATVolumes();
 			}
 		}
-		Scarcity.UpdateInventory(true, null);
+		Scarcity.UpdateInventory();
 		return list;
 	}
 
-	// Token: 0x060019C0 RID: 6592 RVA: 0x000BD194 File Offset: 0x000BB594
 	public static List<Block> InsertModel(string modelSource, float x, float y, float z)
 	{
 		Block.ClearConnectedCache();
-		RaycastHit raycastHit;
-		if (Physics.Raycast(new Vector3(x, y, z), -Vector3.up, out raycastHit, 100f))
+		if (Physics.Raycast(new Vector3(x, y, z), -Vector3.up, out var hitInfo, 100f))
 		{
-			y = raycastHit.point.y + y;
+			y = hitInfo.point.y + y;
 		}
 		List<List<List<Tile>>> list = ModelUtils.ParseModelString(modelSource);
 		if (list == null)
 		{
 			return null;
 		}
-		List<Block> list2 = Blocksworld.InsertModelTiles(list, x, y, z);
+		List<Block> list2 = InsertModelTiles(list, x, y, z);
 		ConnectednessGraph.Update(list2);
 		return list2;
 	}
 
-	// Token: 0x060019C1 RID: 6593 RVA: 0x000BD1FC File Offset: 0x000BB5FC
 	public static string LockModelJSON(string modelStr)
 	{
 		JObject obj = JSONDecoder.Decode(modelStr);
 		List<List<List<Tile>>> modelBuffer = ModelUtils.ParseModelJSON(obj);
-		return Blocksworld.LockModelTiles(modelBuffer);
+		return LockModelTiles(modelBuffer);
 	}
 
-	// Token: 0x060019C2 RID: 6594 RVA: 0x000BD220 File Offset: 0x000BB620
 	public static string UnlockModelJSON(string modelStr)
 	{
 		JObject obj = JSONDecoder.Decode(modelStr);
 		List<List<List<Tile>>> modelBuffer = ModelUtils.ParseModelJSON(obj);
-		return Blocksworld.UnlockModelTiles(modelBuffer);
+		return UnlockModelTiles(modelBuffer);
 	}
 
-	// Token: 0x060019C3 RID: 6595 RVA: 0x000BD244 File Offset: 0x000BB644
 	public static string UnlockModelTiles(List<List<List<Tile>>> modelBuffer)
 	{
 		for (int i = 0; i < modelBuffer.Count; i++)
 		{
 			List<List<Tile>> list = modelBuffer[i];
 			List<Tile> list2 = list[0];
-			for (int j = list2.Count - 1; j >= 0; j--)
+			for (int num = list2.Count - 1; num >= 0; num--)
 			{
-				Tile tile = list2[j];
+				Tile tile = list2[num];
 				if (tile.gaf.Predicate == Block.predicateGroup && BlockGroups.GroupType(tile) == "locked-model")
 				{
-					list2.RemoveAt(j);
+					list2.RemoveAt(num);
 				}
 			}
 		}
 		return ModelUtils.GetJSONForModel(modelBuffer);
 	}
 
-	// Token: 0x060019C4 RID: 6596 RVA: 0x000BD2D4 File Offset: 0x000BB6D4
 	public static string LockModelTiles(List<List<List<Tile>>> modelBuffer)
 	{
 		int nextGroupId = BlockGroup.GetNextGroupId();
@@ -7529,42 +7296,41 @@ public class Blocksworld : MonoBehaviour
 		return ModelUtils.GetJSONForModel(modelBuffer);
 	}
 
-	// Token: 0x060019C5 RID: 6597 RVA: 0x000BD31C File Offset: 0x000BB71C
 	public List<Block> PasteModelToFinger(List<List<List<Tile>>> model, Gestures.Touch touch, bool addHistoryState = true, BlockGroupTemplate template = null)
 	{
 		if (model == null || model.Count == 0)
 		{
 			return new List<Block>();
 		}
-		Blocksworld.Deselect(false, true);
+		Deselect();
 		if (ModelCollection.ModelContainsDisallowedTile(model))
 		{
 			BWLog.Error("Attempting to create model with disallowed gaf");
 			return new List<Block>();
 		}
 		List<Block> list = new List<Block>();
-		Vector3 a = Util.Round(Blocksworld.blocksworldCamera.GetTargetPosition());
-		foreach (List<List<Tile>> tiles in model)
+		Vector3 vector = Util.Round(blocksworldCamera.GetTargetPosition());
+		foreach (List<List<Tile>> item in model)
 		{
-			List<List<Tile>> tiles2 = Blocksworld.CloneBlockTiles(tiles, null, false, false);
-			Block block = Block.NewBlock(tiles2, false, false);
+			List<List<Tile>> tiles = CloneBlockTiles(item);
+			Block block = Block.NewBlock(tiles);
 			BWSceneManager.AddBlock(block);
 			list.Add(block);
 		}
-		Vector3 b = Util.Round(Util.ComputeCenter(list, false));
-		Vector3 b2 = Util.Round((Blocksworld.cameraTransform.position - b).normalized);
-		foreach (Block block2 in list)
+		Vector3 vector2 = Util.Round(Util.ComputeCenter(list));
+		Vector3 vector3 = Util.Round((cameraTransform.position - vector2).normalized);
+		foreach (Block item2 in list)
 		{
-			Vector3 b3 = block2.GetPosition() - b;
-			block2.MoveTo(a + b3 + b2);
+			Vector3 vector4 = item2.GetPosition() - vector2;
+			item2.MoveTo(vector + vector4 + vector3);
 		}
 		for (int i = 0; i < 10; i++)
 		{
-			Vector3 vector = Vector3.zero;
+			Vector3 zero = Vector3.zero;
 			bool flag = true;
-			foreach (Block block3 in list)
+			foreach (Block item3 in list)
 			{
-				if (block3.IsColliding(0f, null))
+				if (item3.IsColliding())
 				{
 					flag = false;
 					break;
@@ -7572,11 +7338,11 @@ public class Blocksworld : MonoBehaviour
 			}
 			if (!flag)
 			{
-				vector += Vector3.up;
+				zero += Vector3.up;
 			}
-			foreach (Block block4 in list)
+			foreach (Block item4 in list)
 			{
-				block4.MoveTo(block4.GetPosition() + vector);
+				item4.MoveTo(item4.GetPosition() + zero);
 			}
 			if (flag)
 			{
@@ -7588,9 +7354,9 @@ public class Blocksworld : MonoBehaviour
 		{
 			bool flag2 = true;
 			bool flag3 = false;
-			foreach (Block block5 in list)
+			foreach (Block item5 in list)
 			{
-				BlockGrouped blockGrouped = block5 as BlockGrouped;
+				BlockGrouped blockGrouped = item5 as BlockGrouped;
 				if (blockGrouped == null || blockGrouped.group == null)
 				{
 					flag3 = true;
@@ -7602,287 +7368,247 @@ public class Blocksworld : MonoBehaviour
 			{
 				BlockGroups.AddGroup(list, template.type);
 			}
-			if (list.Count > 0)
+			if (list.Count > 0 && list[0] is BlockGrouped blockGrouped2)
 			{
-				BlockGrouped blockGrouped2 = list[0] as BlockGrouped;
-				if (blockGrouped2 != null)
-				{
-					Block mainBlockInGroup = blockGrouped2.GetMainBlockInGroup();
-					Block.WriteDefaultExtraTiles(Tutorial.state == TutorialState.None, mainBlockInGroup.tiles, mainBlockInGroup.BlockType());
-				}
+				Block mainBlockInGroup = blockGrouped2.GetMainBlockInGroup();
+				Block.WriteDefaultExtraTiles(Tutorial.state == TutorialState.None, mainBlockInGroup.tiles, mainBlockInGroup.BlockType());
 			}
 			if (flag2)
 			{
-				Blocksworld.SetDefaultPaintsAndTextures(list);
+				SetDefaultPaintsAndTextures(list);
 			}
 		}
-		Scarcity.UpdateInventory(true, null);
+		Scarcity.UpdateInventory();
 		if (addHistoryState)
 		{
 			History.AddStateIfNecessary();
 		}
-		Blocksworld.selectedBlock = null;
-		Blocksworld.SelectBunch(list, true, true);
-		Block block6 = Blocksworld.selectedBlock;
-		if (block6 == null && Blocksworld.selectedBunch != null && Blocksworld.selectedBunch.blocks.Count == 1)
+		selectedBlock = null;
+		SelectBunch(list, silent: true);
+		Block block2 = selectedBlock;
+		if (block2 == null && selectedBunch != null && selectedBunch.blocks.Count == 1)
 		{
-			block6 = Blocksworld.selectedBunch.blocks[0];
+			block2 = selectedBunch.blocks[0];
 		}
-		if (block6 != null)
+		if (block2 != null)
 		{
-			Sound.PlayCreateSound(new GAF(Block.predicateCreate, new object[]
-			{
-				block6.BlockType()
-			}), false, block6);
+			Sound.PlayCreateSound(new GAF(Block.predicateCreate, block2.BlockType()), script: false, block2);
 		}
 		else
 		{
-			Sound.PlayOneShotSound("Create", 1f);
+			Sound.PlayOneShotSound("Create");
 		}
 		return list;
 	}
 
-	// Token: 0x060019C6 RID: 6598 RVA: 0x000BD6F0 File Offset: 0x000BBAF0
 	public static void SetDefaultPaintsAndTextures(List<Block> list)
 	{
-		foreach (Block block in new List<Block>(list))
+		foreach (Block item in new List<Block>(list))
 		{
-			for (int i = 0; i < block.subMeshGameObjects.Count + 1; i++)
+			for (int i = 0; i < item.subMeshGameObjects.Count + 1; i++)
 			{
-				string paint = block.GetDefaultPaint(i).Split(new char[]
-				{
-					','
-				})[0];
-				block.PaintTo(paint, true, i);
-				block.TextureTo(block.GetDefaultTexture(i), Vector3.zero, true, i, true);
+				string paint = item.GetDefaultPaint(i).Split(',')[0];
+				item.PaintTo(paint, permanent: true, i);
+				item.TextureTo(item.GetDefaultTexture(i), Vector3.zero, permanent: true, i, force: true);
 			}
 		}
 	}
 
-	// Token: 0x060019C7 RID: 6599 RVA: 0x000BD7A0 File Offset: 0x000BBBA0
 	private bool BlockTapBegan(BlockTapGesture gesture, Block block)
 	{
-		if (this.RaycastMoveBlock(block) && block != Blocksworld.selectedBlock && Blocksworld.selectedBunch == null && !TBox.tileButtonRotate.HitExtended(Blocksworld.touches[0], -10f, -10f, -10f, 10f, false) && !TBox.tileButtonMove.HitExtended(Blocksworld.touches[0], -10f, -10f, -10f, 10f, false) && !TBox.tileButtonScale.HitExtended(Blocksworld.touches[0], -10f, -10f, -10f, 10f, false) && !TBox.tileCharacterEditIcon.HitExtended(Blocksworld.touches[0], -10f, -10f, -10f, 10f, false) && !TBox.tileCharacterEditExitIcon.HitExtended(Blocksworld.touches[0], -10f, -10f, -10f, 10f, false) && Blocksworld.CanSelectBlock(block))
+		if (RaycastMoveBlock(block) && block != selectedBlock && selectedBunch == null && !TBox.tileButtonRotate.HitExtended(touches[0], -10f, -10f, -10f, 10f) && !TBox.tileButtonMove.HitExtended(touches[0], -10f, -10f, -10f, 10f) && !TBox.tileButtonScale.HitExtended(touches[0], -10f, -10f, -10f, 10f) && !TBox.tileCharacterEditIcon.HitExtended(touches[0], -10f, -10f, -10f, 10f) && !TBox.tileCharacterEditExitIcon.HitExtended(touches[0], -10f, -10f, -10f, 10f) && CanSelectBlock(block))
 		{
-			Blocksworld.Select(block, false, true);
-			TBox.Show(false);
+			Select(block);
+			TBox.Show(show: false);
 			TBoxGesture.skipOneTap = true;
 			return false;
 		}
 		return true;
 	}
 
-	// Token: 0x060019C8 RID: 6600 RVA: 0x000BD8F4 File Offset: 0x000BBCF4
 	private void BlockTapped(BlockTapGesture gesture, Block block)
 	{
-		bool flag = Blocksworld.CanSelectBlock(block);
-		if (this.RaycastMoveBlock(block) || gesture.GetStartMouseBlock() == Blocksworld.mouseBlock || !flag)
+		bool flag = CanSelectBlock(block);
+		if (RaycastMoveBlock(block) || gesture.GetStartMouseBlock() == mouseBlock || !flag)
 		{
-			Blocksworld.Select((!flag) ? null : block, false, true);
+			Select((!flag) ? null : block);
 		}
 		Tutorial.Step();
 	}
 
-	// Token: 0x060019C9 RID: 6601 RVA: 0x000BD944 File Offset: 0x000BBD44
 	public static void ZeroInventoryTileTapped(Tile zeroTile)
 	{
-		float magnitude = Blocksworld.buildPanel.GetSpeed().magnitude;
-		if (!Tutorial.InTutorialOrPuzzle() && magnitude < 5f)
+		float magnitude = buildPanel.GetSpeed().magnitude;
+		if (Tutorial.InTutorialOrPuzzle() || !(magnitude < 5f))
 		{
-			if (zeroTile.IsCreateModel())
+			return;
+		}
+		if (zeroTile.IsCreateModel())
+		{
+			Dictionary<GAF, int> missing = new Dictionary<GAF, int>();
+			List<GAF> list = new List<GAF>();
+			ModelData modelData = modelCollection.models[(int)zeroTile.gaf.Args[0]];
+			if (clipboard.AvailableModelCount(modelData, missing, list) == 0)
 			{
-				Dictionary<GAF, int> missing = new Dictionary<GAF, int>();
-				List<GAF> list = new List<GAF>();
-				ModelData modelData = Blocksworld.modelCollection.models[(int)zeroTile.gaf.Args[0]];
-				if (Blocksworld.clipboard.AvailableModelCount(modelData, missing, list, true) == 0)
-				{
-					string str = (list.Count <= 0) ? "Missing items:" : "A world can only have one of these:";
-					string caption = "\nCould not create model " + modelData.name + "\n\n" + str;
-					Blocksworld.UI.Dialog.ShowPasteFailInfo(missing, list, caption);
-				}
+				string text = ((list.Count <= 0) ? "Missing items:" : "A world can only have one of these:");
+				string caption = "\nCould not create model " + modelData.name + "\n\n" + text;
+				UI.Dialog.ShowPasteFailInfo(missing, list, caption);
 			}
-			else
+			return;
+		}
+		Dictionary<string, HashSet<string>> dictionary = GetUniqueBlockMap();
+		string stringArgSafe = Util.GetStringArgSafe(zeroTile.gaf.Args, 0, string.Empty);
+		if (dictionary.ContainsKey(stringArgSafe))
+		{
+			Block block = BWSceneManager.FindBlockOfType(stringArgSafe);
+			if (block != null)
 			{
-				Dictionary<string, HashSet<string>> dictionary = Blocksworld.GetUniqueBlockMap();
-				string stringArgSafe = Util.GetStringArgSafe(zeroTile.gaf.Args, 0, string.Empty);
-				if (dictionary.ContainsKey(stringArgSafe))
+				Vector3 position = block.GetPosition();
+				Vector3 scale = block.Scale();
+				GoToCameraFrameFor(position, scale);
+				SelectBlock(block, silent: true, updateTiles: false);
+			}
+		}
+		else
+		{
+			UI.Dialog.ShowZeroInventoryDialog(zeroTile);
+		}
+	}
+
+	public static void BlockPanelTileTapped(Tile tile)
+	{
+		if (CurrentState == State.Build)
+		{
+			Predicate predicate = tile.gaf.Predicate;
+			if (predicate.CanEditTile(tile) && (!predicate.EditableParameter.settings.hideOnLeftSide || !scriptPanel.TileOnLeftSide(tile)))
+			{
+				if (bw.tileParameterEditor.IsEditing() && tile.subParameterCount == 1)
 				{
-					Block block = BWSceneManager.FindBlockOfType(stringArgSafe);
-					if (block != null)
-					{
-						Vector3 position = block.GetPosition();
-						Vector3 scale = block.Scale();
-						Blocksworld.GoToCameraFrameFor(position, scale);
-						Blocksworld.SelectBlock(block, true, false);
-					}
+					tile.doubleWidth = false;
+					scriptPanel.SavePositionForNextLayout();
+					scriptPanel.Layout();
+					bw.tileParameterEditor.StopEditing();
 				}
 				else
 				{
-					Blocksworld.UI.Dialog.ShowZeroInventoryDialog(zeroTile);
+					tile.doubleWidth = predicate.EditableParameter.useDoubleWidth;
+					scriptPanel.SavePositionForNextLayout();
+					scriptPanel.Layout();
+					bw.tileParameterEditor.StartEditing(tile, predicate.EditableParameter);
 				}
 			}
 		}
+		selectedTile = tile;
 	}
 
-	// Token: 0x060019CA RID: 6602 RVA: 0x000BDA90 File Offset: 0x000BBE90
-	public static void BlockPanelTileTapped(Tile tile)
-	{
-		if (Blocksworld.CurrentState == State.Build)
-		{
-			Predicate predicate = tile.gaf.Predicate;
-			if (predicate.CanEditTile(tile))
-			{
-				if (!predicate.EditableParameter.settings.hideOnLeftSide || !Blocksworld.scriptPanel.TileOnLeftSide(tile))
-				{
-					if (Blocksworld.bw.tileParameterEditor.IsEditing() && tile.subParameterCount == 1)
-					{
-						tile.doubleWidth = false;
-						Blocksworld.scriptPanel.SavePositionForNextLayout();
-						Blocksworld.scriptPanel.Layout();
-						Blocksworld.bw.tileParameterEditor.StopEditing();
-					}
-					else
-					{
-						tile.doubleWidth = predicate.EditableParameter.useDoubleWidth;
-						Blocksworld.scriptPanel.SavePositionForNextLayout();
-						Blocksworld.scriptPanel.Layout();
-						Blocksworld.bw.tileParameterEditor.StartEditing(tile, predicate.EditableParameter);
-					}
-				}
-			}
-		}
-		Blocksworld.selectedTile = tile;
-	}
-
-	// Token: 0x060019CB RID: 6603 RVA: 0x000BDB79 File Offset: 0x000BBF79
 	public static GUISkin LoadSkin(bool hd)
 	{
 		return (GUISkin)Resources.Load((!hd) ? "GUI/Skin SD" : "GUI/Skin HD");
 	}
 
-	// Token: 0x060019CC RID: 6604 RVA: 0x000BDB9A File Offset: 0x000BBF9A
 	public float CalcSDLabelHeight(string text, float width)
 	{
-		return Blocksworld.skin.label.CalcHeight(new GUIContent(text), width * NormalizedScreen.scale) / NormalizedScreen.scale;
+		return skin.label.CalcHeight(new GUIContent(text), width * NormalizedScreen.scale) / NormalizedScreen.scale;
 	}
 
-	// Token: 0x060019CD RID: 6605 RVA: 0x000BDBC0 File Offset: 0x000BBFC0
 	public static void LoadBlocksworldSceneAsync()
 	{
-		if (!Blocksworld.isLoadingScene && !Blocksworld.loadComplete)
+		if (!isLoadingScene && !loadComplete)
 		{
-			Blocksworld.isLoadingScene = true;
+			isLoadingScene = true;
 			GameObject gameObject = new GameObject();
 			gameObject.AddComponent<BlocksworldLoader>();
 		}
-		else if (Blocksworld.loadComplete)
+		else if (loadComplete)
 		{
 			IOSInterface.BlocksworldSceneLoaded();
 		}
 	}
 
-	// Token: 0x060019CE RID: 6606 RVA: 0x000BDC08 File Offset: 0x000BC008
 	public static void LoadBlocksworldSceneSync()
 	{
-		if (!Blocksworld.loadComplete)
+		if (!loadComplete)
 		{
 			Application.LoadLevel("Scene");
 		}
 	}
 
-	// Token: 0x060019CF RID: 6607 RVA: 0x000BDC20 File Offset: 0x000BC020
 	public static void SetSpeechBubbleText(string text, int index)
 	{
-		TileParameterEditor tileParameterEditor = Blocksworld.bw.tileParameterEditor;
-		if (Blocksworld.mainCamera == null || tileParameterEditor == null || tileParameterEditor.parameter == null || Blocksworld.selectedTile == null || text == null)
+		TileParameterEditor tileParameterEditor = bw.tileParameterEditor;
+		if (mainCamera == null || tileParameterEditor == null || tileParameterEditor.parameter == null || selectedTile == null || text == null)
 		{
-			BWLog.Warning(string.Concat(new object[]
-			{
-				"Problem in SetSpeechBubbleText(). Param editor null: ",
-				tileParameterEditor == null,
-				" Selected tile null: ",
-				Blocksworld.selectedTile == null,
-				" Text null: ",
-				text == null
-			}));
+			BWLog.Warning("Problem in SetSpeechBubbleText(). Param editor null: " + (tileParameterEditor == null) + " Selected tile null: " + (selectedTile == null) + " Text null: " + (text == null));
 		}
 		else
 		{
-			tileParameterEditor.SetEditing(true);
-			tileParameterEditor.selectedTile = Blocksworld.selectedTile;
+			tileParameterEditor.SetEditing(e: true);
+			tileParameterEditor.selectedTile = selectedTile;
 			tileParameterEditor.parameter.objectValue = text;
 		}
 		if (tileParameterEditor != null)
 		{
 			tileParameterEditor.StopEditing();
 		}
-		Blocksworld.selectedTile = null;
-		Blocksworld.stringInput = null;
-		if (Blocksworld.CurrentState != State.WaitForOption)
+		selectedTile = null;
+		stringInput = null;
+		if (CurrentState != State.WaitForOption)
 		{
-			Blocksworld.SetBlocksworldState(State.Build);
+			SetBlocksworldState(State.Build);
 		}
 	}
 
-	// Token: 0x060019D0 RID: 6608 RVA: 0x000BDD14 File Offset: 0x000BC114
 	private static void SetTileParameterValue(object value, int index, bool last)
 	{
-		if (Blocksworld.mainCamera == null)
+		if (!(mainCamera == null))
 		{
-			return;
-		}
-		Blocksworld.selectedTile.gaf.Args[index] = value;
-		if (last)
-		{
-			Blocksworld.selectedTile = null;
-			Blocksworld.SetBlocksworldState(State.Build);
+			selectedTile.gaf.Args[index] = value;
+			if (last)
+			{
+				selectedTile = null;
+				SetBlocksworldState(State.Build);
+			}
 		}
 	}
 
-	// Token: 0x060019D1 RID: 6609 RVA: 0x000BDD4B File Offset: 0x000BC14B
 	public static void EnableWorldSave(bool enabled)
 	{
-		Blocksworld.worldSaveEnabled = enabled;
+		worldSaveEnabled = enabled;
 	}
 
-	// Token: 0x060019D2 RID: 6610 RVA: 0x000BDD53 File Offset: 0x000BC153
 	public static void DisableBuildMode()
 	{
-		Blocksworld.bw.forcePlayMode = true;
-		Blocksworld.buildPanel.showShopButton = false;
-		Blocksworld.UI.SidePanel.Hide();
+		bw.forcePlayMode = true;
+		buildPanel.showShopButton = false;
+		UI.SidePanel.Hide();
 	}
 
-	// Token: 0x060019D3 RID: 6611 RVA: 0x000BDD7A File Offset: 0x000BC17A
 	public static void EnableBuildMode()
 	{
-		Blocksworld.bw.forcePlayMode = false;
-		Blocksworld.buildPanel.showShopButton = false;
-		Blocksworld.UI.SidePanel.Show();
+		bw.forcePlayMode = false;
+		buildPanel.showShopButton = false;
+		UI.SidePanel.Show();
 	}
 
-	// Token: 0x060019D4 RID: 6612 RVA: 0x000BDDA4 File Offset: 0x000BC1A4
 	public static void ForceSave()
 	{
-		if (WorldSession.current == null)
+		if (WorldSession.current != null)
 		{
-			return;
-		}
-		if (Blocksworld.CurrentState == State.Paused)
-		{
-			WorldSession.UnpauseCurrentSession();
-		}
-		if (Blocksworld.CurrentState == State.Play)
-		{
-			Blocksworld.bw.Stop(false, true);
-		}
-		if (Blocksworld.CurrentState == State.Build)
-		{
-			Blocksworld.bw.Save();
+			if (CurrentState == State.Paused)
+			{
+				WorldSession.UnpauseCurrentSession();
+			}
+			if (CurrentState == State.Play)
+			{
+				bw.Stop();
+			}
+			if (CurrentState == State.Build)
+			{
+				bw.Save();
+			}
 		}
 	}
 
-	// Token: 0x060019D5 RID: 6613 RVA: 0x000BDDF8 File Offset: 0x000BC1F8
 	private static List<GAF> GetImplicitGAFs(List<GAF> gafList)
 	{
 		List<GAF> list = new List<GAF>();
@@ -7890,332 +7616,278 @@ public class Blocksworld : MonoBehaviour
 		HashSet<Type> hashSet2 = new HashSet<Type>();
 		foreach (GAF gaf in gafList)
 		{
-			Type item = (gaf.Predicate != Block.predicateCreate) ? PredicateRegistry.GetTypeForPredicate(gaf.Predicate) : Block.GetBlockTypeFromName((string)gaf.Args[0]);
+			Type item = ((gaf.Predicate != Block.predicateCreate) ? PredicateRegistry.GetTypeForPredicate(gaf.Predicate) : Block.GetBlockTypeFromName((string)gaf.Args[0]));
 			hashSet2.Add(item);
 		}
-		foreach (Type type in hashSet2)
+		foreach (Type item2 in hashSet2)
 		{
-			List<GAF> implicitlyUnlockedGAFs = Scarcity.GetImplicitlyUnlockedGAFs(type);
-			foreach (GAF item2 in implicitlyUnlockedGAFs)
+			List<GAF> implicitlyUnlockedGAFs = Scarcity.GetImplicitlyUnlockedGAFs(item2);
+			foreach (GAF item3 in implicitlyUnlockedGAFs)
 			{
-				if (!hashSet.Contains(item2))
+				if (!hashSet.Contains(item3))
 				{
-					list.Add(item2);
-					hashSet.Add(item2);
+					list.Add(item3);
+					hashSet.Add(item3);
 				}
 			}
 		}
 		return list;
 	}
 
-	// Token: 0x060019D6 RID: 6614 RVA: 0x000BDF44 File Offset: 0x000BC344
 	public static void LoadGAFUnlockData(BlocksInventory blocksInventory)
 	{
-		Blocksworld.unlockedGAFs = new List<GAF>();
-		Blocksworld.unlockedPaints.Clear();
+		unlockedGAFs = new List<GAF>();
+		unlockedPaints.Clear();
 		for (int i = 0; i < blocksInventory.BlockItemIds.Count; i++)
 		{
-			int num = blocksInventory.BlockItemIds[i];
-			if (BlockItem.Exists(num))
+			int id = blocksInventory.BlockItemIds[i];
+			if (!BlockItem.Exists(id))
 			{
-				BlockItem blockItem = BlockItem.FindByID(num);
-				if (blockItem == null)
-				{
-					BWLog.Error("Unknown blockId: " + num);
-				}
-				else
-				{
-					GAF gaf = new GAF(blockItem);
-					Blocksworld.unlockedGAFs.Add(gaf);
-					Predicate predicate = gaf.Predicate;
-					if (predicate == Block.predicateTextureTo)
-					{
-						string textureName = (string)gaf.Args[0];
-						Blocksworld.AddToPublicProvidedTextures(textureName);
-					}
-					else if (predicate == Block.predicatePaintTo)
-					{
-						Blocksworld.unlockedPaints.Add((string)gaf.Args[0]);
-					}
-				}
+				continue;
+			}
+			BlockItem blockItem = BlockItem.FindByID(id);
+			if (blockItem == null)
+			{
+				BWLog.Error("Unknown blockId: " + id);
+				continue;
+			}
+			GAF gAF = new GAF(blockItem);
+			unlockedGAFs.Add(gAF);
+			Predicate predicate = gAF.Predicate;
+			if (predicate == Block.predicateTextureTo)
+			{
+				string textureName = (string)gAF.Args[0];
+				AddToPublicProvidedTextures(textureName);
+			}
+			else if (predicate == Block.predicatePaintTo)
+			{
+				unlockedPaints.Add((string)gAF.Args[0]);
 			}
 		}
-		List<GAF> implicitGAFs = Blocksworld.GetImplicitGAFs(Blocksworld.unlockedGAFs);
-		Blocksworld.unlockedGAFs.AddRange(implicitGAFs);
+		List<GAF> implicitGAFs = GetImplicitGAFs(unlockedGAFs);
+		unlockedGAFs.AddRange(implicitGAFs);
 	}
 
-	// Token: 0x060019D7 RID: 6615 RVA: 0x000BE042 File Offset: 0x000BC442
 	public static void AddToPublicProvidedTextures(string textureName)
 	{
-		Blocksworld.publicProvidedGafs.Add(new GAF("Block.TextureTo", new object[]
-		{
-			textureName,
-			Vector3.zero
-		}));
+		publicProvidedGafs.Add(new GAF("Block.TextureTo", textureName, Vector3.zero));
 	}
 
-	// Token: 0x060019D8 RID: 6616 RVA: 0x000BE070 File Offset: 0x000BC470
 	public static void SetBuildPanelRightSided()
 	{
-		Blocksworld.buildPanel.UpdatePosition();
-		Blocksworld.UpdateTiles();
-		Blocksworld.buildPanel.PositionReset(false);
-		Blocksworld.UI.SidePanel.Show();
-		Blocksworld.scriptPanel.PositionReset();
+		buildPanel.UpdatePosition();
+		UpdateTiles();
+		buildPanel.PositionReset();
+		UI.SidePanel.Show();
+		scriptPanel.PositionReset();
 	}
 
-	// Token: 0x060019D9 RID: 6617 RVA: 0x000BE0A5 File Offset: 0x000BC4A5
 	public static void SetBackgroundMusic(string name)
 	{
-		Blocksworld.musicPlayer.SetMusic(name, 0.4f);
+		musicPlayer.SetMusic(name);
 	}
 
-	// Token: 0x060019DA RID: 6618 RVA: 0x000BE0B7 File Offset: 0x000BC4B7
 	public static void StopBackgroundMusic()
 	{
-		Blocksworld.musicPlayer.Stop();
+		musicPlayer.Stop();
 	}
 
-	// Token: 0x060019DB RID: 6619 RVA: 0x000BE0C3 File Offset: 0x000BC4C3
 	public static void SetBackgroundMusicVolumeMultiplier(float m)
 	{
-		Blocksworld.musicPlayer.SetVolumeMultiplier(m);
+		musicPlayer.SetVolumeMultiplier(m);
 	}
 
-	// Token: 0x060019DC RID: 6620 RVA: 0x000BE0D0 File Offset: 0x000BC4D0
 	public static void SetMusicEnabled(bool enabled)
 	{
-		Blocksworld.musicPlayer.SetEnabled(enabled);
+		musicPlayer.SetEnabled(enabled);
 	}
 
-	// Token: 0x060019DD RID: 6621 RVA: 0x000BE0E0 File Offset: 0x000BC4E0
 	public static void UpdateLightColor(bool updateFog = true)
 	{
-		if (!Blocksworld.renderingShadows)
+		if (!renderingShadows)
 		{
 			List<Block> list = BWSceneManager.AllBlocks();
-			Color color = Color.white;
+			Color white = Color.white;
 			for (int i = 0; i < list.Count; i++)
 			{
 				Block block = list[i];
 				Color lightTint = block.GetLightTint();
-				color *= lightTint;
+				white *= lightTint;
 			}
 			for (int j = 0; j < list.Count; j++)
 			{
 				Block block2 = list[j];
 				Color emissiveLightTint = block2.GetEmissiveLightTint();
-				color += emissiveLightTint;
+				white += emissiveLightTint;
 			}
-			color *= Blocksworld.blocksworldCamera.GetLightTint();
-			Blocksworld.lightColor = color;
-			Blocksworld.directionalLight.GetComponent<Light>().color = color;
-			if (updateFog && Blocksworld.worldSky != null)
+			white *= blocksworldCamera.GetLightTint();
+			lightColor = white;
+			directionalLight.GetComponent<Light>().color = white;
+			if (updateFog && worldSky != null)
 			{
-				Blocksworld.UpdateFogColor(BlockSky.GetFogColor());
+				UpdateFogColor(BlockSky.GetFogColor());
 			}
 		}
 	}
 
-	// Token: 0x060019DE RID: 6622 RVA: 0x000BE1B0 File Offset: 0x000BC5B0
 	public static void DefineTestRewardModel(string modelName, List<List<List<Tile>>> model)
 	{
 		StringBuilder stringBuilder = new StringBuilder(32768);
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder encoder = new JSONStreamEncoder(writer, 20);
+		JSONStreamEncoder encoder = new JSONStreamEncoder(writer);
 		ModelUtils.WriteJSONForModel(encoder, model);
 		string text = stringBuilder.ToString();
-		Blocksworld.DefineRewardModel("Model 1", text);
-		if (Options.ExportRewardModelFromClipboard)
+		DefineRewardModel("Model 1", text);
+		if (!Options.ExportRewardModelFromClipboard)
 		{
-			string text2 = Application.dataPath + "/../Models";
-			if (!Directory.Exists(text2))
+			return;
+		}
+		string text2 = Application.dataPath + "/../Models";
+		if (!Directory.Exists(text2))
+		{
+			Directory.CreateDirectory(text2);
+			BWLog.Info("Created directory '" + text2 + "'");
+		}
+		for (int i = 0; i < 500; i++)
+		{
+			string text3 = text2 + "/Model " + (i + 1) + ".txt";
+			string path = text2 + "/Model " + (i + 1) + " Inventory.txt";
+			string iconPath = text2 + "/Model " + (i + 1) + " Icon.png";
+			string screenshotPath = text2 + "/Model " + (i + 1) + " Screenshot.png";
+			if (File.Exists(text3) || File.Exists(path))
 			{
-				Directory.CreateDirectory(text2);
-				BWLog.Info("Created directory '" + text2 + "'");
+				continue;
 			}
-			for (int i = 0; i < 500; i++)
+			BWLog.Info("Exporting model to path '" + text3 + "'");
+			File.WriteAllText(text3, text);
+			Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
+			foreach (List<List<Tile>> item in model)
 			{
-				string text3 = string.Concat(new object[]
-				{
-					text2,
-					"/Model ",
-					i + 1,
-					".txt"
-				});
-				string path = string.Concat(new object[]
-				{
-					text2,
-					"/Model ",
-					i + 1,
-					" Inventory.txt"
-				});
-				string iconPath = string.Concat(new object[]
-				{
-					text2,
-					"/Model ",
-					i + 1,
-					" Icon.png"
-				});
-				string screenshotPath = string.Concat(new object[]
-				{
-					text2,
-					"/Model ",
-					i + 1,
-					" Screenshot.png"
-				});
-				if (!File.Exists(text3) && !File.Exists(path))
-				{
-					BWLog.Info("Exporting model to path '" + text3 + "'");
-					File.WriteAllText(text3, text);
-					Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
-					foreach (List<List<Tile>> info in model)
-					{
-						Clipboard.CalculateGafRelevance(info, dictionary);
-					}
-					File.WriteAllText(path, Scarcity.GetInventoryJSON(dictionary, false, false));
-					ScreenshotUtils.GenerateModelIconTexture(model, true, delegate(Texture2D tex)
-					{
-						byte[] bytes = tex.EncodeToPNG();
-						UnityEngine.Object.Destroy(tex);
-						File.WriteAllBytes(iconPath, bytes);
-					});
-					ScreenshotUtils.GenerateModelSnapshotTexture(model, true, delegate(Texture2D tex)
-					{
-						byte[] bytes = tex.EncodeToPNG();
-						UnityEngine.Object.Destroy(tex);
-						File.WriteAllBytes(screenshotPath, bytes);
-					});
-					break;
-				}
+				Clipboard.CalculateGafRelevance(item, dictionary);
 			}
+			File.WriteAllText(path, Scarcity.GetInventoryJSON(dictionary));
+			ScreenshotUtils.GenerateModelIconTexture(model, hd: true, delegate(Texture2D tex)
+			{
+				byte[] bytes = tex.EncodeToPNG();
+				UnityEngine.Object.Destroy(tex);
+				File.WriteAllBytes(iconPath, bytes);
+			});
+			ScreenshotUtils.GenerateModelSnapshotTexture(model, hd: true, delegate(Texture2D tex)
+			{
+				byte[] bytes = tex.EncodeToPNG();
+				UnityEngine.Object.Destroy(tex);
+				File.WriteAllBytes(screenshotPath, bytes);
+			});
+			break;
 		}
 	}
 
-	// Token: 0x060019DF RID: 6623 RVA: 0x000BE3E8 File Offset: 0x000BC7E8
 	public static void DefineRewardModel(string modelName, string modelJsonStr)
 	{
 		RewardVisualization.definedModels[modelName] = modelJsonStr;
 	}
 
-	// Token: 0x060019E0 RID: 6624 RVA: 0x000BE3F6 File Offset: 0x000BC7F6
 	public static void DefineRewardModelIcon(string modelName, string modelJsonStr)
 	{
 		RewardVisualization.LoadRewardModelIcon(modelName, modelJsonStr);
 	}
 
-	// Token: 0x060019E1 RID: 6625 RVA: 0x000BE400 File Offset: 0x000BC800
 	public static void VisualizeBlockReward(string blockCountJson)
 	{
-		JObject jobject = JSONDecoder.Decode(blockCountJson);
-		Blocksworld.rewardVisualizationGafs = new List<GAF>();
-		foreach (JObject jobject2 in jobject.ArrayValue)
+		JObject jObject = JSONDecoder.Decode(blockCountJson);
+		rewardVisualizationGafs = new List<GAF>();
+		foreach (JObject item2 in jObject.ArrayValue)
 		{
-			GAF item = new GAF("Block.VisualizeReward", new object[]
-			{
-				(string)jobject2[1],
-				(int)jobject2[2]
-			});
-			Blocksworld.rewardVisualizationGafs.Add(item);
+			GAF item = new GAF("Block.VisualizeReward", (string)item2[1], (int)item2[2]);
+			rewardVisualizationGafs.Add(item);
 		}
-		Blocksworld.rewardVisualizationIndex = 0;
-		Blocksworld.rewardExecutionInfo.timer = 0f;
+		rewardVisualizationIndex = 0;
+		rewardExecutionInfo.timer = 0f;
 	}
 
-	// Token: 0x060019E2 RID: 6626 RVA: 0x000BE4BC File Offset: 0x000BC8BC
 	public static void VisualizeRewardModel(string modelName, string modelJsonStr)
 	{
 		RewardVisualization.definedModels[modelName] = modelJsonStr;
-		Blocksworld.rewardVisualizationGafs = new List<GAF>();
-		Blocksworld.rewardVisualizationGafs.Add(new GAF("Block.VisualizeReward", new object[]
-		{
-			modelName,
-			1
-		}));
-		Blocksworld.rewardVisualizationIndex = 0;
-		Blocksworld.rewardExecutionInfo.timer = 0f;
+		rewardVisualizationGafs = new List<GAF>();
+		rewardVisualizationGafs.Add(new GAF("Block.VisualizeReward", modelName, 1));
+		rewardVisualizationIndex = 0;
+		rewardExecutionInfo.timer = 0f;
 	}
 
-	// Token: 0x060019E3 RID: 6627 RVA: 0x000BE51C File Offset: 0x000BC91C
 	public static void ShowSetPurchasePrompt(string rewardsJson, string setTitle, int setId, int setPrice)
 	{
-		Blocksworld.waitForSetPurchase = true;
-		JObject jobject = JSONDecoder.Decode(rewardsJson);
+		waitForSetPurchase = true;
+		JObject jObject = JSONDecoder.Decode(rewardsJson);
 		Dictionary<GAF, int> dictionary = new Dictionary<GAF, int>();
 		string dialogCaption = "You Won!";
-		foreach (JObject jobject2 in jobject.ArrayValue)
+		foreach (JObject item in jObject.ArrayValue)
 		{
-			GAF key = new GAF(jobject2[0].StringValue, new object[]
-			{
-				jobject2[1].StringValue
-			});
-			int intValue = jobject2[2].IntValue;
+			GAF key = new GAF(item[0].StringValue, item[1].StringValue);
+			int intValue = item[2].IntValue;
 			dictionary[key] = intValue;
 		}
 		if (RewardVisualization.expectedRewardModelIconCount == 0)
 		{
-			Blocksworld.UI.Dialog.ShowSetPurchasePrompt(dictionary, dialogCaption, setTitle, setId, setPrice);
-			return;
+			UI.Dialog.ShowSetPurchasePrompt(dictionary, dialogCaption, setTitle, setId, setPrice);
 		}
-		Blocksworld.bw.StartCoroutine(Blocksworld.WaitForModelIconsAndShowSetPurchasePrompt(dictionary, dialogCaption, setTitle, setId, setPrice));
+		else
+		{
+			bw.StartCoroutine(WaitForModelIconsAndShowSetPurchasePrompt(dictionary, dialogCaption, setTitle, setId, setPrice));
+		}
 	}
 
-	// Token: 0x060019E4 RID: 6628 RVA: 0x000BE600 File Offset: 0x000BCA00
 	private static IEnumerator WaitForModelIconsAndShowSetPurchasePrompt(Dictionary<GAF, int> rewards, string dialogCaption, string setTitle, int setId, int setPrice)
 	{
 		while (!RewardVisualization.AreRewardModelIconsLoaded())
 		{
 			yield return null;
 		}
-		Blocksworld.UI.Dialog.ShowSetPurchasePrompt(rewards, dialogCaption, setTitle, setId, setPrice);
-		yield break;
+		UI.Dialog.ShowSetPurchasePrompt(rewards, dialogCaption, setTitle, setId, setPrice);
 	}
 
-	// Token: 0x060019E5 RID: 6629 RVA: 0x000BE638 File Offset: 0x000BCA38
 	public static bool TileEnabled(Tile tile)
 	{
 		bool flag;
-		if (Blocksworld.enabledGAFs != null)
+		if (enabledGAFs != null)
 		{
-			flag = Blocksworld.enabledGAFs.Contains(tile.gaf);
+			flag = enabledGAFs.Contains(tile.gaf);
 		}
 		else if (BW.Options.useScarcity() && Scarcity.inventory != null)
 		{
-			GAF gaf = tile.gaf;
-			if (gaf.Predicate == Block.predicateSendCustomSignal || gaf.Predicate == Block.predicateSendCustomSignalModel || Block.customVariablePredicates.Contains(gaf.Predicate))
+			GAF gAF = tile.gaf;
+			if (gAF.Predicate == Block.predicateSendCustomSignal || gAF.Predicate == Block.predicateSendCustomSignalModel || Block.customVariablePredicates.Contains(gAF.Predicate))
 			{
-				gaf = Scarcity.GetNormalizedGaf(gaf, false);
+				gAF = Scarcity.GetNormalizedGaf(gAF);
 			}
-			flag = (Scarcity.inventory.ContainsKey(gaf) && Scarcity.inventory[gaf] != 0);
+			flag = Scarcity.inventory.ContainsKey(gAF) && Scarcity.inventory[gAF] != 0;
 		}
 		else
 		{
-			flag = Blocksworld.IsUnlocked(tile);
+			flag = IsUnlocked(tile);
 		}
 		if (CharacterEditor.Instance.InEditMode())
 		{
 			bool flag2 = PanelSlots.GetTabIndexForGaf(tile.gaf) == 6;
 			if (tile.IsCreate())
 			{
-				flag2 &= (tile.panelSection != 29 && tile.panelSection != 23 && tile.panelSection != 25 && tile.panelSection != 32);
-				flag = (flag && flag2);
+				flag2 &= tile.panelSection != 29 && tile.panelSection != 23 && tile.panelSection != 25 && tile.panelSection != 32;
+				flag = flag && flag2;
 			}
 		}
 		return flag;
 	}
 
-	// Token: 0x060019E6 RID: 6630 RVA: 0x000BE760 File Offset: 0x000BCB60
 	private static void RemoveUnusedBlockPrefabs()
 	{
 		HashSet<string> hashSet = new HashSet<string>();
 		List<Block> list = BWSceneManager.AllBlocks();
-		foreach (Block block in list)
+		foreach (Block item in list)
 		{
-			foreach (List<Tile> list2 in block.tiles)
+			foreach (List<Tile> tile in item.tiles)
 			{
-				foreach (Tile tile in list2)
+				foreach (Tile item2 in tile)
 				{
-					GAF gaf = tile.gaf;
+					GAF gaf = item2.gaf;
 					if (gaf.Predicate == Block.predicateCreate)
 					{
 						hashSet.Add((string)gaf.Args[0]);
@@ -8226,18 +7898,17 @@ public class Blocksworld : MonoBehaviour
 		ResourceLoader.UnloadUnusedBlockPrefabs(hashSet);
 	}
 
-	// Token: 0x060019E7 RID: 6631 RVA: 0x000BE87C File Offset: 0x000BCC7C
 	private static void RemoveUnusedTextures()
 	{
 		HashSet<string> hashSet = new HashSet<string>();
 		List<Block> list = BWSceneManager.AllBlocks();
-		foreach (Block block in list)
+		foreach (Block item in list)
 		{
-			foreach (List<Tile> list2 in block.tiles)
+			foreach (List<Tile> tile in item.tiles)
 			{
-				foreach (Tile tile in list2)
+				foreach (Tile item2 in tile)
 				{
-					GAF gaf = tile.gaf;
+					GAF gaf = item2.gaf;
 					if (gaf.Predicate == Block.predicateTextureTo)
 					{
 						hashSet.Add((string)gaf.Args[0]);
@@ -8249,144 +7920,122 @@ public class Blocksworld : MonoBehaviour
 		ResourceLoader.UnloadUnusedTextures(hashSet);
 	}
 
-	// Token: 0x060019E8 RID: 6632 RVA: 0x000BE9A4 File Offset: 0x000BCDA4
 	private static void RemoveUnusedAssets()
 	{
 		bool flag = false;
-		if (Blocksworld.loadedTextureCountAfterRemovingAssets != ResourceLoader.loadedTextures.Count)
+		if (loadedTextureCountAfterRemovingAssets != ResourceLoader.loadedTextures.Count)
 		{
-			Blocksworld.RemoveUnusedTextures();
+			RemoveUnusedTextures();
 			flag = true;
 		}
-		if (Blocksworld.loadedBlockCountAfterRemovingAssets != Blocksworld.goPrefabs.Count)
+		if (loadedBlockCountAfterRemovingAssets != goPrefabs.Count)
 		{
-			Blocksworld.RemoveUnusedBlockPrefabs();
+			RemoveUnusedBlockPrefabs();
 			flag = true;
 		}
 		if (flag)
 		{
 			Resources.UnloadUnusedAssets();
 			GC.Collect();
-			Blocksworld.loadedTextureCountAfterRemovingAssets = ResourceLoader.loadedTextures.Count;
-			Blocksworld.loadedBlockCountAfterRemovingAssets = Blocksworld.goPrefabs.Count;
+			loadedTextureCountAfterRemovingAssets = ResourceLoader.loadedTextures.Count;
+			loadedBlockCountAfterRemovingAssets = goPrefabs.Count;
 		}
 	}
 
-	// Token: 0x060019E9 RID: 6633 RVA: 0x000BEA18 File Offset: 0x000BCE18
 	public static void DidReceiveMemoryWarning()
 	{
-		if (!RewardVisualization.rewardAnimationRunning && !Blocksworld.inBackground)
+		if (!RewardVisualization.rewardAnimationRunning && !inBackground)
 		{
-			Blocksworld.RemoveUnusedAssets();
+			RemoveUnusedAssets();
 		}
 	}
 
-	// Token: 0x060019EA RID: 6634 RVA: 0x000BEA34 File Offset: 0x000BCE34
 	public static Color[] GetColors(string name)
 	{
 		if (string.IsNullOrEmpty(name))
 		{
 			Color color = new Color(1f, 1f, 1f, 0f);
-			return new Color[]
-			{
-				color,
-				color
-			};
+			return new Color[2] { color, color };
 		}
-		if (!Blocksworld.colorDefinitions.ContainsKey(name))
+		if (!colorDefinitions.ContainsKey(name))
 		{
 			BWLog.Info("Could not find color " + name + " using blue and red gradient");
-			Blocksworld.colorDefinitions[name] = new Color[]
+			colorDefinitions[name] = new Color[2]
 			{
 				Color.blue,
 				Color.red
 			};
 		}
-		return Blocksworld.colorDefinitions[name];
+		return colorDefinitions[name];
 	}
 
-	// Token: 0x060019EB RID: 6635 RVA: 0x000BEAEB File Offset: 0x000BCEEB
 	public static Color getColor(string name)
 	{
-		return Blocksworld.GetColors(name)[0];
+		return GetColors(name)[0];
 	}
 
-	// Token: 0x060019EC RID: 6636 RVA: 0x000BEB00 File Offset: 0x000BCF00
 	public static void SetupColorDefinitions(Dictionary<string, Color[]> colorDefs, Dictionary<string, Color[]> gradientDefs, Dictionary<string, Color> skyBoxTintDefs)
 	{
 		ColorDefinitions colorDefinitions = Resources.Load<ColorDefinitions>("ColorDefinitions");
 		Dictionary<string, string> dictionary = new Dictionary<string, string>();
 		ColorDefinition[] definitions = colorDefinitions.definitions;
-		foreach (ColorDefinition colorDefinition in definitions)
+		ColorDefinition[] array = definitions;
+		foreach (ColorDefinition colorDefinition in array)
 		{
 			if (!colorDefs.ContainsKey(colorDefinition.name))
 			{
-				colorDefs[colorDefinition.name] = new Color[]
-				{
-					colorDefinition.first,
-					colorDefinition.second
-				};
+				colorDefs[colorDefinition.name] = new Color[2] { colorDefinition.first, colorDefinition.second };
 				dictionary[colorDefinition.name] = colorDefinition.skyBoxColorName;
 			}
 		}
-		foreach (KeyValuePair<string, string> keyValuePair in dictionary)
+		foreach (KeyValuePair<string, string> item in dictionary)
 		{
-			string key = keyValuePair.Key;
-			string value = keyValuePair.Value;
+			string key = item.Key;
+			string value = item.Value;
 			if (colorDefs.ContainsKey(value))
 			{
 				skyBoxTintDefs[key] = colorDefs[value][0];
 			}
 			else if (!string.IsNullOrEmpty(value))
 			{
-				BWLog.Error(string.Concat(new string[]
-				{
-					"Unable to find sky box tint '",
-					value,
-					"' for paint '",
-					key,
-					"'"
-				}));
+				BWLog.Error("Unable to find sky box tint '" + value + "' for paint '" + key + "'");
 			}
 		}
 		ColorGradientDefinitions[] gradientDefinitions = colorDefinitions.gradientDefinitions;
-		if (gradientDefinitions != null)
+		if (gradientDefinitions == null)
 		{
-			foreach (ColorGradientDefinitions colorGradientDefinitions in gradientDefinitions)
+			return;
+		}
+		ColorGradientDefinitions[] array2 = gradientDefinitions;
+		foreach (ColorGradientDefinitions colorGradientDefinitions in array2)
+		{
+			if (!gradientDefs.ContainsKey(colorGradientDefinitions.name))
 			{
-				if (!gradientDefs.ContainsKey(colorGradientDefinitions.name))
-				{
-					gradientDefs[colorGradientDefinitions.name] = new Color[]
-					{
-						colorGradientDefinitions.skyColor,
-						colorGradientDefinitions.equatorColor,
-						colorGradientDefinitions.groundColor
-					};
-				}
+				gradientDefs[colorGradientDefinitions.name] = new Color[3] { colorGradientDefinitions.skyColor, colorGradientDefinitions.equatorColor, colorGradientDefinitions.groundColor };
 			}
 		}
 	}
 
-	// Token: 0x060019ED RID: 6637 RVA: 0x000BECF4 File Offset: 0x000BD0F4
 	public static void SetupRarityBorders(Dictionary<RarityLevelEnum, Material> enabledMaterials, Dictionary<RarityLevelEnum, Material> disabledMaterials)
 	{
-		string str = (!Blocksworld.hd) ? "SD" : "HD";
-		RarityBorderDefinitions rarityBorderDefinitions = Resources.Load<RarityBorderDefinitions>("RarityBorders/RarityBorderDefinitions" + str);
-		foreach (RarityBorderDefinition rarityBorderDefinition in rarityBorderDefinitions.rarityBorderDefinitions)
+		string text = ((!hd) ? "SD" : "HD");
+		RarityBorderDefinitions rarityBorderDefinitions = Resources.Load<RarityBorderDefinitions>("RarityBorders/RarityBorderDefinitions" + text);
+		RarityBorderDefinition[] rarityBorderDefinitions2 = rarityBorderDefinitions.rarityBorderDefinitions;
+		foreach (RarityBorderDefinition rarityBorderDefinition in rarityBorderDefinitions2)
 		{
 			enabledMaterials[rarityBorderDefinition.rarity] = rarityBorderDefinition.tileBorderMaterialEnabled;
 			disabledMaterials[rarityBorderDefinition.rarity] = rarityBorderDefinition.tileBorderMaterialDisabled;
 		}
 	}
 
-	// Token: 0x060019EE RID: 6638 RVA: 0x000BED74 File Offset: 0x000BD174
 	public void SetupTextureMetaDatas()
 	{
-		TextureMetaDatas component = Blocksworld.blocksworldDataContainer.GetComponent<TextureMetaDatas>();
+		TextureMetaDatas component = blocksworldDataContainer.GetComponent<TextureMetaDatas>();
 		if (component != null)
 		{
 			TextureMetaData[] infos = component.infos;
-			foreach (TextureMetaData textureMetaData in infos)
+			TextureMetaData[] array = infos;
+			foreach (TextureMetaData textureMetaData in array)
 			{
 				Vector3 preferredSize = textureMetaData.preferredSize;
 				if (preferredSize.x * preferredSize.y * preferredSize.z > 0.1f)
@@ -8397,7 +8046,8 @@ public class Blocksworld : MonoBehaviour
 				Materials.twoSidesMirror[textureMetaData.name] = textureMetaData.twoSidesMirror;
 				Materials.mipMapBias[textureMetaData.name] = textureMetaData.mipMapBias;
 				List<TextureApplicationChangeRule> list = new List<TextureApplicationChangeRule>();
-				foreach (TextureApplicationChangeRule textureApplicationChangeRule in textureMetaData.applicationRules)
+				TextureApplicationChangeRule[] applicationRules = textureMetaData.applicationRules;
+				foreach (TextureApplicationChangeRule textureApplicationChangeRule in applicationRules)
 				{
 					if (textureApplicationChangeRule.setScarcityEquivalent)
 					{
@@ -8417,114 +8067,109 @@ public class Blocksworld : MonoBehaviour
 		}
 	}
 
-	// Token: 0x060019EF RID: 6639 RVA: 0x000BEEC4 File Offset: 0x000BD2C4
 	public static bool IsLuminousPaint(string paint)
 	{
-		bool flag;
-		if (Blocksworld.luminousPaints.TryGetValue(paint, out flag))
+		if (luminousPaints.TryGetValue(paint, out var value))
 		{
-			return flag;
+			return value;
 		}
-		flag = paint.StartsWith("Luminous ");
-		Blocksworld.luminousPaints[paint] = flag;
-		return flag;
+		value = paint.StartsWith("Luminous ");
+		luminousPaints[paint] = value;
+		return value;
 	}
 
-	// Token: 0x060019F0 RID: 6640 RVA: 0x000BEEFE File Offset: 0x000BD2FE
 	public static bool IsLuminousTexture(string texture)
 	{
-		if (texture != null)
+		if (texture != null && texture == "Pulsate Glow")
 		{
-			if (texture == "Pulsate Glow")
-			{
-				return true;
-			}
+			return true;
 		}
 		return false;
 	}
 
-	// Token: 0x060019F1 RID: 6641 RVA: 0x000BEF20 File Offset: 0x000BD320
 	public static void UpdateDrag()
 	{
 		float num = 0.2f;
-		foreach (Chunk chunk in Blocksworld.chunks)
+		foreach (Chunk chunk in chunks)
 		{
 			Rigidbody rb = chunk.rb;
 			if (rb != null)
 			{
-				float drag = num * Blocksworld.dragMultiplier * chunk.GetDragMultiplier();
+				float drag = num * dragMultiplier * chunk.GetDragMultiplier();
 				rb.drag = drag;
 			}
 		}
 	}
 
-	// Token: 0x060019F2 RID: 6642 RVA: 0x000BEFA8 File Offset: 0x000BD3A8
 	public static void UpdateAngularDrag()
 	{
 		float num = 2f;
-		foreach (Chunk chunk in Blocksworld.chunks)
+		foreach (Chunk chunk in chunks)
 		{
 			Rigidbody rb = chunk.rb;
 			if (rb != null)
 			{
-				float angularDrag = num * Blocksworld.angularDragMultiplier * chunk.GetAngularDragMultiplier();
+				float angularDrag = num * angularDragMultiplier * chunk.GetAngularDragMultiplier();
 				rb.angularDrag = angularDrag;
 			}
 		}
 	}
 
-	// Token: 0x060019F3 RID: 6643 RVA: 0x000BF030 File Offset: 0x000BD430
 	public static bool IsGlobalLockPull()
 	{
-		return Blocksworld.staticLockPull || Blocksworld.dynamicLockPull;
+		if (!staticLockPull)
+		{
+			return dynamicLockPull;
+		}
+		return true;
 	}
 
-	// Token: 0x060019F4 RID: 6644 RVA: 0x000BF044 File Offset: 0x000BD444
 	public static void AddUpdateCommand(Command c)
 	{
-		Blocksworld.updateCommands.Add(c);
+		updateCommands.Add(c);
 	}
 
-	// Token: 0x060019F5 RID: 6645 RVA: 0x000BF051 File Offset: 0x000BD451
 	public static void AddFixedUpdateCommand(Command c)
 	{
-		Blocksworld.fixedUpdateCommands.Add(c);
+		fixedUpdateCommands.Add(c);
 	}
 
-	// Token: 0x060019F6 RID: 6646 RVA: 0x000BF05E File Offset: 0x000BD45E
 	public static void AddFixedUpdateUniqueCommand(Command c, bool resetWhenAdded = true)
 	{
-		Command.AddUniqueCommand(Blocksworld.fixedUpdateCommands, c, resetWhenAdded);
+		Command.AddUniqueCommand(fixedUpdateCommands, c, resetWhenAdded);
 	}
 
-	// Token: 0x060019F7 RID: 6647 RVA: 0x000BF06C File Offset: 0x000BD46C
 	public static void AddResetStateCommand(Command c)
 	{
-		Blocksworld.resetStateCommands.Add(c);
+		resetStateCommands.Add(c);
 	}
 
-	// Token: 0x060019F8 RID: 6648 RVA: 0x000BF079 File Offset: 0x000BD479
 	public static void AddResetStateUniqueCommand(Command c, bool resetWhenAdded = true)
 	{
-		Command.AddUniqueCommand(Blocksworld.resetStateCommands, c, resetWhenAdded);
+		Command.AddUniqueCommand(resetStateCommands, c, resetWhenAdded);
 	}
 
-	// Token: 0x060019F9 RID: 6649 RVA: 0x000BF087 File Offset: 0x000BD487
 	private static void UpdateEditorMusicPlayerEnabled()
 	{
 		if (BW.isUnityEditor)
 		{
-			Blocksworld.musicPlayer.SetEnabled(Blocksworld.IsMusicEnabledForState());
+			musicPlayer.SetEnabled(IsMusicEnabledForState());
 		}
 	}
 
-	// Token: 0x060019FA RID: 6650 RVA: 0x000BF0A2 File Offset: 0x000BD4A2
 	public static bool InModalDialogState()
 	{
-		return Blocksworld.CurrentState == State.WaitForOption || Blocksworld.CurrentState == State.WaitForOptionScarcityFeedback || (Tutorial.InTutorialOrPuzzle() && Tutorial.progressBlocked);
+		if (CurrentState != State.WaitForOption && CurrentState != State.WaitForOptionScarcityFeedback)
+		{
+			if (Tutorial.InTutorialOrPuzzle())
+			{
+				return Tutorial.progressBlocked;
+			}
+			return false;
+		}
+		return true;
 	}
 
-	// Token: 0x060019FB RID: 6651 RVA: 0x000BF0D0 File Offset: 0x000BD4D0
 	public static int RemoveAllTilesWithPredicate(HashSet<Predicate> preds)
 	{
 		int num = 0;
@@ -8532,20 +8177,20 @@ public class Blocksworld : MonoBehaviour
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
-			for (int j = block.tiles.Count - 1; j >= 1; j--)
+			for (int num2 = block.tiles.Count - 1; num2 >= 1; num2--)
 			{
-				List<Tile> list2 = block.tiles[j];
-				for (int k = list2.Count - 1; k >= 0; k--)
+				List<Tile> list2 = block.tiles[num2];
+				for (int num3 = list2.Count - 1; num3 >= 0; num3--)
 				{
-					if (preds.Contains(list2[k].gaf.Predicate))
+					if (preds.Contains(list2[num3].gaf.Predicate))
 					{
-						list2.RemoveAt(k);
+						list2.RemoveAt(num3);
 						num++;
 					}
 				}
 				if (list2.Count == 1 && list2[0].gaf.Predicate == Block.predicateThen)
 				{
-					block.tiles.RemoveAt(j);
+					block.tiles.RemoveAt(num2);
 				}
 			}
 			block.tiles.Add(Block.EmptyTileRow());
@@ -8553,7 +8198,6 @@ public class Blocksworld : MonoBehaviour
 		return num;
 	}
 
-	// Token: 0x060019FC RID: 6652 RVA: 0x000BF1C8 File Offset: 0x000BD5C8
 	public static List<Tile> GetBlockTilesMatching(Predicate<Tile> pred)
 	{
 		List<Tile> list = new List<Tile>();
@@ -8561,13 +8205,13 @@ public class Blocksworld : MonoBehaviour
 		for (int i = 0; i < list2.Count; i++)
 		{
 			Block block = list2[i];
-			foreach (List<Tile> list3 in block.tiles)
+			foreach (List<Tile> tile in block.tiles)
 			{
-				foreach (Tile tile in list3)
+				foreach (Tile item in tile)
 				{
-					if (pred(tile))
+					if (pred(item))
 					{
-						list.Add(tile);
+						list.Add(item);
 					}
 				}
 			}
@@ -8575,974 +8219,247 @@ public class Blocksworld : MonoBehaviour
 		return list;
 	}
 
-	// Token: 0x060019FD RID: 6653 RVA: 0x000BF2A4 File Offset: 0x000BD6A4
 	private void LateUpdate()
 	{
-		Blocksworld.blocksworldCamera.LateUpdate();
-		if (!Blocksworld.vrEnabled)
+		blocksworldCamera.LateUpdate();
+		if (vrEnabled)
 		{
-			return;
-		}
-		if (MappedInput.InputDown(MappableInput.RESET_VR_SENSOR))
-		{
-			Blocksworld.ResetVRSensor();
-		}
-		bool flag = MappedInput.InputDown(MappableInput.EXIT_VR_MODE);
-		flag |= MappedInput.InputDown(MappableInput.STOP);
-		if (flag)
-		{
-			Blocksworld.SetVRMode(false);
+			if (MappedInput.InputDown(MappableInput.RESET_VR_SENSOR))
+			{
+				ResetVRSensor();
+			}
+			bool flag = MappedInput.InputDown(MappableInput.EXIT_VR_MODE);
+			if (flag | MappedInput.InputDown(MappableInput.STOP))
+			{
+				SetVRMode(enabled: false);
+			}
 		}
 	}
 
-	// Token: 0x060019FE RID: 6654 RVA: 0x000BF2F8 File Offset: 0x000BD6F8
 	public static void RecieveIOSMessage(string messageStr)
 	{
-		if (messageStr != null)
+		switch (messageStr)
 		{
-			if (messageStr == "ReplayKitViewControllerWillAppear")
+		case "ReplayKitViewControllerWillAppear":
+			if (WorldSession.current != null)
 			{
-				if (WorldSession.current != null)
-				{
-					WorldSession.current.ReplayKitViewControllerDidAppear();
-				}
-				return;
+				WorldSession.current.ReplayKitViewControllerDidAppear();
 			}
-			if (messageStr == "ReplayKitViewControllerDidDisappear")
+			break;
+		case "ReplayKitViewControllerDidDisappear":
+			if (WorldSession.current != null)
 			{
-				if (WorldSession.current != null)
-				{
-					WorldSession.current.ReplayKitViewControllerDidDisappear();
-				}
-				return;
+				WorldSession.current.ReplayKitViewControllerDidDisappear();
 			}
-			if (messageStr == "ReplayKitRecordingInterrupted")
+			break;
+		case "ReplayKitRecordingInterrupted":
+			UI.Tapedeck.RecordingWasStoppedExternally();
+			break;
+		case "ReplayKitAvailablityDidChange":
+			UI.Tapedeck.SetScreenRecordingEnabled(WorldSession.platformDelegate.ScreenRecordingAvailable());
+			if (WorldUILayout.currentLayout != null)
 			{
-				Blocksworld.UI.Tapedeck.RecordingWasStoppedExternally();
-				return;
+				WorldUILayout.currentLayout.Apply();
 			}
-			if (messageStr == "ReplayKitAvailablityDidChange")
+			break;
+		default:
+			if (messageStr.StartsWith("CopyWorldId:"))
 			{
-				Blocksworld.UI.Tapedeck.SetScreenRecordingEnabled(WorldSession.platformDelegate.ScreenRecordingAvailable());
-				if (WorldUILayout.currentLayout != null)
-				{
-					WorldUILayout.currentLayout.Apply();
-				}
-				return;
+				string worldIdClipboard = messageStr.Remove(0, 11);
+				WorldSession.worldIdClipboard = worldIdClipboard;
 			}
-		}
-		if (messageStr.StartsWith("CopyWorldId:"))
-		{
-			string worldIdClipboard = messageStr.Remove(0, 11);
-			WorldSession.worldIdClipboard = worldIdClipboard;
-		}
-		else
-		{
-			BWLog.Warning("Don't understand message from iOS: " + messageStr);
+			else
+			{
+				BWLog.Warning("Don't understand message from iOS: " + messageStr);
+			}
+			break;
 		}
 	}
 
-	// Token: 0x060019FF RID: 6655 RVA: 0x000BF404 File Offset: 0x000BD804
 	public static void HandleWin()
 	{
-		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> keyValuePair in BlockAnimatedCharacter.stateControllers)
+		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> stateController in BlockAnimatedCharacter.stateControllers)
 		{
-			if (TagManager.BlockHasTag(keyValuePair.Key, "Hero"))
+			if (TagManager.BlockHasTag(stateController.Key, "Hero"))
 			{
-				keyValuePair.Value.InterruptState(CharacterState.Win, true);
+				stateController.Value.InterruptState(CharacterState.Win);
 			}
-			else if (TagManager.BlockHasTag(keyValuePair.Key, "Villain"))
+			else if (TagManager.BlockHasTag(stateController.Key, "Villain"))
 			{
-				keyValuePair.Value.InterruptState(CharacterState.Fail, true);
+				stateController.Value.InterruptState(CharacterState.Fail);
 			}
 		}
 	}
 
-	// Token: 0x06001A00 RID: 6656 RVA: 0x000BF4AC File Offset: 0x000BD8AC
 	public static void HandleLose()
 	{
-		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> keyValuePair in BlockAnimatedCharacter.stateControllers)
+		foreach (KeyValuePair<BlockAnimatedCharacter, CharacterStateHandler> stateController in BlockAnimatedCharacter.stateControllers)
 		{
-			if (TagManager.BlockHasTag(keyValuePair.Key, "Hero"))
+			if (TagManager.BlockHasTag(stateController.Key, "Hero"))
 			{
-				keyValuePair.Value.InterruptState(CharacterState.Fail, true);
+				stateController.Value.InterruptState(CharacterState.Fail);
 			}
-			else if (TagManager.BlockHasTag(keyValuePair.Key, "Villain"))
+			else if (TagManager.BlockHasTag(stateController.Key, "Villain"))
 			{
-				keyValuePair.Value.InterruptState(CharacterState.Win, true);
+				stateController.Value.InterruptState(CharacterState.Win);
 			}
 		}
 	}
 
-	// Token: 0x0400144C RID: 5196
-	public static float fixedDeltaTime;
-
-	// Token: 0x0400144D RID: 5197
-	public static bool useCompactGafWriteRenamings = false;
-
-	// Token: 0x0400144E RID: 5198
-	public static bool inBackground = false;
-
-	// Token: 0x0400144F RID: 5199
-	public static Bunch selectedBunch = null;
-
-	// Token: 0x04001450 RID: 5200
-	public static bool lockPull = false;
-
-	// Token: 0x04001451 RID: 5201
-	public static List<NamedPose> cameraPoses = new List<NamedPose>();
-
-	// Token: 0x04001452 RID: 5202
-	public static Dictionary<string, NamedPose> cameraPosesMap = new Dictionary<string, NamedPose>();
-
-	// Token: 0x04001453 RID: 5203
-	public static bool staticLockPull = false;
-
-	// Token: 0x04001454 RID: 5204
-	public static bool dynamicLockPull = false;
-
-	// Token: 0x04001455 RID: 5205
-	public static bool lockInput = false;
-
-	// Token: 0x04001456 RID: 5206
-	public static bool isFirstFrame = false;
-
-	// Token: 0x04001457 RID: 5207
-	public static bool hideInGameUI = false;
-
-	// Token: 0x04001458 RID: 5208
-	public static bool started = false;
-
-	// Token: 0x04001459 RID: 5209
-	public static bool renderingShadows = false;
-
-	// Token: 0x0400145A RID: 5210
-	public static bool renderingSkybox = false;
-
-	// Token: 0x0400145B RID: 5211
-	public static bool renderingWater = false;
-
-	// Token: 0x0400145C RID: 5212
-	public static float _lightIntensityBasic = 1f;
-
-	// Token: 0x0400145D RID: 5213
-	public static float _lightIntensityMultiplier = 1f;
-
-	// Token: 0x0400145E RID: 5214
-	public static Color _buildModeFogColor = Color.white;
-
-	// Token: 0x0400145F RID: 5215
-	public static float _buildModeFogStart = 0f;
-
-	// Token: 0x04001460 RID: 5216
-	public static float _buildModeFogEnd = 0f;
-
-	// Token: 0x04001461 RID: 5217
-	public static Clipboard clipboard;
-
-	// Token: 0x04001462 RID: 5218
-	public static ModelCollection modelCollection;
-
-	// Token: 0x04001463 RID: 5219
-	private static List<Command> updateCommands = new List<Command>();
-
-	// Token: 0x04001464 RID: 5220
-	private static List<Command> fixedUpdateCommands = new List<Command>();
-
-	// Token: 0x04001465 RID: 5221
-	private static List<Command> resetStateCommands = new List<Command>();
-
-	// Token: 0x04001466 RID: 5222
-	public static HashSet<string> unlockedPaints = new HashSet<string>();
-
-	// Token: 0x04001467 RID: 5223
-	public static bool resetting = false;
-
-	// Token: 0x04001468 RID: 5224
-	public static bool loadComplete = false;
-
-	// Token: 0x04001469 RID: 5225
-	public static bool isLoadingScene = false;
-
-	// Token: 0x0400146A RID: 5226
-	public static bool resettingPlay = false;
-
-	// Token: 0x0400146B RID: 5227
-	public static bool capturingScreenshot = false;
-
-	// Token: 0x0400146C RID: 5228
-	public static Vector3 constrainedManipulationAxis = Vector3.up;
-
-	// Token: 0x0400146D RID: 5229
-	public static HashSet<Block> editorSelectionLocked = new HashSet<Block>();
-
-	// Token: 0x0400146E RID: 5230
-	private static bool keyLReleased = true;
-
-	// Token: 0x0400146F RID: 5231
-	private static Block recentSelectionUnlockedBlock = null;
-
-	// Token: 0x04001470 RID: 5232
-	public static bool isUsingSmallScreen;
-
-	// Token: 0x04001471 RID: 5233
-	public static string currentBackgroundMusic = string.Empty;
-
-	// Token: 0x04001472 RID: 5234
-	private static int loadedTextureCountAfterRemovingAssets = -1;
-
-	// Token: 0x04001473 RID: 5235
-	private static int loadedBlockCountAfterRemovingAssets = -1;
-
-	// Token: 0x04001474 RID: 5236
-	public static bool interpolateRigidBodies = false;
-
-	// Token: 0x04001475 RID: 5237
-	public const int sizeTile = 80;
-
-	// Token: 0x04001476 RID: 5238
-	public const int sizeTileMesh = 75;
-
-	// Token: 0x04001477 RID: 5239
-	public static int marginTile = -16;
-
-	// Token: 0x04001478 RID: 5240
-	public static int defaultPanelPadding = 32;
-
-	// Token: 0x04001479 RID: 5241
-	public const int buildPanelPadding = 20;
-
-	// Token: 0x0400147A RID: 5242
-	public static float fogMultiplier = 1f;
-
-	// Token: 0x0400147B RID: 5243
-	public static float fogStart = 40f;
-
-	// Token: 0x0400147C RID: 5244
-	public static float fogEnd = 100f;
-
-	// Token: 0x0400147D RID: 5245
-	public static Color fogColor = new Color(0.380392164f, 0.7411765f, 1f);
-
-	// Token: 0x0400147E RID: 5246
-	public static HashSet<string> existingBlockNames = new HashSet<string>();
-
-	// Token: 0x0400147F RID: 5247
-	public static Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001480 RID: 5248
-	public static Dictionary<string, GameObject> goPrefabs = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001481 RID: 5249
-	public static Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
-
-	// Token: 0x04001482 RID: 5250
-	public static Dictionary<string, Collider> colliders = new Dictionary<string, Collider>();
-
-	// Token: 0x04001483 RID: 5251
-	public static Dictionary<string, GameObject> compoundColliders = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001484 RID: 5252
-	public static Dictionary<string, GameObject> shapes = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001485 RID: 5253
-	public static Dictionary<string, GameObject> glues = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001486 RID: 5254
-	public static Dictionary<string, GameObject> joints = new Dictionary<string, GameObject>();
-
-	// Token: 0x04001487 RID: 5255
-	public static List<GAF> globalGafs = new List<GAF>();
-
-	// Token: 0x04001488 RID: 5256
-	public static List<GAF> rewardVisualizationGafs;
-
-	// Token: 0x04001489 RID: 5257
-	private static int rewardVisualizationIndex;
-
-	// Token: 0x0400148A RID: 5258
-	private static ScriptRowExecutionInfo rewardExecutionInfo = new ScriptRowExecutionInfo();
-
-	// Token: 0x0400148B RID: 5259
-	public static bool winIsWaiting;
-
-	// Token: 0x0400148C RID: 5260
-	public static bool hasWon;
-
-	// Token: 0x0400148D RID: 5261
-	public static bool stopASAP = false;
-
-	// Token: 0x0400148E RID: 5262
-	public static bool waitForSetPurchase = false;
-
-	// Token: 0x0400148F RID: 5263
-	private static bool canSaveInMenu = true;
-
-	// Token: 0x04001490 RID: 5264
-	public static bool worldSaveEnabled = true;
-
-	// Token: 0x04001491 RID: 5265
-	private static bool f3PressedInCurrentWorld = false;
-
-	// Token: 0x04001492 RID: 5266
-	public static Blocksworld bw;
-
-	// Token: 0x04001493 RID: 5267
-	public static GameObject blocksworldDataContainer;
-
-	// Token: 0x04001494 RID: 5268
-	protected static Camera _mainCamera;
-
-	// Token: 0x04001495 RID: 5269
-	private static Camera _mainCameraOverrideBackup;
-
-	// Token: 0x04001496 RID: 5270
-	public static Transform cameraTransform;
-
-	// Token: 0x04001497 RID: 5271
-	public static Vector3 cameraPosition;
-
-	// Token: 0x04001498 RID: 5272
-	public static Vector3 cameraForward;
-
-	// Token: 0x04001499 RID: 5273
-	public static Vector3 cameraUp;
-
-	// Token: 0x0400149A RID: 5274
-	public static Vector3 cameraRight;
-
-	// Token: 0x0400149B RID: 5275
-	public static Camera guiCamera;
-
-	// Token: 0x0400149C RID: 5276
-	public static Camera rewardCamera;
-
-	// Token: 0x0400149D RID: 5277
-	public static GUISkin skin;
-
-	// Token: 0x0400149E RID: 5278
-	public static GameObject directionalLight;
-
-	// Token: 0x0400149F RID: 5279
-	public static Light overheadLight;
-
-	// Token: 0x040014A0 RID: 5280
-	public static Transform lightingRig;
-
-	// Token: 0x040014A1 RID: 5281
-	public static Texture buttonPlus;
-
-	// Token: 0x040014A2 RID: 5282
-	public static Texture buttonMinus;
-
-	// Token: 0x040014A3 RID: 5283
-	public static BlockSky worldSky = null;
-
-	// Token: 0x040014A4 RID: 5284
-	public static GameObject worldOcean = null;
-
-	// Token: 0x040014A5 RID: 5285
-	public static BlockWater worldOceanBlock = null;
-
-	// Token: 0x040014A6 RID: 5286
-	private int whiteBackground;
-
-	// Token: 0x040014A7 RID: 5287
-	public static GameObject prefabArrow;
-
-	// Token: 0x040014A8 RID: 5288
-	public ParticleSystem explosion;
-
-	// Token: 0x040014A9 RID: 5289
-	public static ParticleSystem stars;
-
-	// Token: 0x040014AA RID: 5290
-	public static ParticleSystem starsReward;
-
-	// Token: 0x040014AB RID: 5291
-	public static GameObject rewardStarburst;
-
-	// Token: 0x040014AC RID: 5292
-	public static SfxDefinitions sfxDefinitions;
-
-	// Token: 0x040014AD RID: 5293
-	public static EngineSoundDefinitions engineSoundDefinitions;
-
-	// Token: 0x040014AE RID: 5294
-	public static LeaderboardData leaderboardData;
-
-	// Token: 0x040014AF RID: 5295
-	public static BlocksworldComponentData componentData;
-
-	// Token: 0x040014B0 RID: 5296
-	public static readonly BlocksworldCamera blocksworldCamera = new BlocksworldCamera();
-
-	// Token: 0x040014B1 RID: 5297
-	public static Vector3 prevCamPos = Util.nullVector3;
-
-	// Token: 0x040014B2 RID: 5298
-	public static bool cameraMoved = true;
-
-	// Token: 0x040014B3 RID: 5299
-	public static Color lightColor = Color.white;
-
-	// Token: 0x040014B4 RID: 5300
-	public static Color dynamicLightColor = Color.white;
-
-	// Token: 0x040014B5 RID: 5301
-	public static float dynamicLightIntensityMultiplier = 1f;
-
-	// Token: 0x040014B6 RID: 5302
-	public static List<ILightChanger> dynamicalLightChangers = new List<ILightChanger>();
-
-	// Token: 0x040014B7 RID: 5303
-	public static WeatherEffect weather = WeatherEffect.clear;
-
-	// Token: 0x040014B8 RID: 5304
-	public static FpsCounter fpsCounter;
-
-	// Token: 0x040014B9 RID: 5305
-	private Vector3 mousePositionLast = Vector3.zero;
-
-	// Token: 0x040014BA RID: 5306
-	private Vector3 mousePositionDelta;
-
-	// Token: 0x040014BB RID: 5307
-	public static Vector3 mousePositionFirst;
-
-	// Token: 0x040014BC RID: 5308
-	public static BuildPanel buildPanel;
-
-	// Token: 0x040014BD RID: 5309
-	public static ScriptPanel scriptPanel;
-
-	// Token: 0x040014BE RID: 5310
-	public static Tile tileButtonClearScript;
-
-	// Token: 0x040014BF RID: 5311
-	public static Tile tileButtonCopyScript;
-
-	// Token: 0x040014C0 RID: 5312
-	public static Tile tileButtonPasteScript;
-
-	// Token: 0x040014C1 RID: 5313
-	public static HashSet<GAF> publicProvidedGafs = new HashSet<GAF>();
-
-	// Token: 0x040014C2 RID: 5314
-	private float offsetMenu;
-
-	// Token: 0x040014C3 RID: 5315
-	public static List<GAF> enabledGAFs = null;
-
-	// Token: 0x040014C4 RID: 5316
-	public static List<GAF> enabledPanelBlock = null;
-
-	// Token: 0x040014C5 RID: 5317
-	private static string displayString;
-
-	// Token: 0x040014C6 RID: 5318
-	public static List<GAF> unlockedGAFs;
-
-	// Token: 0x040014C7 RID: 5319
-	public static HashSet<GAF> sidePanelGafs;
-
-	// Token: 0x040014C8 RID: 5320
-	public static Dictionary<OldSymbol, float> joysticks = new Dictionary<OldSymbol, float>();
-
-	// Token: 0x040014C9 RID: 5321
-	public TileParameterEditor tileParameterEditor;
-
-	// Token: 0x040014CA RID: 5322
-	public static Tile selectedTile;
-
-	// Token: 0x040014CB RID: 5323
-	public bool forcePlayMode;
-
-	// Token: 0x040014CC RID: 5324
-	public static float lastRealtimeSinceStartup = 0f;
-
-	// Token: 0x040014CD RID: 5325
-	public static float deltaTime = 0f;
-
-	// Token: 0x040014CE RID: 5326
-	public static bool hd;
-
-	// Token: 0x040014CF RID: 5327
-	public static float screenScale;
-
-	// Token: 0x040014D0 RID: 5328
-	public static int screenWidth;
-
-	// Token: 0x040014D1 RID: 5329
-	public static int screenHeight;
-
-	// Token: 0x040014D2 RID: 5330
-	public static Vector3 mouse;
-
-	// Token: 0x040014D3 RID: 5331
-	public static int numTouches = 0;
-
-	// Token: 0x040014D4 RID: 5332
-	public static Vector3[] touches = new Vector3[20];
-
-	// Token: 0x040014D5 RID: 5333
-	public static Block mouseBlock = null;
-
-	// Token: 0x040014D6 RID: 5334
-	public static int mouseBlockIndex = 0;
-
-	// Token: 0x040014D7 RID: 5335
-	public static Vector3 mouseBlockNormal = Vector3.zero;
-
-	// Token: 0x040014D8 RID: 5336
-	public static Vector3 mouseBlockHitPosition = Vector3.zero;
-
-	// Token: 0x040014D9 RID: 5337
-	public static Block mouseBlockLast = null;
-
-	// Token: 0x040014DA RID: 5338
-	public bool tWidgetHit;
-
-	// Token: 0x040014DB RID: 5339
-	public static bool tWidgetHitAtStart = false;
-
-	// Token: 0x040014DC RID: 5340
-	public static bool tBoxHit = false;
-
-	// Token: 0x040014DD RID: 5341
-	public static bool tBoxHitAtStart = false;
-
-	// Token: 0x040014DE RID: 5342
-	public static Vector3 mouseBlockNormalLast = Vector3.zero;
-
-	// Token: 0x040014DF RID: 5343
-	public static Block selectedBlock = null;
-
-	// Token: 0x040014E0 RID: 5344
-	private Vector3 anglesDelta;
-
-	// Token: 0x040014E1 RID: 5345
-	private Quaternion rotationStart;
-
-	// Token: 0x040014E2 RID: 5346
-	private Vector3 textureNormalLast;
-
-	// Token: 0x040014E3 RID: 5347
-	private float orbit;
-
-	// Token: 0x040014E4 RID: 5348
-	private static string stringInput = null;
-
-	// Token: 0x040014E5 RID: 5349
-	private static bool consumeEvent = false;
-
-	// Token: 0x040014E6 RID: 5350
-	public LineRenderer pullObjectLineRenderer;
-
-	// Token: 0x040014E7 RID: 5351
-	public static GestureRecognizer recognizer = new GestureRecognizer();
-
-	// Token: 0x040014E8 RID: 5352
-	private BaseGesture[] buildOnlyGestures;
-
-	// Token: 0x040014E9 RID: 5353
-	private SecretCommandGesture autoPlayGesture;
-
-	// Token: 0x040014EA RID: 5354
-	private PullObjectGesture pullObject;
-
-	// Token: 0x040014EB RID: 5355
-	public TapControlGesture tapControl;
-
-	// Token: 0x040014EC RID: 5356
-	public ParameterEditGesture parameterEditGesture;
-
-	// Token: 0x040014ED RID: 5357
-	public static UIGesture uiGesture;
-
-	// Token: 0x040014EE RID: 5358
-	public static TBoxGesture tBoxGesture;
-
-	// Token: 0x040014EF RID: 5359
-	public static TileDragGesture tileDragGesture;
-
-	// Token: 0x040014F0 RID: 5360
-	public static CreateTileDragGesture createTileDragGesture;
-
-	// Token: 0x040014F1 RID: 5361
-	public static ReplaceBodyPartTileDragGesture replaceBodyPartGesture;
-
-	// Token: 0x040014F2 RID: 5362
-	public static CharacterEditGearGesture characterEditGearGesture;
-
-	// Token: 0x040014F3 RID: 5363
-	public static CWidgetGesture cWidgetGesture;
-
-	// Token: 0x040014F4 RID: 5364
-	public static BlockDuplicateGesture blockDupeGesture;
-
-	// Token: 0x040014F5 RID: 5365
-	public static BlockTapGesture blockTapGesture;
-
-	// Token: 0x040014F6 RID: 5366
-	public static ButtonTapGesture buttonTapGesture;
-
-	// Token: 0x040014F7 RID: 5367
-	public static OrbitDuringControlCameraGesture orbitDuringControlGesture;
-
-	// Token: 0x040014F8 RID: 5368
-	private Vector3 mouseStart;
-
-	// Token: 0x040014F9 RID: 5369
-	public static string currentWorldId = null;
-
-	// Token: 0x040014FA RID: 5370
-	public static bool launchIntoPlayMode;
-
-	// Token: 0x040014FB RID: 5371
-	private JObject lastLoadedCameraObj;
-
-	// Token: 0x040014FC RID: 5372
-	public static float angularDragMultiplier = 1f;
-
-	// Token: 0x040014FD RID: 5373
-	public static float dragMultiplier = 1f;
-
-	// Token: 0x040014FE RID: 5374
-	public static List<Block> locked = new List<Block>();
-
-	// Token: 0x040014FF RID: 5375
-	public static List<Chunk> chunks = new List<Chunk>();
-
-	// Token: 0x04001500 RID: 5376
-	public static float timerStart = -1f;
-
-	// Token: 0x04001501 RID: 5377
-	public static float timerStop = -1f;
-
-	// Token: 0x04001502 RID: 5378
-	public static bool gameStart = false;
-
-	// Token: 0x04001503 RID: 5379
-	public const string SIGNAL_NAMES = "signal-names";
-
-	// Token: 0x04001504 RID: 5380
-	public const string BLOCK_NAMES = "block-names";
-
-	// Token: 0x04001505 RID: 5381
-	public const string CAMERA_POSES = "camera-poses";
-
-	// Token: 0x04001506 RID: 5382
-	public const string PUZZLE_GAFS = "puzzle-gafs";
-
-	// Token: 0x04001507 RID: 5383
-	public const string PUZZLE_GAF_USAGE = "puzzle-gaf-usage";
-
-	// Token: 0x04001508 RID: 5384
-	public const string PUZZLE_GAFS_AFTER_STEP_BY_STEP = "puzzle-gafs-after-step-by-step";
-
-	// Token: 0x04001509 RID: 5385
-	public const string PUZZLE_GAF_USAGE_AFTER_STEP_BY_STEP = "puzzle-gaf-usage-after-step-by-step";
-
-	// Token: 0x0400150A RID: 5386
-	public const int SIGNAL_COUNT = 26;
-
-	// Token: 0x0400150B RID: 5387
-	public const int MAX_PLAYER_COUNT = 8;
-
-	// Token: 0x0400150C RID: 5388
-	public const int MAX_COUNTERS = 2;
-
-	// Token: 0x0400150D RID: 5389
-	public const int MAX_TIMERS = 2;
-
-	// Token: 0x0400150E RID: 5390
-	public const int MAX_GAUGES = 2;
-
-	// Token: 0x0400150F RID: 5391
-	public const int MAX_RADARS = 1;
-
-	// Token: 0x04001510 RID: 5392
-	public static bool[] sending = new bool[26];
-
-	// Token: 0x04001511 RID: 5393
-	public static float[] sendingValues = new float[26];
-
-	// Token: 0x04001512 RID: 5394
-	public static string[] signalNames = new string[26];
-
-	// Token: 0x04001513 RID: 5395
-	public const string GENERIC_WILDCARD_NAME = "*";
-
-	// Token: 0x04001514 RID: 5396
-	public const string DEFAULT_CUSTOM_SIGNAL_NAME = "Signal";
-
-	// Token: 0x04001515 RID: 5397
-	public const string DEFAULT_CUSTOM_INT_VARIABLE_NAME = "Int";
-
-	// Token: 0x04001516 RID: 5398
-	public static Dictionary<string, float> sendingCustom = new Dictionary<string, float>();
-
-	// Token: 0x04001517 RID: 5399
-	public static Dictionary<Block, string> blockNames = new Dictionary<Block, string>();
-
-	// Token: 0x04001518 RID: 5400
-	public static int numSendTilesInUse = 0;
-
-	// Token: 0x04001519 RID: 5401
-	public static int numTagTilesInUse = 0;
-
-	// Token: 0x0400151A RID: 5402
-	public static HashSet<string> everPresentTagsInUse = new HashSet<string>();
-
-	// Token: 0x0400151B RID: 5403
-	public static HashSet<string> arrowTags = new HashSet<string>();
-
-	// Token: 0x0400151C RID: 5404
-	public static HashSet<string> handAttachmentTags = new HashSet<string>();
-
-	// Token: 0x0400151D RID: 5405
-	public static HashSet<string> laserTags = new HashSet<string>();
-
-	// Token: 0x0400151E RID: 5406
-	public static HashSet<string> projectileTags = new HashSet<string>();
-
-	// Token: 0x0400151F RID: 5407
-	public static HashSet<string> waterTags = new HashSet<string>();
-
-	// Token: 0x04001520 RID: 5408
-	public static HashSet<string> customSignals = new HashSet<string>();
-
-	// Token: 0x04001521 RID: 5409
-	public static Dictionary<string, int> customIntVariables = new Dictionary<string, int>();
-
-	// Token: 0x04001522 RID: 5410
-	public static Dictionary<Block, Dictionary<string, int>> blockIntVariables = new Dictionary<Block, Dictionary<string, int>>();
-
-	// Token: 0x04001523 RID: 5411
-	public static float gameTime = 0f;
-
-	// Token: 0x04001524 RID: 5412
-	public static int updateCounter = 0;
-
-	// Token: 0x04001525 RID: 5413
-	public static int playFixedUpdateCounter = 0;
-
-	// Token: 0x04001526 RID: 5414
-	public static int numCounters = 10;
-
-	// Token: 0x04001527 RID: 5415
-	public static Dictionary<string, bool> countersActivated = new Dictionary<string, bool>();
-
-	// Token: 0x04001528 RID: 5416
-	public static Dictionary<string, int> counters = new Dictionary<string, int>();
-
-	// Token: 0x04001529 RID: 5417
-	public static Dictionary<string, int> counterTargets = new Dictionary<string, int>();
-
-	// Token: 0x0400152A RID: 5418
-	public static Dictionary<string, bool> counterTargetsActivated = new Dictionary<string, bool>();
-
-	// Token: 0x0400152B RID: 5419
-	public static Texture starOutlineTexture;
-
-	// Token: 0x0400152C RID: 5420
-	public static Texture starTexture;
-
-	// Token: 0x0400152D RID: 5421
-	public static Plane[] frustumPlanes = new Plane[0];
-
-	// Token: 0x0400152E RID: 5422
-	public static float maxBlockTapDistance = 1060f;
-
-	// Token: 0x0400152F RID: 5423
-	public static float maxBlockDragDistance = 1060f;
-
-	// Token: 0x04001530 RID: 5424
-	public static MusicPlayer musicPlayer;
-
-	// Token: 0x04001531 RID: 5425
-	public static Dictionary<string, string> iconColors = new Dictionary<string, string>();
-
-	// Token: 0x04001532 RID: 5426
-	public static Dictionary<string, Color[]> colorDefinitions = new Dictionary<string, Color[]>();
-
-	// Token: 0x04001533 RID: 5427
-	public static Dictionary<string, Color[]> ambientLightGradientDefinitions = new Dictionary<string, Color[]>();
-
-	// Token: 0x04001534 RID: 5428
-	public static Dictionary<string, Color> skyBoxTintDefinitions = new Dictionary<string, Color>();
-
-	// Token: 0x04001535 RID: 5429
-	public static Dictionary<RarityLevelEnum, Material> rarityBorderMaterialsEnabled = new Dictionary<RarityLevelEnum, Material>();
-
-	// Token: 0x04001536 RID: 5430
-	public static Dictionary<RarityLevelEnum, Material> rarityBorderMaterialsDisabled = new Dictionary<RarityLevelEnum, Material>();
-
-	// Token: 0x04001537 RID: 5431
-	public static TilePool tilePool;
-
-	// Token: 0x04001538 RID: 5432
-	public static TilePool modelTilePool;
-
-	// Token: 0x04001539 RID: 5433
-	public Vector2 storeFogDistances = new Vector2(150f, 400f);
-
-	// Token: 0x0400153A RID: 5434
-	private UIMain _ui;
-
-	// Token: 0x0400153B RID: 5435
-	private Color _defaultBackgroundColor;
-
-	// Token: 0x0400153C RID: 5436
-	public static readonly float defaultGravityStrength = 20f;
-
-	// Token: 0x0400153D RID: 5437
-	private static VRType VR_Default = VRType.VR_None;
-
-	// Token: 0x0400153E RID: 5438
-	public static bool vrEnabled = false;
-
-	// Token: 0x0400153F RID: 5439
-	private static VRType currentVRType = Blocksworld.VR_Default;
-
-	// Token: 0x04001540 RID: 5440
-	private static GameObject vrCameraAdjust;
-
-	// Token: 0x04001541 RID: 5441
-	public Transform cameraTiltTransform;
-
-	// Token: 0x04001542 RID: 5442
-	public Transform cameraParentTransform;
-
-	// Token: 0x04001543 RID: 5443
-	internal static bool worldSessionHadVR = false;
-
-	// Token: 0x04001544 RID: 5444
-	internal static bool worldSessionHadBlocksterMover = false;
-
-	// Token: 0x04001545 RID: 5445
-	internal static bool worldSessionHadBlocksterSpeaker = false;
-
-	// Token: 0x04001546 RID: 5446
-	internal static bool worldSessionHadBlockTap = false;
-
-	// Token: 0x04001547 RID: 5447
-	internal static int worldSessionCoinsCollected = 0;
-
-	// Token: 0x04001548 RID: 5448
-	internal static bool worldSessionHadHypderjumpUse = false;
-
-	// Token: 0x04001549 RID: 5449
-	private static State _currentState = State.Build;
-
-	// Token: 0x0400154A RID: 5450
-	private static State _lastState;
-
-	// Token: 0x0400154B RID: 5451
-	private static float _stateTime;
-
-	// Token: 0x0400154C RID: 5452
-	private bool autoLoad;
-
-	// Token: 0x0400154D RID: 5453
-	private HudMeshLabel labelTimer;
-
-	// Token: 0x0400154E RID: 5454
-	private List<HudMeshLabel> labelCounters = new List<HudMeshLabel>();
-
-	// Token: 0x0400154F RID: 5455
-	private static string[] counterNames = new string[]
+	static Blocksworld()
 	{
-		"0",
-		"1",
-		"2"
-	};
-
-	// Token: 0x04001550 RID: 5456
-	private Block lastBuildModeSelectedBlock;
-
-	// Token: 0x04001551 RID: 5457
-	private Bunch lastBuildModeSelectedBunch;
-
-	// Token: 0x04001552 RID: 5458
-	private static HashSet<Predicate> analogStickPredicates;
-
-	// Token: 0x04001553 RID: 5459
-	private static HashSet<Predicate> tiltMoverPredicates;
-
-	// Token: 0x04001554 RID: 5460
-	private bool keyboardPasteInProgress;
-
-	// Token: 0x04001555 RID: 5461
-	private Vector3 wasdeqMouseCamPosTarget;
-
-	// Token: 0x04001556 RID: 5462
-	private Vector3 wasdeqMouseCamLookAtTarget;
-
-	// Token: 0x04001557 RID: 5463
-	private bool cameraSelectionOrbitMode;
-
-	// Token: 0x04001558 RID: 5464
-	private float lastControlPressTime = -1f;
-
-	// Token: 0x04001559 RID: 5465
-	private int controlPressesInShortTime;
-
-	// Token: 0x0400155A RID: 5466
-	private float lastQuickScrollPressTime = -1f;
-
-	// Token: 0x0400155B RID: 5467
-	private List<int> quickScrollKeys = new List<int>();
-
-	// Token: 0x0400155C RID: 5468
-	private Dictionary<string, int> materialUsage = new Dictionary<string, int>();
-
-	// Token: 0x0400155D RID: 5469
-	private static HashSet<Predicate> taggedPredicates = null;
-
-	// Token: 0x0400155E RID: 5470
-	public static Dictionary<string, HashSet<string>> uniqueBlockMap = null;
-
-	// Token: 0x0400155F RID: 5471
-	private static HashSet<GAF> uniqueGafs;
-
-	// Token: 0x04001560 RID: 5472
-	private static PredicateSet magnetPredicates = null;
-
-	// Token: 0x04001561 RID: 5473
-	private static PredicateSet taggedHandAttachmentPreds = null;
-
-	// Token: 0x04001562 RID: 5474
-	private static PredicateSet taggedArrowPreds = null;
-
-	// Token: 0x04001563 RID: 5475
-	private static PredicateSet taggedLaserPreds = null;
-
-	// Token: 0x04001564 RID: 5476
-	private static PredicateSet taggedProjectilePreds = null;
-
-	// Token: 0x04001565 RID: 5477
-	private static PredicateSet taggedWaterPreds = null;
-
-	// Token: 0x04001566 RID: 5478
-	private bool _showingOptionsWhenPaused;
-
-	// Token: 0x04001567 RID: 5479
-	private CopyModelAnimationCommand copyModelAnimationCommand = new CopyModelAnimationCommand();
-
-	// Token: 0x04001568 RID: 5480
-	private SaveModelAnimationCommand saveModelAnimationCommand = new SaveModelAnimationCommand();
-
-	// Token: 0x04001569 RID: 5481
-	private CopyScriptAnimationCommand copyScriptAnimationCommand = new CopyScriptAnimationCommand();
-
-	// Token: 0x0400156A RID: 5482
-	private const float DIRECT_RAYCAST_SCREEN_THRESHOLD = 0.35f;
-
-	// Token: 0x0400156B RID: 5483
-	private PasteModelAnimationCommand pasteModelAnimationCommand = new PasteModelAnimationCommand();
-
-	// Token: 0x0400156C RID: 5484
-	public static Dictionary<string, bool> luminousPaints = new Dictionary<string, bool>();
+		useCompactGafWriteRenamings = false;
+		inBackground = false;
+		selectedBunch = null;
+		lockPull = false;
+		cameraPoses = new List<NamedPose>();
+		cameraPosesMap = new Dictionary<string, NamedPose>();
+		staticLockPull = false;
+		dynamicLockPull = false;
+		lockInput = false;
+		isFirstFrame = false;
+		hideInGameUI = false;
+		started = false;
+		renderingShadows = false;
+		renderingSkybox = false;
+		renderingWater = false;
+		_lightIntensityBasic = 1f;
+		_lightIntensityMultiplier = 1f;
+		_buildModeFogColor = Color.white;
+		_buildModeFogStart = 0f;
+		_buildModeFogEnd = 0f;
+		updateCommands = new List<Command>();
+		fixedUpdateCommands = new List<Command>();
+		resetStateCommands = new List<Command>();
+		unlockedPaints = new HashSet<string>();
+		resetting = false;
+		loadComplete = false;
+		isLoadingScene = false;
+		resettingPlay = false;
+		capturingScreenshot = false;
+		constrainedManipulationAxis = Vector3.up;
+		editorSelectionLocked = new HashSet<Block>();
+		keyLReleased = true;
+		recentSelectionUnlockedBlock = null;
+		currentBackgroundMusic = string.Empty;
+		loadedTextureCountAfterRemovingAssets = -1;
+		loadedBlockCountAfterRemovingAssets = -1;
+		interpolateRigidBodies = false;
+		marginTile = -16;
+		defaultPanelPadding = 32;
+		fogMultiplier = 1f;
+		fogStart = 40f;
+		fogEnd = 100f;
+		fogColor = new Color(0.38039216f, 63f / 85f, 1f);
+		existingBlockNames = new HashSet<string>();
+		prefabs = new Dictionary<string, GameObject>();
+		goPrefabs = new Dictionary<string, GameObject>();
+		meshes = new Dictionary<string, Mesh>();
+		colliders = new Dictionary<string, Collider>();
+		compoundColliders = new Dictionary<string, GameObject>();
+		shapes = new Dictionary<string, GameObject>();
+		glues = new Dictionary<string, GameObject>();
+		joints = new Dictionary<string, GameObject>();
+		globalGafs = new List<GAF>();
+		rewardExecutionInfo = new ScriptRowExecutionInfo();
+		stopASAP = false;
+		waitForSetPurchase = false;
+		canSaveInMenu = true;
+		worldSaveEnabled = true;
+		f3PressedInCurrentWorld = false;
+		worldSky = null;
+		worldOcean = null;
+		worldOceanBlock = null;
+		blocksworldCamera = new BlocksworldCamera();
+		prevCamPos = Util.nullVector3;
+		cameraMoved = true;
+		lightColor = Color.white;
+		dynamicLightColor = Color.white;
+		dynamicLightIntensityMultiplier = 1f;
+		dynamicalLightChangers = new List<ILightChanger>();
+		weather = WeatherEffect.clear;
+		publicProvidedGafs = new HashSet<GAF>();
+		enabledGAFs = null;
+		enabledPanelBlock = null;
+		joysticks = new Dictionary<OldSymbol, float>();
+		lastRealtimeSinceStartup = 0f;
+		deltaTime = 0f;
+		numTouches = 0;
+		touches = new Vector3[20];
+		mouseBlock = null;
+		mouseBlockIndex = 0;
+		mouseBlockNormal = Vector3.zero;
+		mouseBlockHitPosition = Vector3.zero;
+		mouseBlockLast = null;
+		tWidgetHitAtStart = false;
+		tBoxHit = false;
+		tBoxHitAtStart = false;
+		mouseBlockNormalLast = Vector3.zero;
+		selectedBlock = null;
+		stringInput = null;
+		consumeEvent = false;
+		recognizer = new GestureRecognizer();
+		currentWorldId = null;
+		angularDragMultiplier = 1f;
+		dragMultiplier = 1f;
+		locked = new List<Block>();
+		chunks = new List<Chunk>();
+		timerStart = -1f;
+		timerStop = -1f;
+		gameStart = false;
+		sending = new bool[26];
+		sendingValues = new float[26];
+		signalNames = new string[26];
+		sendingCustom = new Dictionary<string, float>();
+		blockNames = new Dictionary<Block, string>();
+		numSendTilesInUse = 0;
+		numTagTilesInUse = 0;
+		everPresentTagsInUse = new HashSet<string>();
+		arrowTags = new HashSet<string>();
+		handAttachmentTags = new HashSet<string>();
+		laserTags = new HashSet<string>();
+		projectileTags = new HashSet<string>();
+		waterTags = new HashSet<string>();
+		customSignals = new HashSet<string>();
+		customIntVariables = new Dictionary<string, int>();
+		blockIntVariables = new Dictionary<Block, Dictionary<string, int>>();
+		gameTime = 0f;
+		updateCounter = 0;
+		playFixedUpdateCounter = 0;
+		numCounters = 10;
+		countersActivated = new Dictionary<string, bool>();
+		counters = new Dictionary<string, int>();
+		counterTargets = new Dictionary<string, int>();
+		counterTargetsActivated = new Dictionary<string, bool>();
+		frustumPlanes = new Plane[0];
+		maxBlockTapDistance = 1060f;
+		maxBlockDragDistance = 1060f;
+		iconColors = new Dictionary<string, string>();
+		colorDefinitions = new Dictionary<string, Color[]>();
+		ambientLightGradientDefinitions = new Dictionary<string, Color[]>();
+		skyBoxTintDefinitions = new Dictionary<string, Color>();
+		rarityBorderMaterialsEnabled = new Dictionary<RarityLevelEnum, Material>();
+		rarityBorderMaterialsDisabled = new Dictionary<RarityLevelEnum, Material>();
+		defaultGravityStrength = 20f;
+		VR_Default = VRType.VR_None;
+		vrEnabled = false;
+		currentVRType = VR_Default;
+		worldSessionHadVR = false;
+		worldSessionHadBlocksterMover = false;
+		worldSessionHadBlocksterSpeaker = false;
+		worldSessionHadBlockTap = false;
+		worldSessionCoinsCollected = 0;
+		worldSessionHadHypderjumpUse = false;
+		_currentState = State.Build;
+		counterNames = new string[3] { "0", "1", "2" };
+		taggedPredicates = null;
+		uniqueBlockMap = null;
+		magnetPredicates = null;
+		taggedHandAttachmentPreds = null;
+		taggedArrowPreds = null;
+		taggedLaserPreds = null;
+		taggedProjectilePreds = null;
+		taggedWaterPreds = null;
+		luminousPaints = new Dictionary<string, bool>();
+	}
 }

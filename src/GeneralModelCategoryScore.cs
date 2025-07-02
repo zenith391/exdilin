@@ -1,205 +1,163 @@
-﻿using System;
+using System;
 using System.Text;
 
-// Token: 0x020001C9 RID: 457
 [Serializable]
 public class GeneralModelCategoryScore : ModelCategoryScore
 {
-	// Token: 0x06001839 RID: 6201 RVA: 0x000AB03A File Offset: 0x000A943A
+	public GeneralModelCategoryScoreType type;
+
+	public string blockName;
+
+	public string blockTag;
+
+	public int blockCount;
+
+	public int blockTagCount;
+
+	public string predicateName;
+
+	public string predicateTag;
+
+	public int predicateCount;
+
+	public int predicateTagCount;
+
+	public string textureName;
+
+	public string textureTag;
+
+	public int textureCount;
+
+	public int textureTagCount;
+
+	public string shapeCategoryName;
+
+	public int shapeCategoryCount;
+
+	public int rangeCountFrom;
+
+	public int rangeCountTo;
+
+	public int customCount;
+
+	public float customScore;
+
+	public float timesScore;
+
+	public float fractionScore;
+
 	private float GetTimesScore(int count)
 	{
-		return this.timesScore * (float)count;
+		return timesScore * (float)count;
 	}
 
-	// Token: 0x0600183A RID: 6202 RVA: 0x000AB045 File Offset: 0x000A9445
 	private float GetScore(bool triggered)
 	{
 		if (triggered)
 		{
-			return this.customScore;
+			return customScore;
 		}
 		return 0f;
 	}
 
-	// Token: 0x0600183B RID: 6203 RVA: 0x000AB05C File Offset: 0x000A945C
 	public override string ToString()
 	{
-		GeneralModelCategoryScoreTypeVariableUsage generalModelCategoryScoreTypeVariableUsage = new GeneralModelCategoryScoreTypeVariableUsage(this.type);
+		GeneralModelCategoryScoreTypeVariableUsage generalModelCategoryScoreTypeVariableUsage = new GeneralModelCategoryScoreTypeVariableUsage(type);
 		StringBuilder stringBuilder = new StringBuilder();
 		stringBuilder.Append("[");
-		stringBuilder.Append(this.type.ToString());
+		stringBuilder.Append(type.ToString());
 		if (generalModelCategoryScoreTypeVariableUsage.usesBlockName)
 		{
-			stringBuilder.Append("'" + this.blockName + "' ");
+			stringBuilder.Append("'" + blockName + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesBlockTag)
 		{
-			stringBuilder.Append("'" + this.blockTag + "' ");
+			stringBuilder.Append("'" + blockTag + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesBlockCount)
 		{
-			stringBuilder.Append(this.blockCount + " ");
+			stringBuilder.Append(blockCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesBlockTagCount)
 		{
-			stringBuilder.Append(this.blockTagCount + " ");
+			stringBuilder.Append(blockTagCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesTextureName)
 		{
-			stringBuilder.Append("'" + this.textureName + "' ");
+			stringBuilder.Append("'" + textureName + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesTextureTag)
 		{
-			stringBuilder.Append("'" + this.textureTag + "' ");
+			stringBuilder.Append("'" + textureTag + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesTextureCount)
 		{
-			stringBuilder.Append(this.textureCount + " ");
+			stringBuilder.Append(textureCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesTextureTagCount)
 		{
-			stringBuilder.Append(this.textureTagCount + " ");
+			stringBuilder.Append(textureTagCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesPredicateName)
 		{
-			stringBuilder.Append("'" + this.predicateName + "' ");
+			stringBuilder.Append("'" + predicateName + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesPredicateTag)
 		{
-			stringBuilder.Append("'" + this.predicateTag + "' ");
+			stringBuilder.Append("'" + predicateTag + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesPredicateCount)
 		{
-			stringBuilder.Append(this.predicateCount + " ");
+			stringBuilder.Append(predicateCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesPredicateTagCount)
 		{
-			stringBuilder.Append(this.predicateTagCount + " ");
+			stringBuilder.Append(predicateTagCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesShapeCategoryName)
 		{
-			stringBuilder.Append("'" + this.shapeCategoryName + "' ");
+			stringBuilder.Append("'" + shapeCategoryName + "' ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesShapeCategoryCount)
 		{
-			stringBuilder.Append(this.shapeCategoryCount + " ");
+			stringBuilder.Append(shapeCategoryCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesCustomCount)
 		{
-			stringBuilder.Append(this.customCount + " ");
+			stringBuilder.Append(customCount + " ");
 		}
 		if (generalModelCategoryScoreTypeVariableUsage.usesTimesScore)
 		{
-			stringBuilder.Append(this.timesScore + " ");
+			stringBuilder.Append(timesScore + " ");
 		}
 		else
 		{
-			stringBuilder.Append(this.customScore + " ");
+			stringBuilder.Append(customScore + " ");
 		}
 		stringBuilder.Append("]");
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x0600183C RID: 6204 RVA: 0x000AB344 File Offset: 0x000A9744
 	public override float GetCategoryScore(ModelCategorizerContext ctx)
 	{
-		switch (this.type)
+		return type switch
 		{
-		case GeneralModelCategoryScoreType.BlockCountGreaterThan:
-			return this.GetScore(ctx.GetBlockCount(this.blockName) > this.blockCount);
-		case GeneralModelCategoryScoreType.BlockTagCountGreaterThan:
-			return this.GetScore(ctx.GetBlockTagCount(this.blockTag) > this.blockTagCount);
-		case GeneralModelCategoryScoreType.BlockCountTimes:
-			return this.GetTimesScore(ctx.GetBlockCount(this.blockName));
-		case GeneralModelCategoryScoreType.BlockTagCountTimes:
-			return this.GetTimesScore(ctx.GetBlockTagCount(this.blockTag));
-		case GeneralModelCategoryScoreType.TextureCountGreaterThan:
-			return this.GetScore(ctx.GetPermanentTextureCount(this.textureName) > this.textureCount);
-		case GeneralModelCategoryScoreType.TextureTagCountGreaterThan:
-			return this.GetScore(ctx.GetPermanentTextureTagCount(this.textureTag) > this.textureTagCount);
-		case GeneralModelCategoryScoreType.TextureCountTimes:
-			return this.GetTimesScore(ctx.GetPermanentTextureCount(this.textureName));
-		case GeneralModelCategoryScoreType.TextureTagCountTimes:
-			return this.GetTimesScore(ctx.GetPermanentTextureTagCount(this.textureTag));
-		case GeneralModelCategoryScoreType.PredicateCountGreaterThan:
-			return this.GetScore(ctx.GetPredicateCount(this.textureName) > this.textureCount);
-		case GeneralModelCategoryScoreType.PredicateTagCountGreaterThan:
-			return this.GetScore(ctx.GetPredicateTagCount(this.textureTag) > this.textureTagCount);
-		case GeneralModelCategoryScoreType.PredicateCountTimes:
-			return this.GetTimesScore(ctx.GetPredicateCount(this.textureName));
-		case GeneralModelCategoryScoreType.PredicateTagCountTimes:
-			return this.GetTimesScore(ctx.GetPredicateTagCount(this.textureTag));
-		case GeneralModelCategoryScoreType.ShapeCategoryCountGreaterThan:
-			return this.GetScore(ctx.GetShapeCategoryCount(this.shapeCategoryName) > this.shapeCategoryCount);
-		case GeneralModelCategoryScoreType.MaxWheelsAlongSameLineGreaterThan:
-			return this.GetScore(ctx.GetInt("MaxWheelsAlongSameLine") > this.customCount);
-		case GeneralModelCategoryScoreType.NonConditionalFreeze:
-			return this.GetScore(ctx.GetBool("NonConditionalFreeze"));
-		default:
-			return 0f;
-		}
+			GeneralModelCategoryScoreType.BlockCountGreaterThan => GetScore(ctx.GetBlockCount(blockName) > blockCount), 
+			GeneralModelCategoryScoreType.BlockTagCountGreaterThan => GetScore(ctx.GetBlockTagCount(blockTag) > blockTagCount), 
+			GeneralModelCategoryScoreType.BlockCountTimes => GetTimesScore(ctx.GetBlockCount(blockName)), 
+			GeneralModelCategoryScoreType.BlockTagCountTimes => GetTimesScore(ctx.GetBlockTagCount(blockTag)), 
+			GeneralModelCategoryScoreType.TextureCountGreaterThan => GetScore(ctx.GetPermanentTextureCount(textureName) > textureCount), 
+			GeneralModelCategoryScoreType.TextureTagCountGreaterThan => GetScore(ctx.GetPermanentTextureTagCount(textureTag) > textureTagCount), 
+			GeneralModelCategoryScoreType.TextureCountTimes => GetTimesScore(ctx.GetPermanentTextureCount(textureName)), 
+			GeneralModelCategoryScoreType.TextureTagCountTimes => GetTimesScore(ctx.GetPermanentTextureTagCount(textureTag)), 
+			GeneralModelCategoryScoreType.PredicateCountGreaterThan => GetScore(ctx.GetPredicateCount(textureName) > textureCount), 
+			GeneralModelCategoryScoreType.PredicateTagCountGreaterThan => GetScore(ctx.GetPredicateTagCount(textureTag) > textureTagCount), 
+			GeneralModelCategoryScoreType.PredicateCountTimes => GetTimesScore(ctx.GetPredicateCount(textureName)), 
+			GeneralModelCategoryScoreType.PredicateTagCountTimes => GetTimesScore(ctx.GetPredicateTagCount(textureTag)), 
+			GeneralModelCategoryScoreType.ShapeCategoryCountGreaterThan => GetScore(ctx.GetShapeCategoryCount(shapeCategoryName) > shapeCategoryCount), 
+			GeneralModelCategoryScoreType.MaxWheelsAlongSameLineGreaterThan => GetScore(ctx.GetInt("MaxWheelsAlongSameLine") > customCount), 
+			GeneralModelCategoryScoreType.NonConditionalFreeze => GetScore(ctx.GetBool("NonConditionalFreeze")), 
+			_ => 0f, 
+		};
 	}
-
-	// Token: 0x04001314 RID: 4884
-	public GeneralModelCategoryScoreType type;
-
-	// Token: 0x04001315 RID: 4885
-	public string blockName;
-
-	// Token: 0x04001316 RID: 4886
-	public string blockTag;
-
-	// Token: 0x04001317 RID: 4887
-	public int blockCount;
-
-	// Token: 0x04001318 RID: 4888
-	public int blockTagCount;
-
-	// Token: 0x04001319 RID: 4889
-	public string predicateName;
-
-	// Token: 0x0400131A RID: 4890
-	public string predicateTag;
-
-	// Token: 0x0400131B RID: 4891
-	public int predicateCount;
-
-	// Token: 0x0400131C RID: 4892
-	public int predicateTagCount;
-
-	// Token: 0x0400131D RID: 4893
-	public string textureName;
-
-	// Token: 0x0400131E RID: 4894
-	public string textureTag;
-
-	// Token: 0x0400131F RID: 4895
-	public int textureCount;
-
-	// Token: 0x04001320 RID: 4896
-	public int textureTagCount;
-
-	// Token: 0x04001321 RID: 4897
-	public string shapeCategoryName;
-
-	// Token: 0x04001322 RID: 4898
-	public int shapeCategoryCount;
-
-	// Token: 0x04001323 RID: 4899
-	public int rangeCountFrom;
-
-	// Token: 0x04001324 RID: 4900
-	public int rangeCountTo;
-
-	// Token: 0x04001325 RID: 4901
-	public int customCount;
-
-	// Token: 0x04001326 RID: 4902
-	public float customScore;
-
-	// Token: 0x04001327 RID: 4903
-	public float timesScore;
-
-	// Token: 0x04001328 RID: 4904
-	public float fractionScore;
 }

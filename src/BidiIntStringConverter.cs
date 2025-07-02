@@ -1,42 +1,35 @@
-﻿using System;
 using System.Collections.Generic;
 
-// Token: 0x02000153 RID: 339
 public class BidiIntStringConverter
 {
-	// Token: 0x060014DE RID: 5342 RVA: 0x00092C44 File Offset: 0x00091044
+	private Dictionary<int, string> table = new Dictionary<int, string>();
+
 	public BidiIntStringConverter(string[] strings, int startingValue, int step)
 	{
 		for (int i = 0; i < strings.Length; i++)
 		{
-			this.table[i * step + startingValue] = strings[i];
+			table[i * step + startingValue] = strings[i];
 		}
 	}
 
-	// Token: 0x060014DF RID: 5343 RVA: 0x00092C8C File Offset: 0x0009108C
 	public string StringValue(int key)
 	{
-		string result;
-		if (this.table.TryGetValue(key, out result))
+		if (table.TryGetValue(key, out var value))
 		{
-			return result;
+			return value;
 		}
 		return string.Empty;
 	}
 
-	// Token: 0x060014E0 RID: 5344 RVA: 0x00092CB4 File Offset: 0x000910B4
 	public int IntValue(string s)
 	{
-		foreach (KeyValuePair<int, string> keyValuePair in this.table)
+		foreach (KeyValuePair<int, string> item in table)
 		{
-			if (keyValuePair.Value == s)
+			if (item.Value == s)
 			{
-				return keyValuePair.Key;
+				return item.Key;
 			}
 		}
 		return 0;
 	}
-
-	// Token: 0x04001068 RID: 4200
-	private Dictionary<int, string> table = new Dictionary<int, string>();
 }

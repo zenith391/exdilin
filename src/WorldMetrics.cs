@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,23 +5,33 @@ using System.Text;
 using Blocks;
 using SimpleJSON;
 
-// Token: 0x02000363 RID: 867
 public class WorldMetrics
 {
-	// Token: 0x0600267B RID: 9851 RVA: 0x0011B5DC File Offset: 0x001199DC
+	private static HashSet<Predicate> objectCounterConditionPredicates;
+
+	private static HashSet<Predicate> counterConditionPredicates;
+
+	private static HashSet<Predicate> timerConditionPredicates;
+
+	private static HashSet<Predicate> jumpPredicates;
+
+	private static HashSet<Predicate> leggedMoverPredicates;
+
+	private static HashSet<Predicate> tapPredicates;
+
 	public static string GetMetaData()
 	{
 		StringBuilder stringBuilder = new StringBuilder();
 		List<Block> list = BWSceneManager.AllBlocks();
-		bool hasObjectCounter = false;
-		bool hasCounter = false;
-		bool hasTimer = false;
-		bool hasGauge = false;
-		bool hasRadar = false;
-		bool hasWinTile = false;
-		bool hasLoseTile = false;
-		bool hasLoot = false;
-		bool hasPickup = false;
+		bool flag = false;
+		bool flag2 = false;
+		bool flag3 = false;
+		bool flag4 = false;
+		bool flag5 = false;
+		bool flag6 = false;
+		bool flag7 = false;
+		bool flag8 = false;
+		bool flag9 = false;
 		bool flag10 = false;
 		bool flag11 = false;
 		bool flag12 = false;
@@ -39,14 +48,14 @@ public class WorldMetrics
 		bool flag22 = false;
 		bool flag23 = false;
 		bool flag24 = false;
-		bool hasStopActionInSpeak = false;
-		bool hasBackActionInSpeak = false;
-		bool hasRestartActionInSpeak = false;
-		bool usingAnalogStick = false;
-		bool usingTilt = false;
-		bool usingTap = false;
-		bool usingButtons = false;
-		bool usingSpeak = false;
+		bool flag25 = false;
+		bool flag26 = false;
+		bool flag27 = false;
+		bool flag28 = false;
+		bool flag29 = false;
+		bool flag30 = false;
+		bool flag31 = false;
+		bool value2 = false;
 		HashSet<string> hashSet = new HashSet<string>();
 		HashSet<string> hashSet2 = new HashSet<string>();
 		HashSet<string> hashSet3 = new HashSet<string>();
@@ -59,11 +68,11 @@ public class WorldMetrics
 		for (int i = 0; i < list.Count; i++)
 		{
 			Block block = list[i];
-            hasObjectCounter = (hasObjectCounter || block is BlockObjectCounterUI);
-            hasCounter = (hasCounter || block is BlockCounterUI);
-            hasTimer = (hasTimer || block is BlockTimerUI);
-            hasRadar = (hasRadar || block is BlockRadarUI);
-            hasGauge = (hasGauge || block is BlockGaugeUI);
+			flag = flag || block is BlockObjectCounterUI;
+			flag2 = flag2 || block is BlockCounterUI;
+			flag3 = flag3 || block is BlockTimerUI;
+			flag5 = flag5 || block is BlockRadarUI;
+			flag4 = flag4 || block is BlockGaugeUI;
 			bool flag32 = false;
 			bool flag33 = false;
 			for (int j = 0; j < block.tiles.Count; j++)
@@ -83,30 +92,29 @@ public class WorldMetrics
 					{
 						flag34 = false;
 					}
-					if (WorldMetrics.GetLeggedMoverPredicates().Contains(predicate))
+					if (GetLeggedMoverPredicates().Contains(predicate))
 					{
 						flag32 = true;
 						value = true;
-						flag16 = (flag16 || block is BlockCharacter);
-						flag17 = (flag17 || block is BlockLegs);
-						flag18 = (flag18 || block is BlockMLPLegs);
-						flag19 = (flag19 || block is BlockQuadped);
+						flag16 = flag16 || block is BlockCharacter;
+						flag17 = flag17 || block is BlockLegs;
+						flag18 = flag18 || block is BlockMLPLegs;
+						flag19 = flag19 || block is BlockQuadped;
 					}
-					if (WorldMetrics.GetJumpPredicates().Contains(predicate))
+					if (GetJumpPredicates().Contains(predicate))
 					{
 						flag33 = true;
 					}
-					flag20 = (flag20 || (flag33 && flag32));
-					flag21 = (flag21 || (flag20 && block is BlockCharacter));
-					flag22 = (flag22 || (flag20 && block is BlockLegs));
-					flag23 = (flag23 || (flag20 && block is BlockMLPLegs));
-					flag24 = (flag24 || (flag20 && block is BlockQuadped));
-                    hasWinTile = (hasWinTile || predicate == Block.predicateGameWin);
-                    hasLoseTile = (hasLoseTile || predicate == Block.predicateGameLose);
-                    hasLoot = (hasLoot || predicate == Block.predicateIsTreasure || predicate == Block.predicateIsTreasureForTag);
-                    hasPickup = (hasPickup || predicate == Block.predicateIsPickup || predicate == Block.predicateIsPickupForTag);
-					bool flag38 = analogStickPredicates.Contains(predicate);
-					if (flag38)
+					flag20 = flag20 || (flag33 && flag32);
+					flag21 = flag21 || (flag20 && block is BlockCharacter);
+					flag22 = flag22 || (flag20 && block is BlockLegs);
+					flag23 = flag23 || (flag20 && block is BlockMLPLegs);
+					flag24 = flag24 || (flag20 && block is BlockQuadped);
+					flag6 = flag6 || predicate == Block.predicateGameWin;
+					flag7 = flag7 || predicate == Block.predicateGameLose;
+					flag8 = flag8 || predicate == Block.predicateIsTreasure || predicate == Block.predicateIsTreasureForTag;
+					flag9 = flag9 || predicate == Block.predicateIsPickup || predicate == Block.predicateIsPickupForTag;
+					if (analogStickPredicates.Contains(predicate))
 					{
 						for (int l = 0; l < args.Length; l++)
 						{
@@ -117,18 +125,18 @@ public class WorldMetrics
 							}
 						}
 					}
-                    usingButtons = (usingButtons || predicate == Block.predicateButton);
-                    usingAnalogStick = (usingAnalogStick || analogStickPredicates.Contains(predicate));
-                    usingTilt = (usingTilt || predicate == Block.predicateTiltLeftRight);
-                    usingButtons = (usingButtons || predicate == Block.predicateButton); // duplicate from OG source code, to keep or delete?
-                    usingTap = (usingTap || WorldMetrics.GetTapPredicates().Contains(predicate));
+					flag31 = flag31 || predicate == Block.predicateButton;
+					flag28 = flag28 || analogStickPredicates.Contains(predicate);
+					flag29 = flag29 || predicate == Block.predicateTiltLeftRight;
+					flag31 = flag31 || predicate == Block.predicateButton;
+					flag30 = flag30 || GetTapPredicates().Contains(predicate);
 					if (predicate == Block.predicateSpeak)
 					{
-                        usingSpeak = true;
+						value2 = true;
 						string text = (string)tile.gaf.Args[0];
-                        hasStopActionInSpeak = (hasStopActionInSpeak || text.Contains("|Stop]"));
-                        hasBackActionInSpeak = (hasBackActionInSpeak || text.Contains("|Back]") || text.Contains("|Done]"));
-                        hasRestartActionInSpeak = (hasRestartActionInSpeak || text.Contains("|Restart]"));
+						flag25 = flag25 || text.Contains("|Stop]");
+						flag26 = flag26 || text.Contains("|Back]") || text.Contains("|Done]");
+						flag27 = flag27 || text.Contains("|Restart]");
 					}
 					if (predicate == Block.predicateTag || predicate == Block.predicateCustomTag)
 					{
@@ -162,161 +170,66 @@ public class WorldMetrics
 					}
 					if (flag34)
 					{
-						flag35 = (flag35 || WorldMetrics.GetObjectCounterConditionPredicates().Contains(predicate));
-						flag36 = (flag36 || WorldMetrics.GetCounterConditionPredicates().Contains(predicate));
-						flag37 = (flag37 || WorldMetrics.GetTimerConditionPredicates().Contains(predicate));
+						flag35 = flag35 || GetObjectCounterConditionPredicates().Contains(predicate);
+						flag36 = flag36 || GetCounterConditionPredicates().Contains(predicate);
+						flag37 = flag37 || GetTimerConditionPredicates().Contains(predicate);
+						continue;
 					}
-					else
+					if (flag35)
 					{
-						if (flag35)
-						{
-							flag10 = (flag10 || predicate == Block.predicateGameWin);
-							flag11 = (flag11 || predicate == Block.predicateGameLose);
-						}
-						if (flag36)
-						{
-							flag12 = (flag12 || predicate == Block.predicateGameWin);
-							flag13 = (flag13 || predicate == Block.predicateGameLose);
-						}
-						if (flag37)
-						{
-							flag14 = (flag14 || predicate == Block.predicateGameWin);
-							flag15 = (flag15 || predicate == Block.predicateGameLose);
-						}
+						flag10 = flag10 || predicate == Block.predicateGameWin;
+						flag11 = flag11 || predicate == Block.predicateGameLose;
+					}
+					if (flag36)
+					{
+						flag12 = flag12 || predicate == Block.predicateGameWin;
+						flag13 = flag13 || predicate == Block.predicateGameLose;
+					}
+					if (flag37)
+					{
+						flag14 = flag14 || predicate == Block.predicateGameWin;
+						flag15 = flag15 || predicate == Block.predicateGameLose;
 					}
 				}
 			}
 		}
 		StringWriter writer = new StringWriter(stringBuilder, CultureInfo.InvariantCulture);
-		JSONStreamEncoder jsonstreamEncoder = new JSONStreamEncoder(writer, 20);
-		jsonstreamEncoder.BeginObject();
-		jsonstreamEncoder.InsertNewline();
+		JSONStreamEncoder jSONStreamEncoder = new JSONStreamEncoder(writer);
+		jSONStreamEncoder.BeginObject();
+		jSONStreamEncoder.InsertNewline();
 		Dictionary<string, bool> dictionary = new Dictionary<string, bool>
 		{
-			{
-				"hasObjectCounter",
-                hasObjectCounter
-            },
-			{
-				"hasCounter",
-                hasCounter
-            },
-			{
-				"hasRadar",
-                hasRadar
-            },
-			{
-				"hasGauge",
-                hasGauge
-            },
-			{
-				"hasWinTile",
-                hasWinTile
-            },
-			{
-				"hasLoseTile",
-                hasLoseTile
-            },
-			{
-				"hasLoot",
-                hasLoot
-            },
-			{
-				"hasPickup",
-                hasPickup
-            },
-			{
-				"winHasObjectCounterCondition",
-				flag10
-			},
-			{
-				"loseHasObjectCounterCondition",
-				flag11
-			},
-			{
-				"winHasCounterCondition",
-				flag12
-			},
-			{
-				"loseHasCounterCondition",
-				flag13
-			},
-			{
-				"winHasTimerCondition",
-				flag14
-			},
-			{
-				"loseHasTimerCondition",
-				flag15
-			},
-			{
-				"hasMoverOnLeggedBlock",
-				value
-			},
-			{
-				"hasMoverOnCharacter",
-				flag16
-			},
-			{
-				"hasMoverOnLegs",
-				flag17
-			},
-			{
-				"hasMoverOnMLPLegs",
-				flag18
-			},
-			{
-				"hasMoverOnQuadped",
-				flag19
-			},
-			{
-				"hasMoverAndJumpOnCharacter",
-				flag21
-			},
-			{
-				"hasMoverAndJumpOnLegs",
-				flag22
-			},
-			{
-				"hasMoverAndJumpOnMLPLegs",
-				flag23
-			},
-			{
-				"hasMoverAndJumpOnQuadped",
-				flag24
-			},
-			{
-				"hasStopActionInSpeak",
-                hasStopActionInSpeak
-            },
-			{
-				"hasBackActionInSpeak",
-                hasBackActionInSpeak
-            },
-			{
-				"hasRestartActionInSpeak",
-                hasRestartActionInSpeak
-            },
-			{
-				"usingAnalogStick",
-                usingAnalogStick
-            },
-			{
-				"usingTilt",
-                usingTilt
-            },
-			{
-				"usingTap",
-                usingTap
-            },
-			{
-				"usingButtons",
-                usingButtons
-            },
-			{
-				"usingSpeak",
-                usingSpeak
-            }
+			{ "hasObjectCounter", flag },
+			{ "hasCounter", flag2 },
+			{ "hasRadar", flag5 },
+			{ "hasGauge", flag4 },
+			{ "hasWinTile", flag6 },
+			{ "hasLoseTile", flag7 },
+			{ "hasLoot", flag8 },
+			{ "hasPickup", flag9 },
+			{ "winHasObjectCounterCondition", flag10 },
+			{ "loseHasObjectCounterCondition", flag11 },
+			{ "winHasCounterCondition", flag12 },
+			{ "loseHasCounterCondition", flag13 },
+			{ "winHasTimerCondition", flag14 },
+			{ "loseHasTimerCondition", flag15 },
+			{ "hasMoverOnLeggedBlock", value },
+			{ "hasMoverOnCharacter", flag16 },
+			{ "hasMoverOnLegs", flag17 },
+			{ "hasMoverOnMLPLegs", flag18 },
+			{ "hasMoverOnQuadped", flag19 },
+			{ "hasMoverAndJumpOnCharacter", flag21 },
+			{ "hasMoverAndJumpOnLegs", flag22 },
+			{ "hasMoverAndJumpOnMLPLegs", flag23 },
+			{ "hasMoverAndJumpOnQuadped", flag24 },
+			{ "hasStopActionInSpeak", flag25 },
+			{ "hasBackActionInSpeak", flag26 },
+			{ "hasRestartActionInSpeak", flag27 },
+			{ "usingAnalogStick", flag28 },
+			{ "usingTilt", flag29 },
+			{ "usingTap", flag30 },
+			{ "usingButtons", flag31 },
+			{ "usingSpeak", value2 }
 		};
 		Dictionary<string, List<string>> dictionary2 = new Dictionary<string, List<string>>
 		{
@@ -349,77 +262,70 @@ public class WorldMetrics
 				new List<string>(hashSet7)
 			}
 		};
-		foreach (KeyValuePair<string, bool> keyValuePair in dictionary)
+		foreach (KeyValuePair<string, bool> item in dictionary)
 		{
-			jsonstreamEncoder.WriteKey(keyValuePair.Key);
-			jsonstreamEncoder.WriteBool(keyValuePair.Value);
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.WriteKey(item.Key);
+			jSONStreamEncoder.WriteBool(item.Value);
+			jSONStreamEncoder.InsertNewline();
 		}
-		foreach (KeyValuePair<string, List<string>> keyValuePair2 in dictionary2)
+		foreach (KeyValuePair<string, List<string>> item2 in dictionary2)
 		{
-			jsonstreamEncoder.WriteKey(keyValuePair2.Key);
-			jsonstreamEncoder.BeginArray();
-			keyValuePair2.Value.Sort();
-			foreach (string str in keyValuePair2.Value)
+			jSONStreamEncoder.WriteKey(item2.Key);
+			jSONStreamEncoder.BeginArray();
+			item2.Value.Sort();
+			foreach (string item3 in item2.Value)
 			{
-				jsonstreamEncoder.WriteString(str);
+				jSONStreamEncoder.WriteString(item3);
 			}
-			jsonstreamEncoder.EndArray();
-			jsonstreamEncoder.InsertNewline();
+			jSONStreamEncoder.EndArray();
+			jSONStreamEncoder.InsertNewline();
 		}
-		jsonstreamEncoder.EndObject();
-		jsonstreamEncoder.InsertNewline();
+		jSONStreamEncoder.EndObject();
+		jSONStreamEncoder.InsertNewline();
 		return stringBuilder.ToString();
 	}
 
-	// Token: 0x0600267C RID: 9852 RVA: 0x0011BFCC File Offset: 0x0011A3CC
 	private static HashSet<Predicate> GetObjectCounterConditionPredicates()
 	{
-		if (WorldMetrics.objectCounterConditionPredicates == null)
+		if (objectCounterConditionPredicates == null)
 		{
-			WorldMetrics.objectCounterConditionPredicates = new HashSet<Predicate>
+			objectCounterConditionPredicates = new HashSet<Predicate>
 			{
 				Block.predicateObjectCounterEquals,
 				Block.predicateObjectCounterEqualsMax,
 				Block.predicateObjectCounterValueCondition
 			};
 		}
-		return WorldMetrics.objectCounterConditionPredicates;
+		return objectCounterConditionPredicates;
 	}
 
-	// Token: 0x0600267D RID: 9853 RVA: 0x0011C018 File Offset: 0x0011A418
 	private static HashSet<Predicate> GetCounterConditionPredicates()
 	{
-		if (WorldMetrics.counterConditionPredicates == null)
+		if (counterConditionPredicates == null)
 		{
-			WorldMetrics.counterConditionPredicates = new HashSet<Predicate>
+			counterConditionPredicates = new HashSet<Predicate>
 			{
 				Block.predicateCounterEquals,
 				Block.predicateCounterValueCondition
 			};
 		}
-		return WorldMetrics.counterConditionPredicates;
+		return counterConditionPredicates;
 	}
 
-	// Token: 0x0600267E RID: 9854 RVA: 0x0011C058 File Offset: 0x0011A458
 	private static HashSet<Predicate> GetTimerConditionPredicates()
 	{
-		if (WorldMetrics.timerConditionPredicates == null)
+		if (timerConditionPredicates == null)
 		{
-			WorldMetrics.timerConditionPredicates = new HashSet<Predicate>
-			{
-				Block.predicateTimerEquals
-			};
+			timerConditionPredicates = new HashSet<Predicate> { Block.predicateTimerEquals };
 		}
-		return WorldMetrics.timerConditionPredicates;
+		return timerConditionPredicates;
 	}
 
-	// Token: 0x0600267F RID: 9855 RVA: 0x0011C08C File Offset: 0x0011A48C
 	private static HashSet<Predicate> GetJumpPredicates()
 	{
-		if (WorldMetrics.jumpPredicates == null)
+		if (jumpPredicates == null)
 		{
-			WorldMetrics.jumpPredicates = new HashSet<Predicate>
+			jumpPredicates = new HashSet<Predicate>
 			{
 				BlockLegs.predicateLegsJump,
 				BlockCharacter.predicateCharacterJump,
@@ -427,15 +333,14 @@ public class WorldMetrics
 				BlockQuadped.predicateQuadpedJump
 			};
 		}
-		return WorldMetrics.jumpPredicates;
+		return jumpPredicates;
 	}
 
-	// Token: 0x06002680 RID: 9856 RVA: 0x0011C0E4 File Offset: 0x0011A4E4
 	private static HashSet<Predicate> GetLeggedMoverPredicates()
 	{
-		if (WorldMetrics.leggedMoverPredicates == null)
+		if (leggedMoverPredicates == null)
 		{
-			WorldMetrics.leggedMoverPredicates = new HashSet<Predicate>
+			leggedMoverPredicates = new HashSet<Predicate>
 			{
 				BlockLegs.predicateLegsMover,
 				BlockCharacter.predicateCharacterMover,
@@ -443,15 +348,14 @@ public class WorldMetrics
 				BlockQuadped.predicateQuadpedMover
 			};
 		}
-		return WorldMetrics.leggedMoverPredicates;
+		return leggedMoverPredicates;
 	}
 
-	// Token: 0x06002681 RID: 9857 RVA: 0x0011C13C File Offset: 0x0011A53C
 	private static HashSet<Predicate> GetTapPredicates()
 	{
-		if (WorldMetrics.tapPredicates == null)
+		if (tapPredicates == null)
 		{
-			WorldMetrics.tapPredicates = new HashSet<Predicate>
+			tapPredicates = new HashSet<Predicate>
 			{
 				Block.predicateTapBlock,
 				Block.predicateTapChunk,
@@ -460,24 +364,6 @@ public class WorldMetrics
 				Block.predicateTapHoldModel
 			};
 		}
-		return WorldMetrics.tapPredicates;
+		return tapPredicates;
 	}
-
-	// Token: 0x040021AD RID: 8621
-	private static HashSet<Predicate> objectCounterConditionPredicates;
-
-	// Token: 0x040021AE RID: 8622
-	private static HashSet<Predicate> counterConditionPredicates;
-
-	// Token: 0x040021AF RID: 8623
-	private static HashSet<Predicate> timerConditionPredicates;
-
-	// Token: 0x040021B0 RID: 8624
-	private static HashSet<Predicate> jumpPredicates;
-
-	// Token: 0x040021B1 RID: 8625
-	private static HashSet<Predicate> leggedMoverPredicates;
-
-	// Token: 0x040021B2 RID: 8626
-	private static HashSet<Predicate> tapPredicates;
 }

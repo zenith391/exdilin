@@ -1,123 +1,265 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-// Token: 0x020003A2 RID: 930
 public class BWConsole : MonoBehaviour
 {
-	// Token: 0x06002888 RID: 10376 RVA: 0x0012A6B5 File Offset: 0x00128AB5
+	private struct Log
+	{
+		public string message;
+
+		public string stackTrace;
+
+		public LogType type;
+	}
+
+	public static class TextureScaler
+	{
+		public static Texture2D scaled(Texture2D src, int width, int height)
+		{
+			Texture2D texture2D = new Texture2D(width, height, TextureFormat.RGBA32, mipmap: false);
+			Color[] pixels = texture2D.GetPixels(0);
+			float num = 1f / (float)width;
+			float num2 = 1f / (float)height;
+			for (int i = 0; i < pixels.Length; i++)
+			{
+				pixels[i] = src.GetPixelBilinear(num * ((float)i % (float)width), num2 * Mathf.Floor(i / width));
+			}
+			texture2D.SetPixels(pixels, 0);
+			texture2D.Apply();
+			return texture2D;
+		}
+	}
+
+	public KeyCode toggleKey = KeyCode.BackQuote;
+
+	public int messageCapacity = 2500;
+
+	public int displayCapacity = 500;
+
+	public bool ignoreWarnings;
+
+	private List<Log> _logs = new List<Log>();
+
+	private Vector2 _scrollPosition;
+
+	private bool _showConsole;
+
+	private bool _hideDupes;
+
+	private static readonly Dictionary<LogType, Color> logTypeColors;
+
+	private const int margin = 20;
+
+	private Rect _windowRect = new Rect(20f, (float)Screen.height * 0.25f + 20f, (float)Screen.width * 0.85f, (float)Screen.height * 0.75f - 40f);
+
+	private Rect _titleBarRect = new Rect(0f, 0f, 10000f, 20f);
+
+	private GUIContent _eraseLabel = new GUIContent("Erase All", "Clear the contents of the console.");
+
+	private GUIContent _hideDupesLabel = new GUIContent("Hide Duplicates", "Hide repeated messages.");
+
+	private string _command = "";
+
+	private Process consoleProcess;
+
+	private StreamWriter logWriter;
+
+	private Dictionary<string, string> serverUrls;
+
+	private string currentServer;
+
 	public void OnEnable()
 	{
 		Application.RegisterLogCallback(HandleLog);
 	}
 
-	// Token: 0x06002889 RID: 10377 RVA: 0x0012A6C8 File Offset: 0x00128AC8
 	public void OnDisable()
 	{
 		Application.RegisterLogCallback(null);
 	}
 
-	// Token: 0x0600288A RID: 10378 RVA: 0x0012A6D0 File Offset: 0x00128AD0
 	public void Start()
 	{
-		base.enabled = (BWEnvConfig.Flags.ContainsKey("DEBUG_CONSOLE") && BWEnvConfig.Flags["DEBUG_CONSOLE"]);
+		base.enabled = BWEnvConfig.Flags.ContainsKey("DEBUG_CONSOLE") && BWEnvConfig.Flags["DEBUG_CONSOLE"];
 	}
 
-    // Token: 0x0600288B RID: 10379 RVA: 0x0012A701 File Offset: 0x00128B01
-    public void Update()
+	public void Update()
 	{
-		if (Input.GetKeyDown(this.toggleKey))
+		if (Input.GetKeyDown(toggleKey))
 		{
-            this._showConsole = !this._showConsole;
+			_showConsole = !_showConsole;
 		}
 	}
 
-    // Token: 0x0600288C RID: 10380 RVA: 0x0012A724 File Offset: 0x00128B24
-    public void OnGUI()
+	public void OnGUI()
 	{
-
-		if (this._showConsole)
+		if (_showConsole)
 		{
 			GUI.backgroundColor = Color.cyan;
-			this._windowRect = GUILayout.Window(123456, this._windowRect, new GUI.WindowFunction(this.ConsoleWindow), "Blocksworld Console (press " + this.toggleKey + " to hide)", new GUILayoutOption[0]);
+			_windowRect = GUILayout.Window(123456, _windowRect, ConsoleWindow, "Blocksworld Console (press " + toggleKey.ToString() + " to hide)");
 		}
 	}
 
-    public void CommandParse(string cmd)
-    {
-        string[] command = cmd.Split(' ');
-        string name = command[0];
-        if (name == "reload")
-        {
-            if (command.Length < 2)
-            {
-                BWLog.Error("[Console] 'reload' takes atleast 1 argument.");
-            }
-            string kind = command[1];
-            if (kind == "worlds")
-            {
-                BWUserWorldsDataManager.Instance.LoadWorlds();
-            }
-            else if (kind == "world")
-            {
-                BWLocalWorld world = BWUserWorldsDataManager.Instance.GetWorldWithLocalWorldID(WorldSession.current.worldId);
-                world.OverwriteSource(Util.ObfuscateSourceForUser("{}", BWUser.currentUser.userID), false);
-                BWUserWorldsDataManager.Instance.LoadSourceForLocalWorld(world, null);
-            }
-            else
-            {
-                BWLog.Error("[Console] No such reload kind: " + kind);
-            }
-        }
-        if (name == "save")
-        {
-            if (command.Length < 2)
-            {
-                BWLog.Error("[Console] 'save' takes atleast 1 argument.");
-            }
-            string kind = command[1];
-            if (kind == "world")
-            {
-                BWStandalone.Instance.SaveCurrentWorldSession(null);
-            }
-            else
-            {
-                BWLog.Error("[Console] No such reload kind: " + kind);
-            }
-        }
-		if (name == "export") {
-			if (Blocksworld.selectedBunch == null) {
-				BWLog.Info("[Console] Please select a model to export.");
-				return;
-			}
-			Blocksworld.SaveMeshToFile(Blocksworld.selectedBunch);
-		}
-	}
-
-    // Token: 0x0600288D RID: 10381 RVA: 0x0012A788 File Offset: 0x00128B88
-    public void ConsoleWindow(int windowID)
+	public void CommandParse(string cmd)
 	{
-		this._scrollPosition = GUILayout.BeginScrollView(this._scrollPosition, new GUILayoutOption[0]);
+		string[] array = cmd.Split(new char[1] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+		if (array.Length == 0)
+		{
+			return;
+		}
+		switch (array[0].ToLower())
+		{
+		case "help":
+			BWLog.Info("[Console] Available commands:");
+			BWLog.Info("  help                - Display available commands");
+			BWLog.Info("  reload [worlds|world|game] - Reload worlds, current world, or the entire game scene");
+			BWLog.Info("  save world          - Save the current world");
+			BWLog.Info("  export              - Export selected model");
+			BWLog.Info("  skybox <path>       - Set custom skybox from PNG file");
+			break;
+		case "reload":
+		{
+			if (array.Length < 2)
+			{
+				BWLog.Error("[Console] 'reload' takes at least 1 argument.");
+				break;
+			}
+			string text2 = array[1].ToLower();
+			switch (text2)
+			{
+			case "worlds":
+				BWUserWorldsDataManager.Instance.LoadWorlds();
+				break;
+			case "world":
+			{
+				BWLocalWorld worldWithLocalWorldID = BWUserWorldsDataManager.Instance.GetWorldWithLocalWorldID(WorldSession.current.worldId);
+				worldWithLocalWorldID.OverwriteSource(Util.ObfuscateSourceForUser("{}", BWUser.currentUser.userID), sourceHasWinCondition: false);
+				BWUserWorldsDataManager.Instance.LoadSourceForLocalWorld(worldWithLocalWorldID, null);
+				break;
+			}
+			case "game":
+				BWLog.Info("[Console] Reloading entire game...");
+				SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+				break;
+			default:
+				BWLog.Error("[Console] No such reload kind: " + text2);
+				break;
+			}
+			break;
+		}
+		case "save":
+		{
+			if (array.Length < 2)
+			{
+				BWLog.Error("[Console] 'save' takes at least 1 argument.");
+				break;
+			}
+			string text3 = array[1].ToLower();
+			if (text3 == "world")
+			{
+				BWStandalone.Instance.SaveCurrentWorldSession(null);
+				WorldSession.Save();
+				WorldSession.FastSave();
+			}
+			else
+			{
+				BWLog.Error("[Console] No such save kind: " + text3);
+			}
+			break;
+		}
+		case "export":
+			if (Blocksworld.selectedBunch == null)
+			{
+				BWLog.Info("[Console] Please select a model to export.");
+			}
+			else
+			{
+				Blocksworld.SaveMeshToFile(Blocksworld.selectedBunch);
+			}
+			break;
+		case "skybox":
+		{
+			if (array.Length < 2)
+			{
+				BWLog.Error("[Console] 'skybox' requires a file path argument.");
+				break;
+			}
+			string text = array[1].Trim('"').Trim();
+			BWLog.Info("[Console] Processed path: " + text);
+			if (!text.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+			{
+				BWLog.Error("[Console] Only PNG files are supported for custom skybox.");
+				break;
+			}
+			try
+			{
+				if (!File.Exists(text))
+				{
+					BWLog.Error("[Console] File not found: " + text);
+					break;
+				}
+				Texture2D texture2D = new Texture2D(2, 2, TextureFormat.RGBA32, mipmap: false);
+				byte[] data = File.ReadAllBytes(text);
+				if (!texture2D.LoadImage(data))
+				{
+					BWLog.Error("[Console] Failed to load PNG from path: " + text);
+					break;
+				}
+				BWLog.Info($"[Console] Original Texture Size: {texture2D.width}x{texture2D.height}");
+				int num = Mathf.NextPowerOfTwo(Mathf.Max(texture2D.width, texture2D.height));
+				Texture2D texture2D2 = TextureScaler.scaled(texture2D, num, num);
+				BWLog.Info($"[Console] Resized Texture Size: {texture2D2.width}x{texture2D2.height}");
+				Material material = new Material(Shader.Find("Skybox/Cubemap"));
+				Cubemap cubemap = new Cubemap(num, TextureFormat.RGBA32, mipmap: false);
+				Color[] pixels = texture2D2.GetPixels();
+				cubemap.SetPixels(pixels, CubemapFace.PositiveX);
+				cubemap.SetPixels(pixels, CubemapFace.NegativeX);
+				cubemap.SetPixels(pixels, CubemapFace.PositiveY);
+				cubemap.SetPixels(pixels, CubemapFace.NegativeY);
+				cubemap.SetPixels(pixels, CubemapFace.PositiveZ);
+				cubemap.SetPixels(pixels, CubemapFace.NegativeZ);
+				cubemap.Apply();
+				material.SetTexture("_Tex", cubemap);
+				RenderSettings.skybox = material;
+				BWLog.Info("[Console] Custom PNG skybox applied successfully from: " + text);
+				break;
+			}
+			catch (Exception arg)
+			{
+				BWLog.Error($"[Console] Complete error details: {arg}");
+				break;
+			}
+		}
+		}
+	}
+
+	public void ConsoleWindow(int windowID)
+	{
+		_scrollPosition = GUILayout.BeginScrollView(_scrollPosition);
 		string text = string.Empty;
 		int num = 0;
-		for (int i = this._logs.Count - 1; i >= 0; i--)
+		for (int num2 = _logs.Count - 1; num2 >= 0; num2--)
 		{
-			BWConsole.Log log = this._logs[i];
-			if (!this._hideDupes || !(log.message == text))
+			Log log = _logs[num2];
+			if (!_hideDupes || !(log.message == text))
 			{
 				text = log.message;
-				GUI.contentColor = BWConsole.logTypeColors[log.type];
+				GUI.contentColor = logTypeColors[log.type];
 				try
 				{
-					GUILayout.Label(text, new GUILayoutOption[0]);
+					GUILayout.Label(text);
 				}
 				catch
 				{
-					GUILayout.Label("Unable to display log message with stack trace:", new GUILayoutOption[0]);
+					GUILayout.Label("Unable to display log message with stack trace:");
 				}
-				GUILayout.Label(log.stackTrace, new GUILayoutOption[0]);
+				GUILayout.Label(log.stackTrace);
 				num++;
-				if (num > this.displayCapacity)
+				if (num > displayCapacity)
 				{
 					break;
 				}
@@ -125,123 +267,66 @@ public class BWConsole : MonoBehaviour
 		}
 		GUILayout.EndScrollView();
 		GUI.contentColor = Color.white;
-		GUILayout.BeginHorizontal(new GUILayoutOption[0]);
-		if (GUILayout.Button(this._eraseLabel, new GUILayoutOption[0]))
+		GUILayout.BeginHorizontal();
+		if (GUILayout.Button(_eraseLabel))
 		{
-			this._logs.Clear();
+			_logs.Clear();
 		}
-		this._hideDupes = GUILayout.Toggle(this._hideDupes, this._hideDupesLabel, new GUILayoutOption[]
-		{
-			GUILayout.ExpandWidth(false)
-		});
+		_hideDupes = GUILayout.Toggle(_hideDupes, _hideDupesLabel, GUILayout.ExpandWidth(expand: false));
 		GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        this._command = GUILayout.TextField(this._command);
-        if (GUILayout.Button("Submit", new GUILayoutOption[0]))
-        {
-            BWLog.Info("[Console] " + _command);
-            CommandParse(_command);
-            _command = "";
-        }
-        GUILayout.EndHorizontal();
-		GUI.DragWindow(this._titleBarRect);
+		GUILayout.BeginHorizontal();
+		_command = GUILayout.TextField(_command);
+		if (GUILayout.Button("Submit"))
+		{
+			BWLog.Info("[Console] " + _command);
+			CommandParse(_command);
+			_command = "";
+		}
+		GUILayout.EndHorizontal();
+		GUI.DragWindow(_titleBarRect);
 	}
 
-    // Token: 0x0600288E RID: 10382 RVA: 0x0012A8F0 File Offset: 0x00128CF0
-    public void HandleLog(string message, string stackTrace, LogType type)
+	public void HandleLog(string message, string stackTrace, LogType type)
 	{
-		if (this.ignoreWarnings && type == LogType.Warning)
+		if (!ignoreWarnings || type != LogType.Warning)
 		{
-			return;
+			if (_logs.Count >= messageCapacity)
+			{
+				_logs.RemoveAt(0);
+			}
+			_logs.Add(new Log
+			{
+				message = message,
+				stackTrace = stackTrace,
+				type = type
+			});
 		}
-		if (this._logs.Count >= this.messageCapacity)
-		{
-			this._logs.RemoveAt(0);
-		}
-		this._logs.Add(new BWConsole.Log
-		{
-			message = message,
-			stackTrace = stackTrace,
-			type = type
-		});
 	}
 
-	// Token: 0x0400236C RID: 9068
-	public KeyCode toggleKey = KeyCode.BackQuote;
-
-	// Token: 0x0400236D RID: 9069
-	public int messageCapacity = 2500;
-
-	// Token: 0x0400236E RID: 9070
-	public int displayCapacity = 500;
-
-	// Token: 0x0400236F RID: 9071
-	public bool ignoreWarnings = false;
-
-	// Token: 0x04002370 RID: 9072
-	private List<BWConsole.Log> _logs = new List<BWConsole.Log>();
-
-	// Token: 0x04002371 RID: 9073
-	private Vector2 _scrollPosition;
-
-    // Token: 0x04002372 RID: 9074
-    private bool _showConsole = false;
-
-	// Token: 0x04002373 RID: 9075
-	private bool _hideDupes;
-
-	// Token: 0x04002374 RID: 9076
-	private static readonly Dictionary<LogType, Color> logTypeColors = new Dictionary<LogType, Color>
+	static BWConsole()
 	{
+		logTypeColors = new Dictionary<LogType, Color>
 		{
-			LogType.Assert,
-			Color.white
-		},
-		{
-			LogType.Error,
-			Color.red
-		},
-		{
-			LogType.Exception,
-			Color.red
-		},
-		{
-			LogType.Log,
-			Color.yellow
-		},
-		{
-			LogType.Warning,
-			Color.white
-		}
-	};
-
-	// Token: 0x04002375 RID: 9077
-	private const int margin = 20;
-
-	// Token: 0x04002376 RID: 9078
-	private Rect _windowRect = new Rect(20f, (float)Screen.height * 0.25f + 20f, (float)(Screen.width * 0.85f), (float)Screen.height * 0.75f - 40f);
-
-	// Token: 0x04002377 RID: 9079
-	private Rect _titleBarRect = new Rect(0f, 0f, 10000f, 20f);
-
-	// Token: 0x04002378 RID: 9080
-	private GUIContent _eraseLabel = new GUIContent("Erase All", "Clear the contents of the console.");
-
-	// Token: 0x04002379 RID: 9081
-	private GUIContent _hideDupesLabel = new GUIContent("Hide Duplicates", "Hide repeated messages.");
-
-    private string _command = "";
-
-	// Token: 0x020003A3 RID: 931
-	private struct Log
-	{
-		// Token: 0x0400237A RID: 9082
-		public string message;
-
-		// Token: 0x0400237B RID: 9083
-		public string stackTrace;
-
-		// Token: 0x0400237C RID: 9084
-		public LogType type;
+			{
+				LogType.Assert,
+				Color.white
+			},
+			{
+				LogType.Error,
+				Color.red
+			},
+			{
+				LogType.Exception,
+				Color.red
+			},
+			{
+				LogType.Log,
+				Color.yellow
+			},
+			{
+				LogType.Warning,
+				Color.white
+			}
+		};
 	}
 }

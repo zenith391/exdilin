@@ -1,70 +1,58 @@
-﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Gestures
+namespace Gestures;
+
+public class PanelMoveGesture : BaseGesture
 {
-	// Token: 0x02000181 RID: 385
-	public class PanelMoveGesture : BaseGesture
+	private readonly Panel _panel;
+
+	public PanelMoveGesture(Panel panel)
 	{
-		// Token: 0x0600160B RID: 5643 RVA: 0x0009B4DB File Offset: 0x000998DB
-		public PanelMoveGesture(Panel panel)
-		{
-			this._panel = panel;
-		}
+		_panel = panel;
+	}
 
-		// Token: 0x0600160C RID: 5644 RVA: 0x0009B4EC File Offset: 0x000998EC
-		public override void TouchesBegan(List<Touch> allTouches)
+	public override void TouchesBegan(List<Touch> allTouches)
+	{
+		if (allTouches.Count != 1)
 		{
-			if (allTouches.Count != 1)
-			{
-				base.EnterState(GestureState.Failed);
-				return;
-			}
-			if (Blocksworld.CurrentState == State.Play || Blocksworld.InModalDialogState())
-			{
-				base.EnterState(GestureState.Failed);
-				return;
-			}
-			if (this._panel.Hit(allTouches[0].Position))
-			{
-				this._panel.BeginTrackingTouch();
-				base.EnterState(GestureState.Active);
-			}
-			else
-			{
-				base.EnterState(GestureState.Failed);
-			}
+			EnterState(GestureState.Failed);
 		}
-
-		// Token: 0x0600160D RID: 5645 RVA: 0x0009B56C File Offset: 0x0009996C
-		public override void TouchesMoved(List<Touch> allTouches)
+		else if (Blocksworld.CurrentState == State.Play || Blocksworld.InModalDialogState())
 		{
-			Vector2 v = allTouches[0].Position - allTouches[0].LastPosition;
-			this._panel.Move(v);
+			EnterState(GestureState.Failed);
 		}
-
-		// Token: 0x0600160E RID: 5646 RVA: 0x0009B5A8 File Offset: 0x000999A8
-		public override void TouchesEnded(List<Touch> allTouches)
+		else if (_panel.Hit(allTouches[0].Position))
 		{
-			this._panel.EndTrackingTouch();
-			Tutorial.Step();
-			base.EnterState(GestureState.Ended);
+			_panel.BeginTrackingTouch();
+			EnterState(GestureState.Active);
 		}
-
-		// Token: 0x0600160F RID: 5647 RVA: 0x0009B5C1 File Offset: 0x000999C1
-		public override void Reset()
+		else
 		{
-			base.EnterState(GestureState.Possible);
+			EnterState(GestureState.Failed);
 		}
+	}
 
-		// Token: 0x06001610 RID: 5648 RVA: 0x0009B5CA File Offset: 0x000999CA
-		public override string ToString()
-		{
-			return "PanelMove";
-		}
+	public override void TouchesMoved(List<Touch> allTouches)
+	{
+		Vector2 vector = allTouches[0].Position - allTouches[0].LastPosition;
+		_panel.Move(vector);
+	}
 
-		// Token: 0x04001129 RID: 4393
-		private readonly Panel _panel;
+	public override void TouchesEnded(List<Touch> allTouches)
+	{
+		_panel.EndTrackingTouch();
+		Tutorial.Step();
+		EnterState(GestureState.Ended);
+	}
+
+	public override void Reset()
+	{
+		EnterState(GestureState.Possible);
+	}
+
+	public override string ToString()
+	{
+		return "PanelMove";
 	}
 }

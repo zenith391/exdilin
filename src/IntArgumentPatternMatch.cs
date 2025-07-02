@@ -1,77 +1,61 @@
-﻿using System;
-
-// Token: 0x02000169 RID: 361
 public class IntArgumentPatternMatch : ArgumentPatternMatch
 {
-	// Token: 0x0600157D RID: 5501 RVA: 0x000964E4 File Offset: 0x000948E4
+	private enum MatchType
+	{
+		SpecificValue = 1,
+		Any = 2,
+		Positive = 4,
+		Negative = 8
+	}
+
+	private int _value;
+
+	private MatchType _matchType;
+
 	public IntArgumentPatternMatch(string patternStr)
 	{
-		if (patternStr == "*")
+		switch (patternStr)
 		{
-			this._matchType = IntArgumentPatternMatch.MatchType.Any;
+		case "*":
+			_matchType = MatchType.Any;
+			return;
+		case "PositiveValue":
+			_value = 0;
+			_matchType = (MatchType)5;
+			return;
+		case "NegativeValue":
+			_value = 0;
+			_matchType = MatchType.Negative;
+			return;
 		}
-		else if (patternStr == "PositiveValue")
+		_matchType = MatchType.SpecificValue;
+		if (!int.TryParse(patternStr, out _value))
 		{
-			this._value = 0;
-			this._matchType = (IntArgumentPatternMatch.MatchType)5;
-		}
-		else if (patternStr == "NegativeValue")
-		{
-			this._value = 0;
-			this._matchType = IntArgumentPatternMatch.MatchType.Negative;
-		}
-		else
-		{
-			this._matchType = IntArgumentPatternMatch.MatchType.SpecificValue;
-			if (!int.TryParse(patternStr, out this._value))
-			{
-				BWLog.Error("Failed to parse int argument: " + patternStr);
-			}
+			BWLog.Error("Failed to parse int argument: " + patternStr);
 		}
 	}
 
-	// Token: 0x0600157E RID: 5502 RVA: 0x00096584 File Offset: 0x00094984
 	public override bool Matches(object o)
 	{
-		if (o is int)
+		if (o is int num)
 		{
-			int num = (int)o;
-			if ((this._matchType & IntArgumentPatternMatch.MatchType.Any) == IntArgumentPatternMatch.MatchType.Any)
+			if ((_matchType & MatchType.Any) == MatchType.Any)
 			{
 				return true;
 			}
-			if ((this._matchType & IntArgumentPatternMatch.MatchType.SpecificValue) == IntArgumentPatternMatch.MatchType.SpecificValue && num == this._value)
+			if ((_matchType & MatchType.SpecificValue) == MatchType.SpecificValue && num == _value)
 			{
 				return true;
 			}
-			if ((this._matchType & IntArgumentPatternMatch.MatchType.Positive) == IntArgumentPatternMatch.MatchType.Positive && num > 0)
+			if ((_matchType & MatchType.Positive) == MatchType.Positive && num > 0)
 			{
 				return true;
 			}
-			if ((this._matchType & IntArgumentPatternMatch.MatchType.Negative) == IntArgumentPatternMatch.MatchType.Negative && num < 0)
+			if ((_matchType & MatchType.Negative) == MatchType.Negative && num < 0)
 			{
 				return true;
 			}
 		}
 		return false;
-	}
-
-	// Token: 0x040010B8 RID: 4280
-	private int _value;
-
-	// Token: 0x040010B9 RID: 4281
-	private IntArgumentPatternMatch.MatchType _matchType;
-
-	// Token: 0x0200016A RID: 362
-	private enum MatchType
-	{
-		// Token: 0x040010BB RID: 4283
-		SpecificValue = 1,
-		// Token: 0x040010BC RID: 4284
-		Any,
-		// Token: 0x040010BD RID: 4285
-		Positive = 4,
-		// Token: 0x040010BE RID: 4286
-		Negative = 8
 	}
 }

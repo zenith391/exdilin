@@ -1,16 +1,8 @@
-﻿using System;
-
-// Token: 0x020003B4 RID: 948
 public enum BWPurchaseStatus
 {
-	// Token: 0x040023B2 RID: 9138
 	NOT_PURCHASED,
-	// Token: 0x040023B3 RID: 9139
 	DO_NOT_PURCHASE,
-	// Token: 0x040023B4 RID: 9140
 	PURCHASE_IN_PROGRESS,
-	// Token: 0x040023B5 RID: 9141
 	PURCHASE_SUCCESS,
-	// Token: 0x040023B6 RID: 9142
 	PURCHASE_FAILED
 }

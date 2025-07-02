@@ -1,17 +1,46 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x020002DF RID: 735
 public class TutorialActions
 {
-	// Token: 0x060021D0 RID: 8656 RVA: 0x000FD5CC File Offset: 0x000FB9CC
+	private static HashSet<TutorialActionContext> blockDependentContexts = new HashSet<TutorialActionContext>
+	{
+		TutorialActionContext.AfterThisBlockCreate,
+		TutorialActionContext.BeforeThisBlockCreate,
+		TutorialActionContext.DuringScriptNextTile,
+		TutorialActionContext.DuringScriptThisRow,
+		TutorialActionContext.BlockDone,
+		TutorialActionContext.Texture,
+		TutorialActionContext.Paint,
+		TutorialActionContext.BeginScripting
+	};
+
+	private static HashSet<TutorialActionContext> scriptRowDependentContexts = new HashSet<TutorialActionContext> { TutorialActionContext.DuringScriptThisRow };
+
+	private static HashSet<TutorialActionContext> scriptTileDependentContexts = new HashSet<TutorialActionContext> { TutorialActionContext.DuringScriptNextTile };
+
+	private static HashSet<TutorialActionContext> contextDependentContexts = new HashSet<TutorialActionContext>
+	{
+		TutorialActionContext.AutoAddBlockWait,
+		TutorialActionContext.RemoveBlock,
+		TutorialActionContext.Paint,
+		TutorialActionContext.Texture,
+		TutorialActionContext.EnterPlay,
+		TutorialActionContext.BeginScripting
+	};
+
+	public static Dictionary<TutorialActionContext, List<TutorialAction>> tutorialActions = new Dictionary<TutorialActionContext, List<TutorialAction>>();
+
+	public static List<TutorialAction> executingTutorialActions = new List<TutorialAction>();
+
+	public static HashSet<TutorialActionContext> activeContexts = new HashSet<TutorialActionContext>();
+
 	public static bool StepActions()
 	{
-		for (int i = 0; i < TutorialActions.executingTutorialActions.Count; i++)
+		for (int i = 0; i < executingTutorialActions.Count; i++)
 		{
-			TutorialAction tutorialAction = TutorialActions.executingTutorialActions[i];
+			TutorialAction tutorialAction = executingTutorialActions[i];
 			if (tutorialAction.Step())
 			{
 				return true;
@@ -20,33 +49,31 @@ public class TutorialActions
 		return false;
 	}
 
-	// Token: 0x060021D1 RID: 8657 RVA: 0x000FD610 File Offset: 0x000FBA10
 	public static void ExecuteAndUpdateActions()
 	{
-		for (int i = 0; i < TutorialActions.executingTutorialActions.Count; i++)
+		for (int i = 0; i < executingTutorialActions.Count; i++)
 		{
-			TutorialAction tutorialAction = TutorialActions.executingTutorialActions[i];
+			TutorialAction tutorialAction = executingTutorialActions[i];
 			tutorialAction.Execute();
 			if (tutorialAction.stopProgressUntilDone)
 			{
 				break;
 			}
 		}
-		for (int j = TutorialActions.executingTutorialActions.Count - 1; j >= 0; j--)
+		for (int num = executingTutorialActions.Count - 1; num >= 0; num--)
 		{
-			if (TutorialActions.executingTutorialActions[j].done)
+			if (executingTutorialActions[num].done)
 			{
-				TutorialActions.executingTutorialActions.RemoveAt(j);
+				executingTutorialActions.RemoveAt(num);
 			}
 		}
 	}
 
-	// Token: 0x060021D2 RID: 8658 RVA: 0x000FD698 File Offset: 0x000FBA98
 	public static bool AnyActionBlocksProgress()
 	{
-		foreach (TutorialAction tutorialAction in TutorialActions.executingTutorialActions)
+		foreach (TutorialAction executingTutorialAction in executingTutorialActions)
 		{
-			if (tutorialAction.stopProgressUntilDone && tutorialAction.executing && !tutorialAction.done)
+			if (executingTutorialAction.stopProgressUntilDone && executingTutorialAction.executing && !executingTutorialAction.done)
 			{
 				return true;
 			}
@@ -54,15 +81,14 @@ public class TutorialActions
 		return false;
 	}
 
-	// Token: 0x060021D3 RID: 8659 RVA: 0x000FD718 File Offset: 0x000FBB18
 	public static void StopFirstBlockingAction()
 	{
 		TutorialAction tutorialAction = null;
-		foreach (TutorialAction tutorialAction2 in TutorialActions.executingTutorialActions)
+		foreach (TutorialAction executingTutorialAction in executingTutorialActions)
 		{
-			if (tutorialAction2.stopProgressUntilDone && tutorialAction2.executing && !tutorialAction2.done)
+			if (executingTutorialAction.stopProgressUntilDone && executingTutorialAction.executing && !executingTutorialAction.done)
 			{
-				tutorialAction = tutorialAction2;
+				tutorialAction = executingTutorialAction;
 			}
 		}
 		if (tutorialAction != null)
@@ -73,27 +99,28 @@ public class TutorialActions
 		}
 	}
 
-	// Token: 0x060021D4 RID: 8660 RVA: 0x000FD7AC File Offset: 0x000FBBAC
 	public static void Clear()
 	{
-		TutorialActions.tutorialActions.Clear();
-		foreach (TutorialAction tutorialAction in TutorialActions.executingTutorialActions)
+		tutorialActions.Clear();
+		foreach (TutorialAction executingTutorialAction in executingTutorialActions)
 		{
-			tutorialAction.LeaveContext();
+			executingTutorialAction.LeaveContext();
 		}
-		TutorialActions.executingTutorialActions.Clear();
-		TutorialActions.activeContexts.Clear();
+		executingTutorialActions.Clear();
+		activeContexts.Clear();
 		Tutorial.playModeHelpMover = false;
 	}
 
-	// Token: 0x060021D5 RID: 8661 RVA: 0x000FD82C File Offset: 0x000FBC2C
 	private static bool TileRemovedAtTutorialStart(Tile t)
 	{
 		Predicate predicate = t.gaf.Predicate;
-		return predicate == Block.predicateTutorialCreateBlockHint || predicate == Block.predicateTutorialRemoveBlockHint || predicate == Block.predicateUnlocked || predicate == Block.predicateTutorialPaintExistingBlock || predicate == Block.predicateTutorialTextureExistingBlock || predicate == Block.predicateTutorialRotateExistingBlock || predicate == Block.predicateTutorialHelpTextAction || predicate == Block.predicateTutorialOperationPose;
+		if (predicate != Block.predicateTutorialCreateBlockHint && predicate != Block.predicateTutorialRemoveBlockHint && predicate != Block.predicateUnlocked && predicate != Block.predicateTutorialPaintExistingBlock && predicate != Block.predicateTutorialTextureExistingBlock && predicate != Block.predicateTutorialRotateExistingBlock && predicate != Block.predicateTutorialHelpTextAction)
+		{
+			return predicate == Block.predicateTutorialOperationPose;
+		}
+		return true;
 	}
 
-	// Token: 0x060021D6 RID: 8662 RVA: 0x000FD8A0 File Offset: 0x000FBCA0
 	private static Tile GetTileAfter(int c, List<Tile> row)
 	{
 		for (int i = c + 1; i < row.Count; i++)
@@ -108,7 +135,7 @@ public class TutorialActions
 			{
 				BWLog.Error("Next tile is undefined on rows that contains a 'hide tile row' tile");
 			}
-			else if (!TutorialActions.TileRemovedAtTutorialStart(tile))
+			else if (!TileRemovedAtTutorialStart(tile))
 			{
 				return tile;
 			}
@@ -116,47 +143,37 @@ public class TutorialActions
 		return null;
 	}
 
-	// Token: 0x060021D7 RID: 8663 RVA: 0x000FD918 File Offset: 0x000FBD18
 	private static Tile GetTileBefore(int c, List<Tile> row)
 	{
-		int i = c - 1;
-		while (i >= 0)
+		for (int num = c - 1; num >= 0; num--)
 		{
-			Tile tile = row[i];
-			Tile tile2 = (i <= 0) ? null : row[i - 1];
-			if (tile2 == null)
+			Tile tile = row[num];
+			Tile tile2 = ((num <= 0) ? null : row[num - 1]);
+			if (tile2 != null)
 			{
-				goto IL_4E;
+				Predicate predicate = tile2.gaf.Predicate;
+				if (predicate == Block.predicateHideNextTile)
+				{
+					num--;
+					continue;
+				}
 			}
-			Predicate predicate = tile2.gaf.Predicate;
-			if (predicate != Block.predicateHideNextTile)
-			{
-				goto IL_4E;
-			}
-			i--;
-			IL_83:
-			i--;
-			continue;
-			IL_4E:
 			Predicate predicate2 = tile.gaf.Predicate;
 			if (predicate2 == Block.predicateHideTileRow)
 			{
 				BWLog.Error("Previous tile is undefined on rows that contains a 'hide tile row' tile");
-				goto IL_83;
 			}
-			if (!TutorialActions.TileRemovedAtTutorialStart(tile))
+			else if (!TileRemovedAtTutorialStart(tile))
 			{
 				return tile;
 			}
-			goto IL_83;
 		}
 		return null;
 	}
 
-	// Token: 0x060021D8 RID: 8664 RVA: 0x000FD9B4 File Offset: 0x000FBDB4
 	public static void ParseActions(List<Block> blocks)
 	{
-		TutorialActions.Clear();
+		Clear();
 		foreach (Block block in blocks)
 		{
 			for (int i = 0; i < block.tiles.Count; i++)
@@ -186,22 +203,21 @@ public class TutorialActions
 					}
 					if (tutorialAction != null)
 					{
-						TutorialActionContext tutorialActionContext = (TutorialActionContext)Util.GetEnumArg(args, 0, "TutorialStart", typeof(TutorialActionContext));
-						tutorialAction.context = tutorialActionContext;
+						TutorialActionContext tutorialActionContext = (tutorialAction.context = (TutorialActionContext)Util.GetEnumArg(args, 0, "TutorialStart", typeof(TutorialActionContext)));
 						tutorialAction.block = block;
 						tutorialAction.tileRow = list;
-						tutorialAction.tileAfter = TutorialActions.GetTileAfter(j, list);
-						tutorialAction.tileBefore = TutorialActions.GetTileBefore(j, list);
-						Tutorial.playModeHelpMover |= (tutorialActionContext == TutorialActionContext.BeforePlayMoverUse);
+						tutorialAction.tileAfter = GetTileAfter(j, list);
+						tutorialAction.tileBefore = GetTileBefore(j, list);
+						Tutorial.playModeHelpMover |= tutorialActionContext == TutorialActionContext.BeforePlayMoverUse;
 						List<TutorialAction> list2;
-						if (!TutorialActions.tutorialActions.ContainsKey(tutorialActionContext))
+						if (!tutorialActions.ContainsKey(tutorialActionContext))
 						{
 							list2 = new List<TutorialAction>();
-							TutorialActions.tutorialActions[tutorialActionContext] = list2;
+							tutorialActions[tutorialActionContext] = list2;
 						}
 						else
 						{
-							list2 = TutorialActions.tutorialActions[tutorialActionContext];
+							list2 = tutorialActions[tutorialActionContext];
 						}
 						list2.Add(tutorialAction);
 					}
@@ -210,156 +226,77 @@ public class TutorialActions
 		}
 	}
 
-	// Token: 0x060021D9 RID: 8665 RVA: 0x000FDC0C File Offset: 0x000FC00C
 	private static bool BoolLog(string str, bool result = true)
 	{
 		BWLog.Info(str);
 		return result;
 	}
 
-	// Token: 0x060021DA RID: 8666 RVA: 0x000FDC18 File Offset: 0x000FC018
 	public static bool EnterContext(TutorialActionContext context, Block block = null, List<Tile> tileRow = null, Tile tileBefore = null, Tile tileAfter = null)
 	{
 		bool result = false;
-		TutorialActions.activeContexts.Clear();
-		TutorialActions.activeContexts.Add(context);
-		foreach (TutorialAction tutorialAction in TutorialActions.executingTutorialActions)
+		activeContexts.Clear();
+		activeContexts.Add(context);
+		foreach (TutorialAction executingTutorialAction in executingTutorialActions)
 		{
-			bool flag = false;
-			flag = (flag || (TutorialActions.blockDependentContexts.Contains(tutorialAction.context) && TutorialActions.blockDependentContexts.Contains(context) && tutorialAction.block != null && tutorialAction.block != block));
-			flag = (flag || (TutorialActions.scriptRowDependentContexts.Contains(tutorialAction.context) && TutorialActions.scriptRowDependentContexts.Contains(context) && tutorialAction.tileRow != tileRow));
-			flag = (flag || (TutorialActions.scriptTileDependentContexts.Contains(tutorialAction.context) && TutorialActions.scriptTileDependentContexts.Contains(context) && (tutorialAction.tileBefore != tileBefore || tutorialAction.tileAfter != tileAfter)));
-			flag = (flag || (tutorialAction.context != context && TutorialActions.contextDependentContexts.Contains(tutorialAction.context)));
-			flag = (flag || (context == TutorialActionContext.BeforeThisBlockCreate && tutorialAction.context != TutorialActionContext.BeforeThisBlockCreate && TutorialActions.blockDependentContexts.Contains(tutorialAction.context) && tutorialAction.block == block));
-			if (!flag)
+			bool flag = false || (blockDependentContexts.Contains(executingTutorialAction.context) && blockDependentContexts.Contains(context) && executingTutorialAction.block != null && executingTutorialAction.block != block) || (scriptRowDependentContexts.Contains(executingTutorialAction.context) && scriptRowDependentContexts.Contains(context) && executingTutorialAction.tileRow != tileRow) || (scriptTileDependentContexts.Contains(executingTutorialAction.context) && scriptTileDependentContexts.Contains(context) && (executingTutorialAction.tileBefore != tileBefore || executingTutorialAction.tileAfter != tileAfter)) || (executingTutorialAction.context != context && contextDependentContexts.Contains(executingTutorialAction.context)) || (context == TutorialActionContext.BeforeThisBlockCreate && executingTutorialAction.context != TutorialActionContext.BeforeThisBlockCreate && blockDependentContexts.Contains(executingTutorialAction.context) && executingTutorialAction.block == block);
+			if (!flag && context == TutorialActionContext.AfterThisBlockCreate && executingTutorialAction.context == TutorialActionContext.BeforeThisBlockCreate && executingTutorialAction.block == block)
 			{
-				if (context == TutorialActionContext.AfterThisBlockCreate)
-				{
-					if (tutorialAction.context == TutorialActionContext.BeforeThisBlockCreate && tutorialAction.block == block)
-					{
-						flag = true;
-					}
-				}
+				flag = true;
 			}
 			if (flag)
 			{
-				tutorialAction.LeaveContext();
+				executingTutorialAction.LeaveContext();
 			}
 			else
 			{
-				TutorialActions.activeContexts.Add(tutorialAction.context);
+				activeContexts.Add(executingTutorialAction.context);
 			}
 		}
-		List<TutorialAction> list;
+		List<TutorialAction> value;
 		if (context == TutorialActionContext.BeforeThisBlockCreate)
 		{
-			foreach (TutorialActionContext key in TutorialActions.blockDependentContexts)
+			foreach (TutorialActionContext blockDependentContext in blockDependentContexts)
 			{
-				if (TutorialActions.tutorialActions.TryGetValue(key, out list))
+				if (!tutorialActions.TryGetValue(blockDependentContext, out value))
 				{
-					foreach (TutorialAction tutorialAction2 in list)
+					continue;
+				}
+				foreach (TutorialAction item in value)
+				{
+					if (!item.executing && item.done && item.block == block && item.context != TutorialActionContext.BeforeThisBlockCreate && !executingTutorialActions.Contains(item))
 					{
-						if (!tutorialAction2.executing && tutorialAction2.done && tutorialAction2.block == block && tutorialAction2.context != TutorialActionContext.BeforeThisBlockCreate && !TutorialActions.executingTutorialActions.Contains(tutorialAction2))
-						{
-							tutorialAction2.done = false;
-						}
+						item.done = false;
 					}
 				}
 			}
 		}
-		if (TutorialActions.tutorialActions.TryGetValue(context, out list))
+		if (tutorialActions.TryGetValue(context, out value))
 		{
-			foreach (TutorialAction tutorialAction3 in list)
+			foreach (TutorialAction item2 in value)
 			{
-				if (!tutorialAction3.executing)
+				if (item2.executing || item2.done || (blockDependentContexts.Contains(context) && item2.block != block) || (scriptRowDependentContexts.Contains(context) && item2.tileRow != tileRow) || (scriptTileDependentContexts.Contains(context) && ((tileBefore != null && item2.tileBefore != tileBefore) || (tileAfter != null && item2.tileAfter != tileAfter))) || executingTutorialActions.Contains(item2))
 				{
-					if (!tutorialAction3.done)
+					continue;
+				}
+				result = true;
+				item2.EnterContext();
+				activeContexts.Clear();
+				activeContexts.Add(context);
+				foreach (TutorialAction executingTutorialAction2 in executingTutorialActions)
+				{
+					if (item2.CancelsAction(executingTutorialAction2) && !executingTutorialAction2.stopProgressUntilDone)
 					{
-						if (!TutorialActions.blockDependentContexts.Contains(context) || tutorialAction3.block == block)
-						{
-							if (!TutorialActions.scriptRowDependentContexts.Contains(context) || tutorialAction3.tileRow == tileRow)
-							{
-								if (TutorialActions.scriptTileDependentContexts.Contains(context))
-								{
-									if (tileBefore != null && tutorialAction3.tileBefore != tileBefore)
-									{
-										continue;
-									}
-									if (tileAfter != null && tutorialAction3.tileAfter != tileAfter)
-									{
-										continue;
-									}
-								}
-								if (!TutorialActions.executingTutorialActions.Contains(tutorialAction3))
-								{
-									result = true;
-									tutorialAction3.EnterContext();
-									TutorialActions.activeContexts.Clear();
-									TutorialActions.activeContexts.Add(context);
-									foreach (TutorialAction tutorialAction4 in TutorialActions.executingTutorialActions)
-									{
-										if (tutorialAction3.CancelsAction(tutorialAction4) && !tutorialAction4.stopProgressUntilDone)
-										{
-											tutorialAction4.LeaveContext();
-										}
-										else
-										{
-											TutorialActions.activeContexts.Add(tutorialAction4.context);
-										}
-									}
-									TutorialActions.executingTutorialActions.Add(tutorialAction3);
-								}
-							}
-						}
+						executingTutorialAction2.LeaveContext();
+					}
+					else
+					{
+						activeContexts.Add(executingTutorialAction2.context);
 					}
 				}
+				executingTutorialActions.Add(item2);
 			}
 		}
 		return result;
 	}
-
-	// Token: 0x04001CC5 RID: 7365
-	private static HashSet<TutorialActionContext> blockDependentContexts = new HashSet<TutorialActionContext>
-	{
-		TutorialActionContext.AfterThisBlockCreate,
-		TutorialActionContext.BeforeThisBlockCreate,
-		TutorialActionContext.DuringScriptNextTile,
-		TutorialActionContext.DuringScriptThisRow,
-		TutorialActionContext.BlockDone,
-		TutorialActionContext.Texture,
-		TutorialActionContext.Paint,
-		TutorialActionContext.BeginScripting
-	};
-
-	// Token: 0x04001CC6 RID: 7366
-	private static HashSet<TutorialActionContext> scriptRowDependentContexts = new HashSet<TutorialActionContext>
-	{
-		TutorialActionContext.DuringScriptThisRow
-	};
-
-	// Token: 0x04001CC7 RID: 7367
-	private static HashSet<TutorialActionContext> scriptTileDependentContexts = new HashSet<TutorialActionContext>
-	{
-		TutorialActionContext.DuringScriptNextTile
-	};
-
-	// Token: 0x04001CC8 RID: 7368
-	private static HashSet<TutorialActionContext> contextDependentContexts = new HashSet<TutorialActionContext>
-	{
-		TutorialActionContext.AutoAddBlockWait,
-		TutorialActionContext.RemoveBlock,
-		TutorialActionContext.Paint,
-		TutorialActionContext.Texture,
-		TutorialActionContext.EnterPlay,
-		TutorialActionContext.BeginScripting
-	};
-
-	// Token: 0x04001CC9 RID: 7369
-	public static Dictionary<TutorialActionContext, List<TutorialAction>> tutorialActions = new Dictionary<TutorialActionContext, List<TutorialAction>>();
-
-	// Token: 0x04001CCA RID: 7370
-	public static List<TutorialAction> executingTutorialActions = new List<TutorialAction>();
-
-	// Token: 0x04001CCB RID: 7371
-	public static HashSet<TutorialActionContext> activeContexts = new HashSet<TutorialActionContext>();
 }

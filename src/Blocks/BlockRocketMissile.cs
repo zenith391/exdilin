@@ -1,36 +1,21 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-namespace Blocks
-{
-	// Token: 0x020000C4 RID: 196
-	public class BlockRocketMissile : BlockAbstractRocket
-	{
-		// Token: 0x06000F0A RID: 3850 RVA: 0x00065864 File Offset: 0x00063C64
-		public BlockRocketMissile(List<List<Tile>> tiles) : base(tiles, "Blocks/Rocket Flame", string.Empty)
-		{
-			this.setSmokeColor = true;
-			this.smokeColorMeshIndex = 0;
-		}
+namespace Blocks;
 
-		// Token: 0x06000F0B RID: 3851 RVA: 0x00065888 File Offset: 0x00063C88
-		public new static void Register()
-		{
-			PredicateRegistry.Add<BlockRocketMissile>("MissileRocket.Fire", (Block b) => new PredicateSensorDelegate(((BlockAbstractRocket)b).IsFiring), (Block b) => new PredicateActionDelegate(((BlockAbstractRocket)b).FireRocket), new Type[]
-			{
-				typeof(float)
-			}, new string[]
-			{
-				"Force"
-			}, null);
-			PredicateRegistry.Add<BlockRocketMissile>("MissileRocket.Smoke", (Block b) => new PredicateSensorDelegate(((BlockAbstractRocket)b).IsSmoking), (Block b) => new PredicateActionDelegate(((BlockAbstractRocket)b).Smoke), null, null, null);
-			Block.AddSimpleDefaultTiles(new GAF("MissileRocket.Fire", new object[]
-			{
-				2f
-			}), new string[]
-			{
-				"Missile A"
-			});
-		}
+public class BlockRocketMissile : BlockAbstractRocket
+{
+	public BlockRocketMissile(List<List<Tile>> tiles)
+		: base(tiles, "Blocks/Rocket Flame", string.Empty)
+	{
+		setSmokeColor = true;
+		smokeColorMeshIndex = 0;
+	}
+
+	public new static void Register()
+	{
+		PredicateRegistry.Add<BlockRocketMissile>("MissileRocket.Fire", (Block b) => ((BlockAbstractRocket)b).IsFiring, (Block b) => ((BlockAbstractRocket)b).FireRocket, new Type[1] { typeof(float) }, new string[1] { "Force" });
+		PredicateRegistry.Add<BlockRocketMissile>("MissileRocket.Smoke", (Block b) => ((BlockAbstractRocket)b).IsSmoking, (Block b) => ((BlockAbstractRocket)b).Smoke);
+		Block.AddSimpleDefaultTiles(new GAF("MissileRocket.Fire", 2f), "Missile A");
 	}
 }

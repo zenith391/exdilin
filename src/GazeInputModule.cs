@@ -1,215 +1,224 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-// Token: 0x02000024 RID: 36
 [AddComponentMenu("Cardboard/GazeInputModule")]
 public class GazeInputModule : BaseInputModule
 {
-	// Token: 0x0600011E RID: 286 RVA: 0x00007F44 File Offset: 0x00006344
+	[Tooltip("Whether gaze input is active in VR Mode only (true), or all the time (false).")]
+	public bool vrModeOnly;
+
+	[HideInInspector]
+	public float clickTime = 0.1f;
+
+	[HideInInspector]
+	public Vector2 hotspot = new Vector2(0.5f, 0.5f);
+
+	private PointerEventData pointerData;
+
+	private Vector2 lastHeadPose;
+
+	public static ICardboardPointer cardboardPointer;
+
+	private bool isActive;
+
 	public override bool ShouldActivateModule()
 	{
-		bool flag = base.ShouldActivateModule();
-		flag = (flag && (Cardboard.SDK.VRModeEnabled || !this.vrModeOnly));
-		if (flag != this.isActive)
+		bool flag = base.ShouldActivateModule() && (Cardboard.SDK.VRModeEnabled || !vrModeOnly);
+		if (flag != isActive)
 		{
-			this.isActive = flag;
-			if (GazeInputModule.cardboardPointer != null && this.isActive)
+			isActive = flag;
+			if (cardboardPointer != null && isActive)
 			{
-				GazeInputModule.cardboardPointer.OnGazeEnabled();
+				cardboardPointer.OnGazeEnabled();
 			}
 		}
 		return flag;
 	}
 
-	// Token: 0x0600011F RID: 287 RVA: 0x00007FB0 File Offset: 0x000063B0
 	public override void DeactivateModule()
 	{
-		this.DisableGazePointer();
+		DisableGazePointer();
 		base.DeactivateModule();
-		if (this.pointerData != null)
+		if (pointerData != null)
 		{
-			this.HandlePendingClick();
-			base.HandlePointerExitAndEnter(this.pointerData, null);
-			this.pointerData = null;
+			HandlePendingClick();
+			HandlePointerExitAndEnter(pointerData, null);
+			pointerData = null;
 		}
-		base.eventSystem.SetSelectedGameObject(null, this.GetBaseEventData());
+		base.eventSystem.SetSelectedGameObject(null, GetBaseEventData());
 	}
 
-	// Token: 0x06000120 RID: 288 RVA: 0x00008000 File Offset: 0x00006400
 	public override bool IsPointerOverGameObject(int pointerId)
 	{
-		return this.pointerData != null && this.pointerData.pointerEnter != null;
+		if (pointerData != null)
+		{
+			return pointerData.pointerEnter != null;
+		}
+		return false;
 	}
 
-	// Token: 0x06000121 RID: 289 RVA: 0x00008024 File Offset: 0x00006424
 	public override void Process()
 	{
-		GameObject currentGameObject = this.GetCurrentGameObject();
-		this.CastRayFromGaze();
-		this.UpdateCurrentObject();
-		this.UpdateReticle(currentGameObject);
-		Camera enterEventCamera = this.pointerData.enterEventCamera;
+		GameObject currentGameObject = GetCurrentGameObject();
+		CastRayFromGaze();
+		UpdateCurrentObject();
+		UpdateReticle(currentGameObject);
+		Camera enterEventCamera = pointerData.enterEventCamera;
 		if (!Cardboard.SDK.TapIsTrigger && !Input.GetMouseButtonDown(0) && Input.GetMouseButton(0))
 		{
-			this.HandleDrag();
+			HandleDrag();
 		}
-		else if (Time.unscaledTime - this.pointerData.clickTime >= this.clickTime)
+		else
 		{
-			if (!this.pointerData.eligibleForClick && (Cardboard.SDK.Triggered || (!Cardboard.SDK.TapIsTrigger && Input.GetMouseButtonDown(0))))
+			if (!(Time.unscaledTime - pointerData.clickTime >= clickTime))
 			{
-				this.HandleTrigger();
-				if (GazeInputModule.cardboardPointer != null)
+				return;
+			}
+			if (!pointerData.eligibleForClick && (Cardboard.SDK.Triggered || (!Cardboard.SDK.TapIsTrigger && Input.GetMouseButtonDown(0))))
+			{
+				HandleTrigger();
+				if (cardboardPointer != null)
 				{
-					GazeInputModule.cardboardPointer.OnGazeTriggerStart(enterEventCamera);
+					cardboardPointer.OnGazeTriggerStart(enterEventCamera);
 				}
 			}
 			else if (!Cardboard.SDK.Triggered && !Input.GetMouseButton(0))
 			{
-				this.HandlePendingClick();
+				HandlePendingClick();
 			}
 		}
 	}
 
-	// Token: 0x06000122 RID: 290 RVA: 0x00008124 File Offset: 0x00006524
 	private void CastRayFromGaze()
 	{
-		Vector2 a = this.NormalizedCartesianToSpherical(Cardboard.SDK.HeadPose.Orientation * Vector3.forward);
-		if (this.pointerData == null)
+		Vector2 vector = NormalizedCartesianToSpherical(Cardboard.SDK.HeadPose.Orientation * Vector3.forward);
+		if (pointerData == null)
 		{
-			this.pointerData = new PointerEventData(base.eventSystem);
-			this.lastHeadPose = a;
+			pointerData = new PointerEventData(base.eventSystem);
+			lastHeadPose = vector;
 		}
-		this.pointerData.Reset();
-		this.pointerData.position = new Vector2(this.hotspot.x * (float)Screen.width, this.hotspot.y * (float)Screen.height);
-		base.eventSystem.RaycastAll(this.pointerData, this.m_RaycastResultCache);
-		this.pointerData.pointerCurrentRaycast = BaseInputModule.FindFirstRaycast(this.m_RaycastResultCache);
-		this.m_RaycastResultCache.Clear();
-		this.pointerData.delta = a - this.lastHeadPose;
-		this.lastHeadPose = a;
+		pointerData.Reset();
+		pointerData.position = new Vector2(hotspot.x * (float)Screen.width, hotspot.y * (float)Screen.height);
+		base.eventSystem.RaycastAll(pointerData, m_RaycastResultCache);
+		pointerData.pointerCurrentRaycast = BaseInputModule.FindFirstRaycast(m_RaycastResultCache);
+		m_RaycastResultCache.Clear();
+		pointerData.delta = vector - lastHeadPose;
+		lastHeadPose = vector;
 	}
 
-	// Token: 0x06000123 RID: 291 RVA: 0x0000820C File Offset: 0x0000660C
 	private void UpdateCurrentObject()
 	{
-		GameObject gameObject = this.pointerData.pointerCurrentRaycast.gameObject;
-		base.HandlePointerExitAndEnter(this.pointerData, gameObject);
+		GameObject gameObject = pointerData.pointerCurrentRaycast.gameObject;
+		HandlePointerExitAndEnter(pointerData, gameObject);
 		GameObject eventHandler = ExecuteEvents.GetEventHandler<ISelectHandler>(gameObject);
 		if (eventHandler == base.eventSystem.currentSelectedGameObject)
 		{
-			ExecuteEvents.Execute<IUpdateSelectedHandler>(base.eventSystem.currentSelectedGameObject, this.GetBaseEventData(), ExecuteEvents.updateSelectedHandler);
+			ExecuteEvents.Execute(base.eventSystem.currentSelectedGameObject, GetBaseEventData(), ExecuteEvents.updateSelectedHandler);
 		}
 		else
 		{
-			base.eventSystem.SetSelectedGameObject(null, this.pointerData);
+			base.eventSystem.SetSelectedGameObject(null, pointerData);
 		}
 	}
 
-	// Token: 0x06000124 RID: 292 RVA: 0x0000828C File Offset: 0x0000668C
 	private void UpdateReticle(GameObject previousGazedObject)
 	{
-		if (GazeInputModule.cardboardPointer == null)
+		if (cardboardPointer == null)
 		{
 			return;
 		}
-		Camera enterEventCamera = this.pointerData.enterEventCamera;
-		GameObject currentGameObject = this.GetCurrentGameObject();
-		Vector3 intersectionPosition = this.GetIntersectionPosition();
+		Camera enterEventCamera = pointerData.enterEventCamera;
+		GameObject currentGameObject = GetCurrentGameObject();
+		Vector3 intersectionPosition = GetIntersectionPosition();
 		if (currentGameObject == previousGazedObject)
 		{
 			if (currentGameObject != null)
 			{
-				GazeInputModule.cardboardPointer.OnGazeStay(enterEventCamera, currentGameObject, intersectionPosition);
+				cardboardPointer.OnGazeStay(enterEventCamera, currentGameObject, intersectionPosition);
 			}
-		}
-		else
-		{
-			if (previousGazedObject != null)
-			{
-				GazeInputModule.cardboardPointer.OnGazeExit(enterEventCamera, previousGazedObject);
-			}
-			if (currentGameObject != null)
-			{
-				GazeInputModule.cardboardPointer.OnGazeStart(enterEventCamera, currentGameObject, intersectionPosition);
-			}
-		}
-	}
-
-	// Token: 0x06000125 RID: 293 RVA: 0x0000831C File Offset: 0x0000671C
-	private void HandleDrag()
-	{
-		bool flag = this.pointerData.IsPointerMoving();
-		if (flag && this.pointerData.pointerDrag != null && !this.pointerData.dragging)
-		{
-			ExecuteEvents.Execute<IBeginDragHandler>(this.pointerData.pointerDrag, this.pointerData, ExecuteEvents.beginDragHandler);
-			this.pointerData.dragging = true;
-		}
-		if (this.pointerData.dragging && flag && this.pointerData.pointerDrag != null)
-		{
-			if (this.pointerData.pointerPress != this.pointerData.pointerDrag)
-			{
-				ExecuteEvents.Execute<IPointerUpHandler>(this.pointerData.pointerPress, this.pointerData, ExecuteEvents.pointerUpHandler);
-				this.pointerData.eligibleForClick = false;
-				this.pointerData.pointerPress = null;
-				this.pointerData.rawPointerPress = null;
-			}
-			ExecuteEvents.Execute<IDragHandler>(this.pointerData.pointerDrag, this.pointerData, ExecuteEvents.dragHandler);
-		}
-	}
-
-	// Token: 0x06000126 RID: 294 RVA: 0x00008434 File Offset: 0x00006834
-	private void HandlePendingClick()
-	{
-		if (!this.pointerData.eligibleForClick)
-		{
 			return;
 		}
-		if (GazeInputModule.cardboardPointer != null)
+		if (previousGazedObject != null)
 		{
-			Camera enterEventCamera = this.pointerData.enterEventCamera;
-			GazeInputModule.cardboardPointer.OnGazeTriggerEnd(enterEventCamera);
+			cardboardPointer.OnGazeExit(enterEventCamera, previousGazedObject);
 		}
-		GameObject gameObject = this.pointerData.pointerCurrentRaycast.gameObject;
-		ExecuteEvents.Execute<IPointerUpHandler>(this.pointerData.pointerPress, this.pointerData, ExecuteEvents.pointerUpHandler);
-		ExecuteEvents.Execute<IPointerClickHandler>(this.pointerData.pointerPress, this.pointerData, ExecuteEvents.pointerClickHandler);
-		if (this.pointerData.pointerDrag != null)
+		if (currentGameObject != null)
 		{
-			ExecuteEvents.ExecuteHierarchy<IDropHandler>(gameObject, this.pointerData, ExecuteEvents.dropHandler);
+			cardboardPointer.OnGazeStart(enterEventCamera, currentGameObject, intersectionPosition);
 		}
-		if (this.pointerData.pointerDrag != null && this.pointerData.dragging)
-		{
-			ExecuteEvents.Execute<IEndDragHandler>(this.pointerData.pointerDrag, this.pointerData, ExecuteEvents.endDragHandler);
-		}
-		this.pointerData.pointerPress = null;
-		this.pointerData.rawPointerPress = null;
-		this.pointerData.eligibleForClick = false;
-		this.pointerData.clickCount = 0;
-		this.pointerData.pointerDrag = null;
-		this.pointerData.dragging = false;
 	}
 
-	// Token: 0x06000127 RID: 295 RVA: 0x00008574 File Offset: 0x00006974
+	private void HandleDrag()
+	{
+		bool flag = pointerData.IsPointerMoving();
+		if (flag && pointerData.pointerDrag != null && !pointerData.dragging)
+		{
+			ExecuteEvents.Execute(pointerData.pointerDrag, pointerData, ExecuteEvents.beginDragHandler);
+			pointerData.dragging = true;
+		}
+		if (pointerData.dragging && flag && pointerData.pointerDrag != null)
+		{
+			if (pointerData.pointerPress != pointerData.pointerDrag)
+			{
+				ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
+				pointerData.eligibleForClick = false;
+				pointerData.pointerPress = null;
+				pointerData.rawPointerPress = null;
+			}
+			ExecuteEvents.Execute(pointerData.pointerDrag, pointerData, ExecuteEvents.dragHandler);
+		}
+	}
+
+	private void HandlePendingClick()
+	{
+		if (pointerData.eligibleForClick)
+		{
+			if (cardboardPointer != null)
+			{
+				Camera enterEventCamera = pointerData.enterEventCamera;
+				cardboardPointer.OnGazeTriggerEnd(enterEventCamera);
+			}
+			GameObject root = pointerData.pointerCurrentRaycast.gameObject;
+			ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerUpHandler);
+			ExecuteEvents.Execute(pointerData.pointerPress, pointerData, ExecuteEvents.pointerClickHandler);
+			if (pointerData.pointerDrag != null)
+			{
+				ExecuteEvents.ExecuteHierarchy(root, pointerData, ExecuteEvents.dropHandler);
+			}
+			if (pointerData.pointerDrag != null && pointerData.dragging)
+			{
+				ExecuteEvents.Execute(pointerData.pointerDrag, pointerData, ExecuteEvents.endDragHandler);
+			}
+			pointerData.pointerPress = null;
+			pointerData.rawPointerPress = null;
+			pointerData.eligibleForClick = false;
+			pointerData.clickCount = 0;
+			pointerData.pointerDrag = null;
+			pointerData.dragging = false;
+		}
+	}
+
 	private void HandleTrigger()
 	{
-		GameObject gameObject = this.pointerData.pointerCurrentRaycast.gameObject;
-		this.pointerData.pressPosition = this.pointerData.position;
-		this.pointerData.pointerPressRaycast = this.pointerData.pointerCurrentRaycast;
-		this.pointerData.pointerPress = (ExecuteEvents.ExecuteHierarchy<IPointerDownHandler>(gameObject, this.pointerData, ExecuteEvents.pointerDownHandler) ?? ExecuteEvents.GetEventHandler<IPointerClickHandler>(gameObject));
-		this.pointerData.pointerDrag = ExecuteEvents.GetEventHandler<IDragHandler>(gameObject);
-		if (this.pointerData.pointerDrag != null && !Cardboard.SDK.TapIsTrigger)
+		GameObject gameObject = pointerData.pointerCurrentRaycast.gameObject;
+		pointerData.pressPosition = pointerData.position;
+		pointerData.pointerPressRaycast = pointerData.pointerCurrentRaycast;
+		pointerData.pointerPress = ExecuteEvents.ExecuteHierarchy(gameObject, pointerData, ExecuteEvents.pointerDownHandler) ?? ExecuteEvents.GetEventHandler<IPointerClickHandler>(gameObject);
+		pointerData.pointerDrag = ExecuteEvents.GetEventHandler<IDragHandler>(gameObject);
+		if (pointerData.pointerDrag != null && !Cardboard.SDK.TapIsTrigger)
 		{
-			ExecuteEvents.Execute<IInitializePotentialDragHandler>(this.pointerData.pointerDrag, this.pointerData, ExecuteEvents.initializePotentialDrag);
+			ExecuteEvents.Execute(pointerData.pointerDrag, pointerData, ExecuteEvents.initializePotentialDrag);
 		}
-		this.pointerData.rawPointerPress = gameObject;
-		this.pointerData.eligibleForClick = true;
-		this.pointerData.delta = Vector2.zero;
-		this.pointerData.dragging = false;
-		this.pointerData.useDragThreshold = true;
-		this.pointerData.clickCount = 1;
-		this.pointerData.clickTime = Time.unscaledTime;
+		pointerData.rawPointerPress = gameObject;
+		pointerData.eligibleForClick = true;
+		pointerData.delta = Vector2.zero;
+		pointerData.dragging = false;
+		pointerData.useDragThreshold = true;
+		pointerData.clickCount = 1;
+		pointerData.clickTime = Time.unscaledTime;
 	}
 
-	// Token: 0x06000128 RID: 296 RVA: 0x00008698 File Offset: 0x00006A98
 	private Vector2 NormalizedCartesianToSpherical(Vector3 cartCoords)
 	{
 		cartCoords.Normalize();
@@ -220,71 +229,43 @@ public class GazeInputModule : BaseInputModule
 		float num = Mathf.Atan(cartCoords.z / cartCoords.x);
 		if (cartCoords.x < 0f)
 		{
-			num += 3.14159274f;
+			num += (float)Math.PI;
 		}
 		float y = Mathf.Asin(cartCoords.y);
 		return new Vector2(num, y);
 	}
 
-	// Token: 0x06000129 RID: 297 RVA: 0x0000870C File Offset: 0x00006B0C
 	private GameObject GetCurrentGameObject()
 	{
-		if (this.pointerData != null && this.pointerData.enterEventCamera != null)
+		if (pointerData != null && pointerData.enterEventCamera != null)
 		{
-			return this.pointerData.pointerCurrentRaycast.gameObject;
+			return pointerData.pointerCurrentRaycast.gameObject;
 		}
 		return null;
 	}
 
-	// Token: 0x0600012A RID: 298 RVA: 0x00008750 File Offset: 0x00006B50
 	private Vector3 GetIntersectionPosition()
 	{
-		Camera enterEventCamera = this.pointerData.enterEventCamera;
+		Camera enterEventCamera = pointerData.enterEventCamera;
 		if (enterEventCamera == null)
 		{
 			return Vector3.zero;
 		}
-		float d = this.pointerData.pointerCurrentRaycast.distance + enterEventCamera.nearClipPlane;
-		return enterEventCamera.transform.position + enterEventCamera.transform.forward * d;
+		float num = pointerData.pointerCurrentRaycast.distance + enterEventCamera.nearClipPlane;
+		return enterEventCamera.transform.position + enterEventCamera.transform.forward * num;
 	}
 
-	// Token: 0x0600012B RID: 299 RVA: 0x000087BC File Offset: 0x00006BBC
 	private void DisableGazePointer()
 	{
-		if (GazeInputModule.cardboardPointer == null)
+		if (cardboardPointer != null)
 		{
-			return;
+			GameObject currentGameObject = GetCurrentGameObject();
+			if ((bool)currentGameObject)
+			{
+				Camera enterEventCamera = pointerData.enterEventCamera;
+				cardboardPointer.OnGazeExit(enterEventCamera, currentGameObject);
+			}
+			cardboardPointer.OnGazeDisabled();
 		}
-		GameObject currentGameObject = this.GetCurrentGameObject();
-		if (currentGameObject)
-		{
-			Camera enterEventCamera = this.pointerData.enterEventCamera;
-			GazeInputModule.cardboardPointer.OnGazeExit(enterEventCamera, currentGameObject);
-		}
-		GazeInputModule.cardboardPointer.OnGazeDisabled();
 	}
-
-	// Token: 0x0400016E RID: 366
-	[Tooltip("Whether gaze input is active in VR Mode only (true), or all the time (false).")]
-	public bool vrModeOnly;
-
-	// Token: 0x0400016F RID: 367
-	[HideInInspector]
-	public float clickTime = 0.1f;
-
-	// Token: 0x04000170 RID: 368
-	[HideInInspector]
-	public Vector2 hotspot = new Vector2(0.5f, 0.5f);
-
-	// Token: 0x04000171 RID: 369
-	private PointerEventData pointerData;
-
-	// Token: 0x04000172 RID: 370
-	private Vector2 lastHeadPose;
-
-	// Token: 0x04000173 RID: 371
-	public static ICardboardPointer cardboardPointer;
-
-	// Token: 0x04000174 RID: 372
-	private bool isActive;
 }

@@ -1,108 +1,101 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using SimpleJSON;
 
-// Token: 0x020003A6 RID: 934
 public static class BWJsonHelpers
 {
-	// Token: 0x0600289E RID: 10398 RVA: 0x0012ACB2 File Offset: 0x001290B2
 	public static BlocksInventory PropertyIfExists(BlocksInventory property, string key, JObject json)
 	{
 		if (json.ContainsKey(key))
 		{
-			return BlocksInventory.FromString(json[key].StringValue, true);
+			return BlocksInventory.FromString(json[key].StringValue);
 		}
 		return property;
 	}
 
-	// Token: 0x0600289F RID: 10399 RVA: 0x0012ACD4 File Offset: 0x001290D4
 	public static bool PropertyIfExists(bool property, string key, JObject json)
 	{
 		if (!json.ContainsKey(key))
 		{
 			return property;
 		}
-		JObject jobject = json[key];
-		if (jobject.Kind == JObjectKind.Boolean)
+		JObject jObject = json[key];
+		if (jObject.Kind == JObjectKind.Boolean)
 		{
-			return jobject.BooleanValue;
+			return jObject.BooleanValue;
 		}
-		if (jobject.Kind == JObjectKind.Number)
+		if (jObject.Kind == JObjectKind.Number)
 		{
-			return jobject.IntValue > 0;
+			return jObject.IntValue > 0;
 		}
-		if (jobject.Kind == JObjectKind.String)
+		if (jObject.Kind == JObjectKind.String)
 		{
-			return jobject.StringValue.ToLowerInvariant() == "true";
+			return jObject.StringValue.ToLowerInvariant() == "true";
 		}
 		return property;
 	}
 
-	// Token: 0x060028A0 RID: 10400 RVA: 0x0012AD50 File Offset: 0x00129150
 	public static int PropertyIfExists(int property, string key, JObject json)
 	{
 		if (!json.ContainsKey(key))
 		{
 			return property;
 		}
-		JObject jobject = json[key];
-		if (jobject.Kind == JObjectKind.String)
+		JObject jObject = json[key];
+		if (jObject.Kind == JObjectKind.String)
 		{
 			int result = 0;
-			if (!int.TryParse(jobject.StringValue, out result))
+			if (!int.TryParse(jObject.StringValue, out result))
 			{
-				BWLog.Error("Failed to parse int property: " + key + " value " + jobject.StringValue);
+				BWLog.Error("Failed to parse int property: " + key + " value " + jObject.StringValue);
 			}
 			return result;
 		}
-		return jobject.IntValue;
+		return jObject.IntValue;
 	}
 
-	// Token: 0x060028A1 RID: 10401 RVA: 0x0012ADB8 File Offset: 0x001291B8
 	public static float PropertyIfExists(float property, string key, JObject json)
 	{
 		if (!json.ContainsKey(key))
 		{
 			return property;
 		}
-		JObject jobject = json[key];
-		if (jobject.Kind == JObjectKind.String)
+		JObject jObject = json[key];
+		if (jObject.Kind == JObjectKind.String)
 		{
 			float result = 0f;
-			if (!float.TryParse(jobject.StringValue, out result))
+			if (!float.TryParse(jObject.StringValue, out result))
 			{
-				BWLog.Error("Failed to parse float property: " + key + " value " + jobject.StringValue);
+				BWLog.Error("Failed to parse float property: " + key + " value " + jObject.StringValue);
 			}
 			return result;
 		}
-		return jobject.FloatValue;
+		return jObject.FloatValue;
 	}
 
-	// Token: 0x060028A2 RID: 10402 RVA: 0x0012AE24 File Offset: 0x00129224
 	public static string IDPropertyAsStringIfExists(string property, string key, JObject json)
 	{
 		if (json.ContainsKey(key))
 		{
-			JObject jobject = json[key];
-			if (jobject.Kind == JObjectKind.Number)
+			JObject jObject = json[key];
+			if (jObject.Kind == JObjectKind.Number)
 			{
-				int intValue = jobject.IntValue;
+				int intValue = jObject.IntValue;
 				if (intValue == 0)
 				{
 					return null;
 				}
 				return intValue.ToString();
 			}
-			else if (jobject.Kind == JObjectKind.String)
+			if (jObject.Kind == JObjectKind.String)
 			{
-				return jobject.StringValue;
+				return jObject.StringValue;
 			}
 		}
 		return property;
 	}
 
-	// Token: 0x060028A3 RID: 10403 RVA: 0x0012AE82 File Offset: 0x00129282
 	public static string PropertyIfExists(string property, string key, JObject json)
 	{
 		if (json.ContainsKey(key))
@@ -112,96 +105,96 @@ public static class BWJsonHelpers
 		return property;
 	}
 
-	// Token: 0x060028A4 RID: 10404 RVA: 0x0012AEA0 File Offset: 0x001292A0
 	public static string PropertyIfExists(string property, string key1, string key2, JObject json)
 	{
 		if (json.ContainsKey(key1))
 		{
-			JObject jobject = json[key1];
-			if (jobject.Kind == JObjectKind.Object && jobject.ContainsKey(key2))
+			JObject jObject = json[key1];
+			if (jObject.Kind == JObjectKind.Object && jObject.ContainsKey(key2))
 			{
-				return Util.FixNonAscii(jobject[key2].StringValue);
+				return Util.FixNonAscii(jObject[key2].StringValue);
 			}
 		}
 		return property;
 	}
 
-	// Token: 0x060028A5 RID: 10405 RVA: 0x0012AEEC File Offset: 0x001292EC
 	public static DateTime PropertyIfExists(DateTime property, string key, JObject json)
 	{
-		string text = null;
-		text = BWJsonHelpers.PropertyIfExists(text, key, json);
-		if (!string.IsNullOrEmpty(text))
+		string property2 = null;
+		property2 = PropertyIfExists(property2, key, json);
+		if (!string.IsNullOrEmpty(property2))
 		{
-			DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out property);
+			DateTime.TryParse(property2, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out property);
 		}
 		return property;
 	}
 
-	// Token: 0x060028A6 RID: 10406 RVA: 0x0012AF20 File Offset: 0x00129320
 	public static List<string> PropertyIfExists(List<string> list, string key, JObject json)
 	{
 		if (json.ContainsKey(key))
 		{
-			JObject jobject = json[key];
-			if (jobject.Kind == JObjectKind.Array)
+			JObject jObject = json[key];
+			if (jObject.Kind == JObjectKind.Array)
 			{
 				List<string> list2 = new List<string>();
-				foreach (JObject jobject2 in jobject.ArrayValue)
 				{
-					list2.Add(jobject2.ToString());
+					foreach (JObject item in jObject.ArrayValue)
+					{
+						list2.Add(item.ToString());
+					}
+					return list2;
 				}
-				return list2;
 			}
 		}
 		return list;
 	}
 
-	// Token: 0x060028A7 RID: 10407 RVA: 0x0012AFAC File Offset: 0x001293AC
 	public static List<int> PropertyIfExists(List<int> list, string key, JObject json)
 	{
 		if (json.ContainsKey(key))
 		{
-			JObject jobject = json[key];
-			if (jobject.Kind == JObjectKind.Array)
+			JObject jObject = json[key];
+			if (jObject.Kind == JObjectKind.Array)
 			{
 				List<int> list2 = new List<int>();
-				foreach (JObject jobject2 in jobject.ArrayValue)
 				{
-					if (jobject2.Kind == JObjectKind.Number)
+					foreach (JObject item in jObject.ArrayValue)
 					{
-						list2.Add(jobject2.IntValue);
+						if (item.Kind == JObjectKind.Number)
+						{
+							list2.Add(item.IntValue);
+						}
 					}
+					return list2;
 				}
-				return list2;
 			}
 		}
 		return list;
 	}
 
-	// Token: 0x060028A8 RID: 10408 RVA: 0x0012B044 File Offset: 0x00129444
 	public static void AddForEachInArray<T>(List<T> list, string key, JObject json, Func<JObject, T> newT)
 	{
-		if (json.ContainsKey(key))
+		if (!json.ContainsKey(key))
 		{
-			List<JObject> arrayValue = json[key].ArrayValue;
-			foreach (JObject arg in arrayValue)
-			{
-				list.Add(newT(arg));
-			}
+			return;
+		}
+		List<JObject> arrayValue = json[key].ArrayValue;
+		foreach (JObject item in arrayValue)
+		{
+			list.Add(newT(item));
 		}
 	}
 
-	// Token: 0x060028A9 RID: 10409 RVA: 0x0012B0BC File Offset: 0x001294BC
 	public static void AddForEachInArray(List<int> list, string key, JObject json)
 	{
-		if (json.ContainsKey(key))
+		if (!json.ContainsKey(key))
 		{
-			List<JObject> arrayValue = json[key].ArrayValue;
-			foreach (JObject jobject in arrayValue)
-			{
-				list.Add(jobject.IntValue);
-			}
+			return;
+		}
+		List<JObject> arrayValue = json[key].ArrayValue;
+		foreach (JObject item in arrayValue)
+		{
+			list.Add(item.IntValue);
 		}
 	}
 }

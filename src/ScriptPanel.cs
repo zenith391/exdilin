@@ -1,241 +1,240 @@
-﻿using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x02000264 RID: 612
 public class ScriptPanel : Panel
 {
-	// Token: 0x06001CC2 RID: 7362 RVA: 0x000CB1C4 File Offset: 0x000C95C4
-	public ScriptPanel(string name) : base(name, 20)
+	private const int horizontalPadding = 40;
+
+	private const int verticalPadding = 20;
+
+	public bool ignoreShow;
+
+	public bool overBuildPanel;
+
+	private float extraVerticalTopPadding;
+
+	private float previousTopScreenPosY;
+
+	private GameObject headerGameObject;
+
+	public ScriptPanel(string name)
+		: base(name, 20)
 	{
-		this.width = 10000f;
-		this.CreateHeader();
-		this._momentum = 0f;
-		this._snapBackMomentum = 0f;
-		this.toggleOverlayEnabled = true;
-		this.parameterOverlayEnabled = true;
-		this.buttonOverlayEnabled = true;
-		this.visibleTileRowStartIndex = 1;
-		this.PositionReset();
-		this.extraVerticalTopPadding = 34f * NormalizedScreen.pixelScale;
-		ViewportWatchdog.AddListener(new ViewportWatchdog.ViewportSizeChangedAction(this.ViewportSizeDidChange));
+		width = 10000f;
+		CreateHeader();
+		_momentum = 0f;
+		_snapBackMomentum = 0f;
+		toggleOverlayEnabled = true;
+		parameterOverlayEnabled = true;
+		buttonOverlayEnabled = true;
+		visibleTileRowStartIndex = 1;
+		PositionReset();
+		extraVerticalTopPadding = 34f * NormalizedScreen.pixelScale;
+		ViewportWatchdog.AddListener(ViewportSizeDidChange);
 	}
 
-	// Token: 0x06001CC3 RID: 7363 RVA: 0x000CB245 File Offset: 0x000C9645
 	public Vector3 TutorialArrowOffset()
 	{
-		return new Vector3(0f, this.extraVerticalTopPadding, 0f);
+		return new Vector3(0f, extraVerticalTopPadding, 0f);
 	}
 
-	// Token: 0x06001CC4 RID: 7364 RVA: 0x000CB25C File Offset: 0x000C965C
 	private void CreateHeader()
 	{
 		GameObject original = Resources.Load<GameObject>("GUI/Prefab Script Panel Header");
-		this.headerGameObject = UnityEngine.Object.Instantiate<GameObject>(original);
-		this.headerGameObject.transform.parent = this.go.transform;
-		this.headerGameObject.transform.localScale = NormalizedScreen.pixelScale * Vector3.one;
+		headerGameObject = Object.Instantiate(original);
+		headerGameObject.transform.parent = go.transform;
+		headerGameObject.transform.localScale = NormalizedScreen.pixelScale * Vector3.one;
 	}
 
-	// Token: 0x06001CC5 RID: 7365 RVA: 0x000CB2BA File Offset: 0x000C96BA
 	public void Position()
 	{
-		if (this.pos.x < -0.5f * this.width)
+		if (pos.x < -0.5f * width)
 		{
-			this.pos.x = -this.width;
+			pos.x = 0f - width;
 		}
-		this.UpdatePosition();
+		UpdatePosition();
 	}
 
-	// Token: 0x06001CC6 RID: 7366 RVA: 0x000CB2F0 File Offset: 0x000C96F0
 	public void PositionReset()
 	{
-		this.pos.x = 0f;
-		this.pos.y = (float)NormalizedScreen.height - this.height - 75f * NormalizedScreen.pixelScale;
-		this.Position();
+		pos.x = 0f;
+		pos.y = (float)NormalizedScreen.height - height - 75f * NormalizedScreen.pixelScale;
+		Position();
 	}
 
-	// Token: 0x06001CC7 RID: 7367 RVA: 0x000CB32C File Offset: 0x000C972C
 	public override void UpdatePosition()
 	{
-		float min = -this.width + 26f * NormalizedScreen.pixelScale;
+		float min = 0f - width + 26f * NormalizedScreen.pixelScale;
 		float max = (float)NormalizedScreen.width - 26f * NormalizedScreen.pixelScale - Blocksworld.UI.TabBar.GetPixelWidth() / NormalizedScreen.scale;
-		this.pos.x = Mathf.Clamp(this.pos.x, min, max);
-		this.overBuildPanel = (this.pos.x + this.width > (float)NormalizedScreen.width - Blocksworld.UI.SidePanel.BuildPanelWidth());
+		pos.x = Mathf.Clamp(pos.x, min, max);
+		overBuildPanel = pos.x + width > (float)NormalizedScreen.width - Blocksworld.UI.SidePanel.BuildPanelWidth();
 		base.UpdatePosition();
 	}
 
-	// Token: 0x06001CC8 RID: 7368 RVA: 0x000CB3CC File Offset: 0x000C97CC
 	public override void Show(bool show)
 	{
-		this.overlaysDirty = true;
-		if (this.ignoreShow)
+		overlaysDirty = true;
+		if (ignoreShow)
 		{
-			this.ignoreShow = false;
+			ignoreShow = false;
 			return;
 		}
 		if (!show)
 		{
 			TileIconManager.Instance.ClearNewLoadLimit();
-			this.overBuildPanel = false;
+			overBuildPanel = false;
 		}
-		if (this.go.activeSelf == show)
+		if (go.activeSelf != show)
 		{
-			return;
-		}
-		this.goParent.SetActive(show);
-		this.go.SetActive(show);
-		this.headerGameObject.SetActive(show);
-		bool show2 = show && Blocksworld.buildPanel.IsShowing() && !Tutorial.InTutorialOrPuzzle();
-		Blocksworld.tileButtonClearScript.tileObject.Show(show2);
-		Blocksworld.tileButtonCopyScript.tileObject.Show(show2);
-		Blocksworld.tileButtonPasteScript.tileObject.Show(show2);
-		if (!show)
-		{
-			this.ClearTiles();
+			goParent.SetActive(show);
+			go.SetActive(show);
+			headerGameObject.SetActive(show);
+			bool show2 = show && Blocksworld.buildPanel.IsShowing() && !Tutorial.InTutorialOrPuzzle();
+			Blocksworld.tileButtonClearScript.tileObject.Show(show2);
+			Blocksworld.tileButtonCopyScript.tileObject.Show(show2);
+			Blocksworld.tileButtonPasteScript.tileObject.Show(show2);
+			if (!show)
+			{
+				ClearTiles();
+			}
 		}
 	}
 
-	// Token: 0x06001CC9 RID: 7369 RVA: 0x000CB49D File Offset: 0x000C989D
 	public void SavePositionForNextLayout()
 	{
-		this.previousTopScreenPosY = this.pos.y + this.height;
+		previousTopScreenPosY = pos.y + height;
 	}
 
-	// Token: 0x06001CCA RID: 7370 RVA: 0x000CB4B8 File Offset: 0x000C98B8
 	public void ClearTiles()
 	{
-		this.SavePositionForNextLayout();
-		base.ClearOverlays();
-		if (this.tiles != null)
+		SavePositionForNextLayout();
+		ClearOverlays();
+		if (tiles != null)
 		{
-			for (int i = 0; i < this.tiles.Count; i++)
+			for (int i = 0; i < tiles.Count; i++)
 			{
-				for (int j = 0; j < this.tiles[i].Count; j++)
+				for (int j = 0; j < tiles[i].Count; j++)
 				{
-					Tile tile = this.tiles[i][j];
+					Tile tile = tiles[i][j];
 					tile.SetParent(null);
-					tile.Show(false);
+					tile.Show(show: false);
 					tile.Destroy();
 				}
 			}
 		}
-		this.tiles = new List<List<Tile>>();
-		this.overlaysDirty = true;
+		tiles = new List<List<Tile>>();
+		overlaysDirty = true;
 	}
 
-	// Token: 0x06001CCB RID: 7371 RVA: 0x000CB553 File Offset: 0x000C9953
 	public void SetTilesFromBlock(Block block)
 	{
-		this.ClearTiles();
-		this.tiles = block.tiles;
-		this.AssignUnparentedTiles();
-		this.overlaysDirty = true;
+		ClearTiles();
+		tiles = block.tiles;
+		AssignUnparentedTiles();
+		overlaysDirty = true;
 	}
 
-	// Token: 0x06001CCC RID: 7372 RVA: 0x000CB574 File Offset: 0x000C9974
 	public void AssignUnparentedTiles()
 	{
-		if (this.tiles != null)
+		if (tiles == null)
 		{
-			for (int i = 0; i < this.tiles.Count; i++)
+			return;
+		}
+		for (int i = 0; i < tiles.Count; i++)
+		{
+			for (int j = 0; j < tiles[i].Count; j++)
 			{
-				for (int j = 0; j < this.tiles[i].Count; j++)
-				{
-					Tile tile = this.tiles[i][j];
-					tile.SetParent(this.goParent.transform);
-				}
+				Tile tile = tiles[i][j];
+				tile.SetParent(goParent.transform);
 			}
 		}
 	}
 
-	// Token: 0x06001CCD RID: 7373 RVA: 0x000CB5EE File Offset: 0x000C99EE
 	private void ViewportSizeDidChange()
 	{
-		if (base.IsShowing())
+		if (IsShowing())
 		{
-			this.Layout();
-			this.Position();
+			Layout();
+			Position();
 		}
 		else
 		{
-			this.PositionReset();
+			PositionReset();
 		}
 	}
 
-	// Token: 0x06001CCE RID: 7374 RVA: 0x000CB612 File Offset: 0x000C9A12
 	public override void Move(Vector3 delta)
 	{
 		base.Move(delta);
 		if (delta.sqrMagnitude > Mathf.Epsilon)
 		{
-			this.UpdateTileVisibility();
+			UpdateTileVisibility();
 		}
 	}
 
-	// Token: 0x06001CCF RID: 7375 RVA: 0x000CB632 File Offset: 0x000C9A32
 	public override void BeginTrackingTouch()
 	{
 		TileIconManager.Instance.SetNewLoadLimit(24);
 		base.BeginTrackingTouch();
 	}
 
-	// Token: 0x06001CD0 RID: 7376 RVA: 0x000CB646 File Offset: 0x000C9A46
 	public override void EndTrackingTouch()
 	{
 		TileIconManager.Instance.ClearNewLoadLimit();
 		base.EndTrackingTouch();
 	}
 
-	// Token: 0x06001CD1 RID: 7377 RVA: 0x000CB658 File Offset: 0x000C9A58
 	private bool IsOnScreen(Tile tile)
 	{
-		Vector3 vector = tile.GetLocalPosition() + this.pos;
-		return vector.x > -100f && vector.x < (float)(NormalizedScreen.width + 100) && vector.y > -100f && vector.y < (float)(NormalizedScreen.height + 100);
+		Vector3 vector = tile.GetLocalPosition() + pos;
+		if (vector.x > -100f && vector.x < (float)(NormalizedScreen.width + 100) && vector.y > -100f)
+		{
+			return vector.y < (float)(NormalizedScreen.height + 100);
+		}
+		return false;
 	}
 
-	// Token: 0x06001CD2 RID: 7378 RVA: 0x000CB6C4 File Offset: 0x000C9AC4
 	private void UpdateTileVisibility()
 	{
-		for (int i = 1; i < this.tiles.Count; i++)
+		for (int i = 1; i < tiles.Count; i++)
 		{
-			List<Tile> list = this.tiles[i];
+			List<Tile> list = tiles[i];
 			for (int j = 0; j < list.Count; j++)
 			{
 				Tile tile = list[j];
-				bool flag = this.IsOnScreen(tile);
+				bool flag = IsOnScreen(tile);
 				if (flag && !tile.IsShowing())
 				{
 					if (tile.gaf.Predicate.EditableParameter != null)
 					{
 						tile.gaf.Predicate.EditableParameter.ApplyTileParameterUI(tile);
 					}
-					tile.Show(true);
+					tile.Show(show: true);
 				}
 				else if (!flag && tile.IsShowing())
 				{
-					tile.Show(false);
+					tile.Show(show: false);
 				}
 			}
 		}
 	}
 
-	// Token: 0x06001CD3 RID: 7379 RVA: 0x000CB784 File Offset: 0x000C9B84
 	public void Layout()
 	{
-		Vector3 position = this.goParent.transform.position;
-		this.height = this.extraVerticalTopPadding + (float)((this.tiles.Count - 1) * (base.size + base.margin)) + (float)(this.tiles.Count * base.padding);
+		Vector3 vector = goParent.transform.position;
+		height = extraVerticalTopPadding + (float)((tiles.Count - 1) * (base.size + base.margin)) + (float)(tiles.Count * base.padding);
 		float num = 0f;
-		float num2 = (float)(base.size + base.margin);
-		float num3 = this.height - this.extraVerticalTopPadding - (float)(base.size + base.margin + base.padding);
-		for (int i = 1; i < this.tiles.Count; i++)
+		float num2 = base.size + base.margin;
+		float num3 = height - extraVerticalTopPadding - (float)(base.size + base.margin + base.padding);
+		for (int i = 1; i < tiles.Count; i++)
 		{
 			float num4 = 44f;
-			List<Tile> list = this.tiles[i];
+			List<Tile> list = tiles[i];
 			for (int j = 0; j < list.Count; j++)
 			{
 				Tile tile = list[j];
-				tile.LocalMoveTo(new Vector3(num4, num3, -0.1f), false);
+				tile.LocalMoveTo(new Vector3(num4, num3, -0.1f));
 				num4 += num2;
 				if (tile.doubleWidth)
 				{
@@ -245,94 +244,89 @@ public class ScriptPanel : Panel
 			}
 			num3 -= (float)(base.size + base.margin + base.padding);
 		}
-		num = 80f + Mathf.Max(num - (float)(base.margin / 2), (float)(2 * base.margin + 3 * base.size));
-		if (this.pos.x < -0.5f * num)
+		num = 80f + Mathf.Max(num - (float)(base.margin / 2), 2 * base.margin + 3 * base.size);
+		if (pos.x < -0.5f * num)
 		{
-			this.pos.x = -num;
-			this.pos.y = (float)NormalizedScreen.height - this.height - 75f * NormalizedScreen.pixelScale;
+			pos.x = 0f - num;
+			pos.y = (float)NormalizedScreen.height - height - 75f * NormalizedScreen.pixelScale;
 		}
-		else if (this.previousTopScreenPosY > 0f)
+		else if (previousTopScreenPosY > 0f)
 		{
-			this.pos.y = this.previousTopScreenPosY - this.height;
-			this.previousTopScreenPosY = 0f;
+			pos.y = previousTopScreenPosY - height;
+			previousTopScreenPosY = 0f;
 		}
-		if (this.pos.y - this.height > (float)NormalizedScreen.height - 75f)
+		if (pos.y - height > (float)NormalizedScreen.height - 75f)
 		{
-			this.pos.y = (float)NormalizedScreen.height - this.height - 75f * NormalizedScreen.pixelScale;
+			pos.y = (float)NormalizedScreen.height - height - 75f * NormalizedScreen.pixelScale;
 		}
-		this.width = num;
-		this.expanded = 0f;
-		this.overlaysDirty = true;
-		this.UpdateTileVisibility();
-		this.UpdatePosition();
-		this.UpdateTitleBar();
+		width = num;
+		expanded = 0f;
+		overlaysDirty = true;
+		UpdateTileVisibility();
+		UpdatePosition();
+		UpdateTitleBar();
 	}
 
-	// Token: 0x06001CD4 RID: 7380 RVA: 0x000CB9E0 File Offset: 0x000C9DE0
 	private void UpdateTitleBar()
 	{
-		float num = this.width + this.expanded;
-		this.headerGameObject.transform.localPosition = new Vector3(num * 0.35f, this.height - 5f * NormalizedScreen.pixelScale, 0f);
-		this.headerGameObject.transform.localScale = NormalizedScreen.pixelScale * Vector3.one;
-		if (this.tiles != null && this.tiles.Count > 1 && this.tiles[1] != null)
+		float num = width + expanded;
+		headerGameObject.transform.localPosition = new Vector3(num * 0.35f, height - 5f * NormalizedScreen.pixelScale, 0f);
+		headerGameObject.transform.localScale = NormalizedScreen.pixelScale * Vector3.one;
+		if (tiles != null && tiles.Count > 1 && tiles[1] != null)
 		{
-			bool enabled = this.tiles.Count != 2 || this.tiles[1].Count != 1;
+			bool enabled = tiles.Count != 2 || tiles[1].Count != 1;
 			bool enabled2 = Blocksworld.clipboard.scriptCopyPasteBuffer.Count > 0;
 			float offsetY = -56f * NormalizedScreen.pixelScale;
-			this.PositionTileButton(Blocksworld.tileButtonClearScript, num - 120f * NormalizedScreen.pixelScale, offsetY, enabled);
-			this.PositionTileButton(Blocksworld.tileButtonCopyScript, -8f * NormalizedScreen.pixelScale, offsetY, enabled);
-			this.PositionTileButton(Blocksworld.tileButtonPasteScript, num - 80f * NormalizedScreen.pixelScale, offsetY, enabled2);
+			PositionTileButton(Blocksworld.tileButtonClearScript, num - 120f * NormalizedScreen.pixelScale, offsetY, enabled);
+			PositionTileButton(Blocksworld.tileButtonCopyScript, -8f * NormalizedScreen.pixelScale, offsetY, enabled);
+			PositionTileButton(Blocksworld.tileButtonPasteScript, num - 80f * NormalizedScreen.pixelScale, offsetY, enabled2);
 		}
 	}
 
-	// Token: 0x06001CD5 RID: 7381 RVA: 0x000CBB14 File Offset: 0x000C9F14
 	private void PositionTileButton(Tile tileButton, float offsetX, float offsetY, bool enabled)
 	{
 		if (tileButton.IsShowing())
 		{
-			Vector3 position = this.go.transform.position;
-			tileButton.MoveTo(position.x + offsetX, position.y + this.height + offsetY, this.goParent.transform.position.z - 1f);
+			Vector3 vector = go.transform.position;
+			tileButton.MoveTo(vector.x + offsetX, vector.y + height + offsetY, goParent.transform.position.z - 1f);
 			tileButton.SetTileScale(NormalizedScreen.pixelScale);
 			tileButton.Enable(enabled);
-			tileButton.SetParent(this.goParent.transform);
+			tileButton.SetParent(goParent.transform);
 		}
 	}
 
-	// Token: 0x06001CD6 RID: 7382 RVA: 0x000CBBA0 File Offset: 0x000C9FA0
 	public void UpdateInner()
 	{
-		if (!this.trackingTouch)
+		if (!trackingTouch)
 		{
-			this.pos += this.smoothSpeed;
+			pos += smoothSpeed;
 		}
-		this.smoothSpeed *= this._momentum;
-		if (base.IsShowing())
+		smoothSpeed *= _momentum;
+		if (IsShowing())
 		{
-			this.UpdatePosition();
+			UpdatePosition();
 		}
 	}
 
-	// Token: 0x06001CD7 RID: 7383 RVA: 0x000CBBF7 File Offset: 0x000C9FF7
 	public void Update()
 	{
-		this.wasWithinBounds = this.IsWithinBounds();
-		base.StepTutorialIfNecessary();
-		this.UpdateInner();
+		wasWithinBounds = IsWithinBounds();
+		StepTutorialIfNecessary();
+		UpdateInner();
 	}
 
-	// Token: 0x06001CD8 RID: 7384 RVA: 0x000CBC14 File Offset: 0x000CA014
 	public Vector2 SnapTile(Vector3 mouse, Tile tile)
 	{
 		int num = 0;
 		int num2 = 0;
-		float num3 = (float)(base.size + base.margin);
-		if (this.Hit(mouse) || (this.expanded == 0f && this.Hit(mouse + new Vector3(-num3, 0f, 0f))))
+		float num3 = base.size + base.margin;
+		if (Hit(mouse) || (expanded == 0f && Hit(mouse + new Vector3(0f - num3, 0f, 0f))))
 		{
-			float num4 = this.height - (float)base.padding - (mouse.y - this.pos.y);
-			num = (int)Mathf.Clamp(Mathf.Floor(num4 / (float)(base.size + base.margin + base.padding)), 0f, (float)(this.tiles.Count - 2)) + 1;
-			float num5 = mouse.x - this.pos.x - 40f;
-			num2 = (int)Mathf.Clamp(Mathf.Floor(num5 / (float)(base.size + base.margin)), 0f, (float)Mathf.Max(1, this.tiles[num].Count));
-			List<Tile> list = this.tiles[num];
+			float num4 = height - (float)base.padding - (mouse.y - pos.y);
+			num = (int)Mathf.Clamp(Mathf.Floor(num4 / (float)(base.size + base.margin + base.padding)), 0f, tiles.Count - 2) + 1;
+			float num5 = mouse.x - pos.x - 40f;
+			num2 = (int)Mathf.Clamp(Mathf.Floor(num5 / (float)(base.size + base.margin)), 0f, Mathf.Max(1, tiles[num].Count));
+			List<Tile> list = tiles[num];
 			bool flag = tile.gaf.AllowTilesAfter();
 			int num6 = 0;
 			int num7 = -1;
@@ -348,8 +342,7 @@ public class ScriptPanel : Panel
 					num7 = i;
 				}
 			}
-			bool flag2 = flag || num7 == -1;
-			if (flag2)
+			if (flag || num7 == -1)
 			{
 				if (!tile.gaf.CanBeAction())
 				{
@@ -368,71 +361,70 @@ public class ScriptPanel : Panel
 					num2 = list.Count;
 				}
 				float num8 = 44f + (float)(num2 * (base.size + base.margin));
-				float f = this.height - this.extraVerticalTopPadding - (float)(num * (base.size + base.margin + base.padding));
+				float f = height - extraVerticalTopPadding - (float)(num * (base.size + base.margin + base.padding));
 				Vector3 localPosition = tile.GetLocalPosition();
 				if (Mathf.Floor(num8) != localPosition.x || Mathf.Floor(f) != localPosition.y)
 				{
-					Sound.PlaySound("Move", Sound.GetOrCreateOneShotAudioSource(), true, 1f, 1f, false);
+					Sound.PlaySound("Move", Sound.GetOrCreateOneShotAudioSource(), oneShot: true);
 				}
-				tile.SetParent(this.goParent.transform);
+				tile.SetParent(goParent.transform);
 				tile.LocalMoveTo(Mathf.Floor(num8), Mathf.Floor(f));
-				if (num8 - this.pos.x > this.width - num3)
+				if (num8 - pos.x > width - num3)
 				{
-					this.expanded = num3;
+					expanded = num3;
 				}
 				else
 				{
-					this.expanded = 0f;
+					expanded = 0f;
 				}
 			}
 			else
 			{
 				num2 = 0;
 				num = 0;
-				this.expanded = 0f;
+				expanded = 0f;
 			}
-			this.UpdatePosition();
+			UpdatePosition();
 		}
-		else if (this.expanded != 0f)
+		else if (expanded != 0f)
 		{
-			this.expanded = 0f;
-			this.UpdatePosition();
+			expanded = 0f;
+			UpdatePosition();
 		}
-		float expanded = this.expanded;
-		for (int j = 1; j < this.tiles.Count; j++)
+		float num9 = expanded;
+		for (int j = 1; j < tiles.Count; j++)
 		{
-			for (int k = 0; k < this.tiles[j].Count; k++)
+			for (int k = 0; k < tiles[j].Count; k++)
 			{
-				float num9 = 0f;
+				float num10 = 0f;
 				if (j == num && k >= num2)
 				{
-					num9 = 1f;
+					num10 = 1f;
 				}
-				float num10 = this.pos.x + ((float)k + num9) * (float)(base.size + base.margin) + 40f - (float)(base.margin / 4);
-				Tile tile2 = this.tiles[j][k];
-				Vector3 position = tile2.GetPosition();
-				float num11 = position.x + 0.5f * (num10 - position.x);
-				tile2.MoveTo(num11, position.y);
-				if (num11 - this.pos.x > this.width - num3)
+				float num11 = pos.x + ((float)k + num10) * (float)(base.size + base.margin) + 40f - (float)(base.margin / 4);
+				Tile tile2 = tiles[j][k];
+				Vector3 vector = tile2.GetPosition();
+				float num12 = vector.x + 0.5f * (num11 - vector.x);
+				tile2.MoveTo(num12, vector.y);
+				if (num12 - pos.x > width - num3)
 				{
-					this.expanded = num3;
+					expanded = num3;
 				}
 			}
 		}
-		if (Mathf.Abs(this.expanded - expanded) > Mathf.Epsilon)
+		if (Mathf.Abs(expanded - num9) > Mathf.Epsilon)
 		{
-			this.UpdatePosition();
+			UpdatePosition();
 		}
-		this.overlaysDirty = true;
-		return new Vector2((float)num2, (float)num);
+		overlaysDirty = true;
+		return new Vector2(num2, num);
 	}
 
-	// Token: 0x06001CD9 RID: 7385 RVA: 0x000CC060 File Offset: 0x000CA460
 	public override bool TileOnLeftSide(Tile tile)
 	{
-		for (int i = 0; i < this.tiles.Count; i++)
+		for (int i = 0; i < tiles.Count; i++)
 		{
-			List<Tile> list = this.tiles[i];
+			List<Tile> list = tiles[i];
 			bool flag = false;
 			for (int j = 0; j < list.Count; j++)
 			{
@@ -449,25 +441,4 @@ public class ScriptPanel : Panel
 		}
 		return false;
 	}
-
-	// Token: 0x0400178B RID: 6027
-	private const int horizontalPadding = 40;
-
-	// Token: 0x0400178C RID: 6028
-	private const int verticalPadding = 20;
-
-	// Token: 0x0400178D RID: 6029
-	public bool ignoreShow;
-
-	// Token: 0x0400178E RID: 6030
-	public bool overBuildPanel;
-
-	// Token: 0x0400178F RID: 6031
-	private float extraVerticalTopPadding;
-
-	// Token: 0x04001790 RID: 6032
-	private float previousTopScreenPosY;
-
-	// Token: 0x04001791 RID: 6033
-	private GameObject headerGameObject;
 }

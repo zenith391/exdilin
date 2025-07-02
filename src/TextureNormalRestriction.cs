@@ -1,47 +1,44 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Blocks;
 using UnityEngine;
 
-// Token: 0x020002C6 RID: 710
 public class TextureNormalRestriction
 {
-	// Token: 0x06002071 RID: 8305 RVA: 0x000EE098 File Offset: 0x000EC498
+	private static Dictionary<string, SideRule> sideRules = new Dictionary<string, SideRule>();
+
 	public static bool CanTextureBlockWithNormal(Block block, string texture, string blockType, Vector3 normal, int meshIndex, out Vector3 normalRewrite)
 	{
 		normalRewrite = normal;
-		TextureInfo textureInfo;
-		if (Materials.textureInfos.TryGetValue(texture, out textureInfo))
+		if (Materials.textureInfos.TryGetValue(texture, out var value))
 		{
-			switch (textureInfo.mapping)
-			{
-			case Mapping.OneSideTo1x1:
-			case Mapping.TwoSidesTo1x1:
-			case Mapping.OneSideWrapTo1x1:
-			case Mapping.TwoSidesWrapTo1x1:
+			Mapping mapping = value.mapping;
+			if ((uint)(mapping - 2) <= 1u || (uint)(mapping - 6) <= 1u)
 			{
 				Side side = Materials.FindSide(normal);
-				string text = blockType + meshIndex + side.ToString();
+				string text = blockType + meshIndex + side;
 				SideRule sideRule = null;
-				if (!TextureNormalRestriction.sideRules.ContainsKey(text))
+				if (!sideRules.ContainsKey(text))
 				{
-					TextureNormalRestriction.sideRules[text] = null;
+					sideRules[text] = null;
 					BlockMeshMetaData[] blockMeshMetaDatas = block.GetBlockMeshMetaDatas();
 					int num = 0;
-					foreach (BlockMeshMetaData blockMeshMetaData in blockMeshMetaDatas)
+					BlockMeshMetaData[] array = blockMeshMetaDatas;
+					foreach (BlockMeshMetaData blockMeshMetaData in array)
 					{
 						if (meshIndex == num)
 						{
-							foreach (TextureSideRule textureSideRule in blockMeshMetaData.textureSideRules)
+							TextureSideRule[] textureSideRules = blockMeshMetaData.textureSideRules;
+							foreach (TextureSideRule textureSideRule in textureSideRules)
 							{
-								string text2 = blockType + meshIndex + TextureNormalRestriction.ParseSideString(textureSideRule.side).ToString();
+								string text2 = blockType + meshIndex + ParseSideString(textureSideRule.side);
 								SideRule sideRule2 = new SideRule();
 								sideRule2.rewrite = !string.IsNullOrEmpty(textureSideRule.rewriteSide);
 								if (sideRule2.rewrite)
 								{
-									sideRule2.rewriteSide = TextureNormalRestriction.ParseSideString(textureSideRule.rewriteSide);
+									sideRule2.rewriteSide = ParseSideString(textureSideRule.rewriteSide);
 								}
-								TextureNormalRestriction.sideRules[text2] = sideRule2;
+								sideRules[text2] = sideRule2;
 								if (text2 == text)
 								{
 									sideRule = sideRule2;
@@ -54,7 +51,7 @@ public class TextureNormalRestriction
 				}
 				else
 				{
-					sideRule = TextureNormalRestriction.sideRules[text];
+					sideRule = sideRules[text];
 				}
 				if (sideRule != null)
 				{
@@ -64,14 +61,11 @@ public class TextureNormalRestriction
 					}
 					normalRewrite = Materials.SideToNormal(sideRule.rewriteSide);
 				}
-				break;
-			}
 			}
 		}
 		return true;
 	}
 
-	// Token: 0x06002072 RID: 8306 RVA: 0x000EE260 File Offset: 0x000EC660
 	private static Side ParseSideString(string s)
 	{
 		Side result = Side.Front;
@@ -85,7 +79,4 @@ public class TextureNormalRestriction
 		}
 		return result;
 	}
-
-	// Token: 0x04001BAF RID: 7087
-	private static Dictionary<string, SideRule> sideRules = new Dictionary<string, SideRule>();
 }
